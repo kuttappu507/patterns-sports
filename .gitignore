@@ -76,8 +76,10 @@ server.log
 /scripts/verify-*.png
 
 # rust / tauri build artifacts
-/tauri/src-tauri/target/
-/tauri/src-tauri/gen/
+/src-tauri/target/
+/src-tauri/gen/
+/.tauri-api-stash/
+/out/
 
 # sqlite sidecar files
 *.db-wal

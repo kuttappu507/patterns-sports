@@ -52,13 +52,13 @@ patterns-sports/
 ├── prisma/schema.prisma            # Student, Achievement, FeePayment,
 │                                   # CommitteeMember, Attendance, Setting
 ├── scripts/seed.ts                 # realistic demo dataset
-├── tauri/
-│   ├── src-tauri/                  # Tauri v2 shell: tauri.conf.json, Cargo.toml,
-│   │                               # capabilities, main.rs (data-dir bootstrap
-│   │                               # + backup-on-exit)
-│   ├── database/schema.sql         # canonical SQLite DDL (indexes + FK cascades)
-│   └── PORTING_GUIDE.md            # step-by-step desktop compile guide
-└── docs/screenshots/               # end-to-end verification captures
+├── src-tauri/                      # Tauri v2 shell: tauri.conf.json, Cargo.toml,
+│                                   # capabilities, icons, main.rs (data-dir
+│                                   # bootstrap + backup-on-exit + commands)
+│   └── resources/schema.sql        # canonical SQLite DDL (indexes + FK cascades)
+├── docs/
+│   ├── PORTING_GUIDE.md            # desktop build & porting guide
+│   └── screenshots/                # end-to-end verification captures
 ```
 
 ### Tech stack
@@ -88,31 +88,44 @@ The seeder populates 12 students across all five age categories, 20 fee payments
 
 ## Windows Desktop Build (Tauri v2)
 
-Prerequisites on the build machine: Rust toolchain (`rustup`), Node/Bun, and the WebView2 runtime (auto-installed by the embedded bootstrapper in the installer).
+The desktop app is a fully offline build of the same UI: SQLite through the
+Tauri SQL plugin, media on disk through the FS plugin, and automatic
+backup-on-exit handled by the Rust shell. No component changes are needed —
+`src/lib/psams/api.ts` detects the runtime and switches between the HTTP API
+and the offline backend.
 
-1. Install the Tauri CLI and plugins:
+### GitHub Actions (recommended)
 
-   ```bash
-   bun add -D @tauri-apps/cli
-   bun add @tauri-apps/plugin-sql @tauri-apps/plugin-dialog @tauri-apps/plugin-fs @tauri-apps/plugin-shell
-   ```
+`.github/workflows/build-exe.yml` builds the Windows installers automatically
+on every push to `main`:
 
-2. Copy the packaging kit to the repo root so Tauri picks up the Next.js build output:
-
-   ```bash
-   cp -r tauri/src-tauri ./src-tauri
-   ```
-
-3. Follow [`tauri/PORTING_GUIDE.md`](tauri/PORTING_GUIDE.md) to swap `src/lib/psams/api.ts` from HTTP routes to the Tauri SQL plugin — the function signatures stay identical, so no component changes are needed.
-
-4. Build:
+1. Open the repository's **Actions** tab and select **Build Windows EXE (PS-AMS)**.
+2. Download the `PS-AMS-windows-installers` artifact (NSIS `.exe` + MSI).
+3. To publish installers as a GitHub Release, push a version tag:
 
    ```bash
-   bun x tauri dev      # smoke test
-   bun x tauri build    # release NSIS installer + MSI
+   git tag v1.0.0 && git push origin v1.0.0
    ```
 
-The Rust host (`tauri/src-tauri/src/main.rs`) bootstraps `%APPDATA%/PS-AMS/`, applies `database/schema.sql` on first run, and on every app exit copies `ps-ams.db` (with WAL sidecars) plus the whole media tree into `%APPDATA%/PS-AMS/backups/` — or to a remembered USB drive when its path is written into `%APPDATA%/PS-AMS/ps-ams-backup-target.txt`.
+### Build locally on Windows
+
+Prerequisites: Rust toolchain (`rustup`), Node/Bun, WebView2 runtime
+(auto-installed by the embedded bootstrapper in the installer).
+
+```bash
+bun install
+bun run tauri dev     # smoke test in a native window
+bun run tauri build   # release NSIS installer + MSI
+```
+
+Installers land in `src-tauri/target/release/bundle/{nsis,msi}/`. The
+frontend is compiled as a static export (`npm run build:tauri`), and the Rust
+host (`src-tauri/src/main.rs`) bootstraps the data folder, applies
+`src-tauri/resources/schema.sql` on first run, and on every app exit copies
+the database (with WAL sidecars) plus the whole media tree into the backups
+folder — or to a remembered USB drive when its path is written into
+`ps-ams-backup-target.txt` next to the database. See
+[`docs/PORTING_GUIDE.md`](docs/PORTING_GUIDE.md) for the full guide.
 
 ## Data & Safety
 

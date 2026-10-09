@@ -16,7 +16,9 @@
     "dialog:allow-message",
     "fs:default",
     "fs:allow-read-text-file",
+    "fs:allow-read-file",
     "fs:allow-write-text-file",
+    "fs:allow-write-file",
     "fs:allow-copy-file",
     "fs:allow-read-dir",
     "fs:allow-mkdir",
@@ -24,10 +26,12 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        { "path": "$APPDATA/PS-AMS/**" },
+        { "path": "$APPDATA/**" },
+        { "path": "$RESOURCE/**" },
         { "path": "$DOWNLOAD/**" },
         { "path": "$DESKTOP/**" },
-        { "path": "*/**" }
+        { "path": "$DOCUMENT/**" },
+        { "path": "$TEMP/**" }
       ]
     },
     "shell:allow-open"

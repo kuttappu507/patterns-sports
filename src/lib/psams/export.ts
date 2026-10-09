@@ -21,6 +21,28 @@ function timestamp(): string {
 
 export type ExportRow = Record<string, string | number | null | undefined>
 
+/**
+ * Persist a generated document. In the Tauri desktop shell a native
+ * Save dialog is used (WebView2 blocks anchor downloads); on the web
+ * this falls back to file-saver.
+ */
+async function saveBlob(blob: Blob, fileName: string): Promise<void> {
+  if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog")
+      const { writeFile } = await import("@tauri-apps/plugin-fs")
+      const target = await save({ defaultPath: fileName })
+      if (target) {
+        await writeFile(target, new Uint8Array(await blob.arrayBuffer()))
+        return
+      }
+    } catch {
+      /* fall through to browser download */
+    }
+  }
+  saveAs(blob, fileName)
+}
+
 // ---------------- Excel ----------------
 
 export async function exportExcel(opts: {
@@ -111,12 +133,15 @@ export async function exportExcel(opts: {
   })
 
   const buf = await wb.xlsx.writeBuffer()
-  saveAs(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${opts.fileName}-${timestamp()}.xlsx`)
+  await saveBlob(
+    new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+    `${opts.fileName}-${timestamp()}.xlsx`
+  )
 }
 
 // ---------------- CSV ----------------
 
-export function exportCSV(fileName: string, columns: { header: string; key: string }[], rows: ExportRow[]) {
+export async function exportCSV(fileName: string, columns: { header: string; key: string }[], rows: ExportRow[]) {
   const data = rows.map((r) => {
     const o: Record<string, string | number> = {}
     columns.forEach((c) => {
@@ -126,7 +151,7 @@ export function exportCSV(fileName: string, columns: { header: string; key: stri
     return o
   })
   const csv = Papa.unparse(data)
-  saveAs(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }), `${fileName}-${timestamp()}.csv`)
+  await saveBlob(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }), `${fileName}-${timestamp()}.csv`)
 }
 
 // ---------------- PDF ----------------
@@ -195,5 +220,5 @@ export async function exportPDF(opts: {
     )
   }
 
-  doc.save(`${opts.fileName}-${timestamp()}.pdf`)
+  await saveBlob(doc.output("blob"), `${opts.fileName}-${timestamp()}.pdf`)
 }

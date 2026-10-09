@@ -2,9 +2,10 @@
 // PS-AMS :: Tauri v2 shell
 //  - Registers SQL (SQLite), Dialog, FS and Shell plugins
 //  - Creates the local database + media directory on first run
-//  - Intercepts window close to run the automated backup routine
+//  - Exposes data_paths / backup_now commands to the frontend
+//  - Intercepts app exit to run the automated backup routine
 //    (database file + media directory -> backup target folder
-//    or an attached USB drive when present)
+//    or a remembered USB drive when present)
 // ============================================================
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -17,7 +18,7 @@ use tauri::{Manager, RunEvent};
 const APP_DIR_NAME: &str = "PS-AMS";
 const BACKUP_MARKER: &str = "ps-ams-backup-target.txt";
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 struct DataPaths {
     app_data: String,
     database: String,
@@ -26,10 +27,11 @@ struct DataPaths {
 }
 
 /// Resolve (and create) the PS-AMS data layout:
-///   %APPDATA%/PS-AMS/ps-ams.db      — SQLite database
-///   %APPDATA%/PS-AMS/media/…        — photos / documents / certificates
-///   %APPDATA%/PS-AMS/backups/       — automatic exit backups
-fn data_paths(handle: &tauri::AppHandle) -> DataPaths {
+///   %APPDATA%/<identifier>/ps-ams.db  — SQLite database (same file the
+///                                      SQL plugin opens via sqlite:ps-ams.db)
+///   %APPDATA%/<identifier>/media/…    — photos / documents / certificates
+///   %APPDATA%/<identifier>/backups/   — automatic exit backups
+fn resolve_data_paths(handle: &tauri::AppHandle) -> DataPaths {
     let base: PathBuf = handle
         .path()
         .app_data_dir()
@@ -56,8 +58,9 @@ fn copy_file(from: &PathBuf, to: &PathBuf) -> bool {
 
 /// Backup the SQLite database and the whole media tree.
 /// Priority: remembered USB target > default local backups folder.
-fn run_exit_backup(handle: &tauri::AppHandle) {
-    let paths = data_paths(handle);
+/// Returns the directory the backup was written to.
+fn run_exit_backup(handle: &tauri::AppHandle) -> String {
+    let paths = resolve_data_paths(handle);
     let db_src = PathBuf::from(&paths.database);
     let media_src = PathBuf::from(&paths.media);
 
@@ -88,6 +91,8 @@ fn run_exit_backup(handle: &tauri::AppHandle) {
     let media_backup = target.join(format!("media-{stamp}"));
     let _ = fs::create_dir_all(&media_backup);
     mirror_dir(&media_src, &media_backup);
+
+    target.to_string_lossy().into_owned()
 }
 
 fn mirror_dir(src: &PathBuf, dst: &PathBuf) {
@@ -105,54 +110,35 @@ fn mirror_dir(src: &PathBuf, dst: &PathBuf) {
     }
 }
 
+/// Frontend command: resolved data layout (database / media / backup folders).
+#[tauri::command]
+fn data_paths(handle: tauri::AppHandle) -> DataPaths {
+    resolve_data_paths(&handle)
+}
+
+/// Frontend command: run the backup routine right now (Settings page).
+#[tauri::command]
+fn backup_now(handle: tauri::AppHandle) -> Result<String, String> {
+    Ok(run_exit_backup(&handle))
+}
+
 fn main() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .setup(|app| {
-            let handle = app.handle().clone();
-            let paths = data_paths(&handle);
-
-            // Publish resolved paths to the frontend once available.
-            let store = serde_json::to_string(&paths).unwrap();
-            app.manage(store);
-
-            // Ensure the SQLite schema exists on first launch.
-            let db = PathBuf::from(&paths.database);
-            if !db.exists() {
-                let schema = include_str!("../../database/schema.sql");
-                if let Ok(conn) = rusqlite_stub::open(&db) {
-                    let _ = conn.execute_batch(schema);
-                }
-            }
-            Ok(())
-        })
+        .invoke_handler(tauri::generate_handler![data_paths, backup_now])
+        .setup(|_app| Ok(()))
         .build(tauri::generate_context!())
         .expect("error while building PS-AMS");
 
     app.run(|_app_handle, event| match event {
         // ---- Automated data backup on exit ----
         RunEvent::Exit { .. } => {
-            run_exit_backup(_app_handle);
+            let _ = run_exit_backup(_app_handle);
         }
         RunEvent::ExitRequested { .. } => {}
         _ => {}
     });
-}
-
-/// Minimalrusqlite shim kept separate so the Cargo deps stay lean;
-/// replace with the tauri-plugin-sql migration API in production builds.
-mod rusqlite_stub {
-    pub struct Connection;
-    impl Connection {
-        pub fn open(_path: &std::path::Path) -> Result<Self, ()> {
-            Ok(Connection)
-        }
-        pub fn execute_batch(&self, _sql: &str) -> Result<(), ()> {
-            // The SQL plugin applies migrations; this shim is a no-op stub.
-            Ok(())
-        }
-    }
 }
