@@ -15,8 +15,13 @@ import {
   Plus,
   BadgeIndianRupee,
   Volleyball,
+  Minus,
+  Square,
+  X,
 } from "lucide-react"
+import { getCurrentWindow } from "@tauri-apps/api/window"
 import { useAppStore, type ViewKey } from "@/lib/psams/store"
+import { isTauri } from "@/lib/psams/api"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -37,6 +42,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const [clock, setClock] = useState("")
   const onMouseMove = useRevealMouse()
+  // Frameless window chrome — only inside the Tauri desktop shell.
+  // getCurrentWindow() reads Tauri-injected internals and would throw on
+  // the web, hence the isTauri() guard before touching it.
+  const [win] = useState(() => (isTauri() ? getCurrentWindow() : null))
 
   useEffect(() => {
     const tick = () => setClock(new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }))
@@ -201,8 +210,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* ---------------- Main column ---------------- */}
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* Header strip */}
-          <header className="z-10 flex items-center gap-4 border-b border-border bg-card/50 px-6 py-3.5 backdrop-blur-xl">
+          {/* Header strip — doubles as the frameless window drag region */}
+          <header
+            data-tauri-drag-region
+            className="z-10 flex items-center gap-4 border-b border-border bg-card/50 px-6 py-3.5 backdrop-blur-xl select-none"
+            style={win ? { paddingTop: 10, paddingBottom: 10 } : undefined}
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={active.key + (isDetail ? "-detail" : "")}
@@ -210,6 +223,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
+                data-tauri-drag-region
                 className="min-w-0"
               >
                 <h1 className="truncate font-display text-[21px] font-extrabold leading-tight">
@@ -242,6 +256,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Database className="h-3.5 w-3.5 text-primary/80" />
                 {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })} · {clock}
               </div>
+
+              {/* ---- Frameless window controls (desktop shell only) ---- */}
+              {win && (
+                <div className="ml-1 flex items-center gap-0.5 pl-1.5">
+                  <button
+                    title="Minimize"
+                    aria-label="Minimize window"
+                    onClick={() => void win.minimize()}
+                    className="flex h-9 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <button
+                    title="Maximize / Restore"
+                    aria-label="Maximize or restore window"
+                    onClick={() => void win.toggleMaximize()}
+                    className="flex h-9 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+                  >
+                    <Square className="h-3 w-3" />
+                  </button>
+                  <button
+                    title="Close"
+                    aria-label="Close window"
+                    onClick={() => void win.close()}
+                    className="flex h-9 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500 hover:text-white active:scale-95"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
           </header>
 
