@@ -23,6 +23,7 @@ import {
   fetchFeeStatuses,
   fetchPayments,
   fetchSettings,
+  fetchStudents,
 } from "@/lib/psams/api"
 import {
   monthLabel,
@@ -34,6 +35,7 @@ import {
 import { type FeePayment, type StudentFeeStatus, type AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { exportExcel, exportPDF } from "@/lib/psams/export"
+import { waLink, toIntlPhone, openExternal, receiptWaMessage, reminderWaMessage } from "@/lib/psams/whatsapp"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -121,30 +123,24 @@ export function ReceiptDialog({
   const { setPrint } = useAppStore()
   const { toast } = useToast()
 
-  function waDispatch() {
+  async function waDispatch() {
     if (!receipt) return
     const months = parsePaidMonths(receipt.months)
-    const lines = [
-      `*${settings?.academyName || "Pattern Sports Academy"}*`,
-      `Fee Receipt`,
-      ``,
-      `Receipt No: ${receipt.receiptNo}`,
-      `Date: ${formatDate(receipt.paymentDate)}`,
-      `Student: ${receipt.studentName} (${receipt.admissionNo})`,
-      `Period${months.length > 1 ? "s" : ""}: ${months.map(monthLabel).join(", ")}`,
-      `Amount Paid: ${formatINR(receipt.amount)}`,
-      `Mode: ${receipt.paymentMode}`,
-      ``,
-      `Thank you! Keep supporting our champions. 🏐`,
-    ]
-    const phone = (receipt.studentMobile || "").replace(/\D/g, "")
-    const intl = phone.length === 10 ? `91${phone}` : phone
-    const url = `https://web.whatsapp.com/send?phone=${intl}&text=${encodeURIComponent(lines.join("\n"))}`
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      toast({ title: "You appear to be offline", description: "WhatsApp Web dispatch needs connectivity. The receipt is still saved and printable.", variant: "destructive" })
+    const message = receiptWaMessage(receipt, settings, months.map(monthLabel).join(", "))
+    const intl = toIntlPhone(receipt.studentMobile)
+    if (!intl) {
+      toast({ title: "No mobile number on file", description: "Add a mobile number to the player profile to enable one-click WhatsApp dispatch.", variant: "destructive" })
       return
     }
-    window.open(url, "_blank", "noopener")
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast({ title: "You appear to be offline", description: "WhatsApp dispatch needs connectivity. The receipt is still saved and printable.", variant: "destructive" })
+      return
+    }
+    try {
+      await openExternal(waLink(intl, message))
+    } catch (e) {
+      toast({ title: "Could not open WhatsApp", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    }
   }
 
   if (!receipt) return null
@@ -171,12 +167,12 @@ export function ReceiptDialog({
           <Button size="sm" variant="outline" className="h-9 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => setPrint({ kind: "receipt-thermal", title: "POS Slip (80mm)", data: { receipt, settings } })}>
             <Printer className="h-3.5 w-3.5" /> 80mm Slip
           </Button>
-          <Button size="sm" variant="outline" className="h-9 gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-700 hover:bg-emerald-500/20 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300" onClick={waDispatch}>
+          <Button size="sm" className="h-9 gap-1.5 bg-emerald-600 text-xs font-semibold text-white shadow-[0_8px_18px_-8px_rgba(16,185,129,0.7)] hover:bg-emerald-500 active:scale-[0.97]" onClick={waDispatch}>
             <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
           </Button>
         </div>
         <p className="text-[15px] text-muted-foreground">
-          A5 renders for standard printers; the 80 mm slip is sized for thermal POS rolls. WhatsApp opens the itemized receipt via WhatsApp Web when connectivity is present.
+          A5 renders for standard printers; the 80 mm slip is sized for thermal POS rolls. The WhatsApp button opens the itemized receipt straight in the parent WhatsApp chat with one click.
         </p>
       </DialogContent>
     </Dialog>
@@ -316,6 +312,26 @@ function DefaultersTab() {
                     <Button size="sm" variant="outline" className="h-7 border-border bg-card text-[15px] hover:bg-muted" onClick={() => navigate("student-detail", r.student.id)}>Open</Button>
                     <Button
                       size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 border-emerald-500/30 bg-emerald-500/10 text-[15px] text-emerald-700 hover:bg-emerald-500/20 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300"
+                      onClick={async () => {
+                        const intl = toIntlPhone(r.student.mobile)
+                        if (!intl) {
+                          toast({ title: "No mobile number on file", description: `${r.student.fullName} has no mobile number in the profile.`, variant: "destructive" })
+                          return
+                        }
+                        const pending = r.overdueMonths.length > 0 ? r.overdueMonths : r.pendingMonths
+                        try {
+                          await openExternal(waLink(intl, reminderWaMessage({ studentName: r.student.fullName, academyName: settings?.academyName, periodsLabel: pending.map(monthLabel).join(", "), dueAmount: r.dueAmount })))
+                        } catch (e) {
+                          toast({ title: "Could not open WhatsApp", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+                        }
+                      }}
+                    >
+                      <MessageCircle className="h-3 w-3" /> Remind
+                    </Button>
+                    <Button
+                      size="sm"
                       className="h-7 gap-1 rounded-lg bg-primary text-[15px] font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.97]"
                       onClick={() => openCollectFee(r.student.id)}
                     >
@@ -338,6 +354,7 @@ function HistoryTab() {
   const [rows, setRows] = useState<(FeePayment & { studentName: string; admissionNo: string })[]>([])
   const [settings, setSettings] = useState<AcademySettings | null>(null)
   const [loading, setLoading] = useState(true)
+  const [mobiles, setMobiles] = useState<Record<string, string>>({})
   const { setPrint, dataVersion } = useAppStore()
   const { toast } = useToast()
 
@@ -345,10 +362,13 @@ function HistoryTab() {
     let alive = true
     void (async () => {
       try {
-        const [p, s] = await Promise.all([fetchPayments({ limit: 60 }), fetchSettings()])
+        const [p, s, students] = await Promise.all([fetchPayments({ limit: 60 }), fetchSettings(), fetchStudents()])
         if (!alive) return
         setRows(p)
         setSettings(s)
+        const map: Record<string, string> = {}
+        for (const st of students) map[st.id] = st.mobile
+        setMobiles(map)
       } catch (e) {
         if (alive) toast({ title: "Could not load receipt history", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
       } finally {
@@ -372,7 +392,7 @@ function HistoryTab() {
             <th className="px-3 py-2 font-medium">Periods</th>
             <th className="px-3 py-2 font-medium">Mode</th>
             <th className="px-3 py-2 text-right font-medium">Amount</th>
-            <th className="px-3 py-2 text-right font-medium">Reprint</th>
+            <th className="px-3 py-2 text-right font-medium">Reprint / Send</th>
           </tr>
         </thead>
         <tbody>
@@ -390,6 +410,25 @@ function HistoryTab() {
                 <div className="flex justify-end gap-1">
                   <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" onClick={() => setPrint({ kind: "receipt-a5", title: "Fee Receipt (A5)", data: { receipt: p, settings } })}>A5</Button>
                   <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" onClick={() => setPrint({ kind: "receipt-thermal", title: "POS Slip (80mm)", data: { receipt: p, settings } })}>Thermal</Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 gap-1 border-emerald-500/30 bg-emerald-500/10 px-2 text-[14.5px] text-emerald-700 hover:bg-emerald-500/20 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300"
+                    onClick={async () => {
+                      const intl = toIntlPhone(mobiles[p.studentId])
+                      if (!intl) {
+                        toast({ title: "No mobile number on file", description: `${p.studentName} has no mobile number in the profile.`, variant: "destructive" })
+                        return
+                      }
+                      try {
+                        await openExternal(waLink(intl, receiptWaMessage(p, settings, parsePaidMonths(p.months).map(monthLabel).join(", "))))
+                      } catch (e) {
+                        toast({ title: "Could not open WhatsApp", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+                      }
+                    }}
+                  >
+                    <MessageCircle className="h-3 w-3" /> Send
+                  </Button>
                 </div>
               </td>
             </tr>

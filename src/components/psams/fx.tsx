@@ -23,12 +23,11 @@ export const staggerContainer: Variants = {
 }
 
 export const staggerItem: Variants = {
-  hidden: { opacity: 0, y: 14, scale: 0.985 },
+  hidden: { opacity: 0, y: 12 },
   show: {
     opacity: 1,
     y: 0,
-    scale: 1,
-    transition: { type: "spring", stiffness: 320, damping: 30 },
+    transition: { type: "spring", stiffness: 340, damping: 32 },
   },
 }
 

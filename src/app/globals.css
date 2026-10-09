@@ -294,12 +294,13 @@
    Shared surfaces & micro-interactions (theme-aware)
    ============================================================ */
 
-/* frosted glass panel with a subtle top sheen */
+/* frosted glass panel with a subtle top sheen
+   (blur kept light — heavy backdrop-filters made every repaint janky) */
 .glass {
-  background: linear-gradient(165deg, rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.78));
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.82));
   border: 1px solid rgba(22, 20, 48, 0.08);
-  backdrop-filter: blur(18px) saturate(1.15);
-  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 1px 2px rgba(22, 20, 48, 0.04), 0 12px 32px -18px rgba(22, 20, 48, 0.16);
 }
 .dark .glass {
@@ -495,9 +496,7 @@
   border: 1px solid rgba(var(--glow), 0.15);
   background:
     linear-gradient(115deg, rgba(var(--glow), 0.10) 0%, rgba(var(--spike), 0.08) 48%, rgba(var(--court), 0.06) 100%),
-    rgba(255, 255, 255, 0.66);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+    rgba(255, 255, 255, 0.72);
 }
 .dark .hero-band {
   border-color: rgba(255, 255, 255, 0.09);
@@ -601,21 +600,23 @@
   box-shadow: 0 0 12px rgba(165, 180, 252, 0.75);
 }
 
-/* status card at the sidebar foot */
+/* status card at the sidebar foot (kept for reuse) */
 .sidebar-card {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(8px);
 }
 
 /* ============================================================
    SPLASH SCREEN — compact borderless "match night" boot card.
-   The app shell keeps running behind a gentle dim + blur while a
-   small floating card shows the bouncing ball, brand and boot
-   progress. Pure CSS ambience, scaled for the small box.
+   A fully opaque backdrop hides the app behind it while a small
+   floating card shows the bouncing ball, brand and boot progress.
+   Pure CSS ambience, scaled for the small box.
    ============================================================ */
 
-/* boot overlay: dims + blurs the app behind the splash card */
+/* boot overlay: fully OPAQUE match-night backdrop — the app behind is
+   NOT visible while booting, so the main window appears only after the
+   splash completes. No backdrop-filter (a full-screen blur at boot is
+   the single most expensive thing the webview can do). */
 .splash-overlay {
   position: fixed;
   inset: 0;
@@ -623,9 +624,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(7, 8, 20, 0.30);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
+  background:
+    radial-gradient(1100px 640px at 50% 34%, rgba(63, 58, 158, 0.30), transparent 68%),
+    linear-gradient(180deg, #12143a 0%, #0b0c24 55%, #060713 100%);
 }
 
 /* the borderless boot card */
@@ -698,7 +699,6 @@
   border: 1px solid rgba(165, 180, 252, 0.30);
   background: rgba(99, 102, 241, 0.12);
   color: #c7d2fe;
-  backdrop-filter: blur(6px);
 }
 
 .splash-progress {

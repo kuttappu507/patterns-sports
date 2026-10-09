@@ -711,7 +711,7 @@ export async function markAttendance(
 const SETTINGS_DEFAULTS: AcademySettings = {
   academyName: "Pattern Sports Academy",
   tagline: "Building Champions, One Serve at a Time",
-  address: "Municipal Stadium Road, Kerala, India",
+  address: "Markaz Colony, Karanthur, Kunnamangalam, Kozhikode, Kerala 673571",
   phone: "+91 98470 00000",
   email: "office@patternsportsacademy.in",
   defaultMonthlyFee: 500,

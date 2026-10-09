@@ -2,17 +2,46 @@
 
 // ============================================================
 // PS-AMS :: Print pipeline — an isolated DOM layer (#psams-print-root)
-// that ONLY renders during window.print(). Screen shows a live preview
-// dialog; paper output is governed by @media print in globals.css.
+// that ONLY renders during window.print(). Screen shows a compact,
+// modern preview overlay (toolbar + centered paper); paper output is
+// governed by @media print in globals.css.
 // ============================================================
 
-import { Printer } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
+import { FileText, Printer, X } from "lucide-react"
 import { useAppStore } from "@/lib/psams/store"
 import type { AcademySettings, Achievement, FeePayment, PrintPayload, Student } from "@/lib/psams/types"
 import { computeAge, ageDetailed, computeBMI, formatDate, formatINR, monthLabel, parsePaidMonths, categoryBracket } from "@/lib/psams/domain"
 import { mediaUrl } from "@/lib/psams/api"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+
+const KIND_LABEL: Record<string, string> = {
+  "profile-a4": "A4 portrait · 210 × 297 mm",
+  "receipt-a5": "A5 receipt · 148 × 210 mm",
+  "receipt-thermal": "Thermal POS roll · 80 mm",
+  defaulters: "A4 roster",
+  report: "A4 roster",
+  "attendance-sheet": "A4 session sheet",
+}
+
+/** Render the paper document for a payload (used by both the print layer and the preview). */
+function PaperFor({ payload, preview }: { payload: PrintPayload; preview?: boolean }) {
+  switch (payload.kind) {
+    case "profile-a4":
+      return <ProfileA4 data={payload.data as ProfileData} preview={preview} />
+    case "receipt-a5":
+      return <ReceiptA5 data={payload.data as ReceiptData} preview={preview} />
+    case "receipt-thermal":
+      return <ReceiptThermal data={payload.data as ReceiptData} preview={preview} />
+    case "defaulters":
+    case "report":
+      return <RosterPrint payload={payload} preview={preview} />
+    case "attendance-sheet":
+      return <AttendancePrint data={payload.data as AttendanceData} preview={preview} />
+    default:
+      return null
+  }
+}
 
 export function PrintRoot() {
   const { printPayload, setPrint } = useAppStore()
@@ -22,37 +51,58 @@ export function PrintRoot() {
     <>
       {/* ---------- Isolated print layer (invisible on screen, only paper) ---------- */}
       <div id="psams-print-root" aria-hidden>
-        {printPayload?.kind === "profile-a4" && <ProfileA4 data={printPayload.data as ProfileData} />}
-        {printPayload?.kind === "receipt-a5" && <ReceiptA5 data={printPayload.data as ReceiptData} />}
-        {printPayload?.kind === "receipt-thermal" && <ReceiptThermal data={printPayload.data as ReceiptData} />}
-        {printPayload?.kind === "defaulters" && <RosterPrint payload={printPayload} />}
-        {printPayload?.kind === "report" && <RosterPrint payload={printPayload} />}
-        {printPayload?.kind === "attendance-sheet" && <AttendancePrint data={printPayload.data as AttendanceData} />}
+        {printPayload && <PaperFor payload={printPayload} />}
       </div>
 
-      {/* ---------- On-screen preview dialog ---------- */}
-      <Dialog open={open} onOpenChange={(o) => { if (!o) setPrint(null) }}>
-        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl print:static print:max-h-none print:border-0 print:shadow-none">
-          <DialogHeader className="no-print">
-            <DialogTitle className="flex items-center gap-2 text-sm">
-              <Printer className="h-4 w-4 text-primary" /> {printPayload?.title || "Print preview"}
-              <Button size="sm" className="ml-auto h-8 gap-1.5 text-xs" onClick={() => window.print()}>
-                <Printer className="h-3.5 w-3.5" /> Print / Save as PDF
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex justify-center overflow-x-auto bg-neutral-200/60 p-4 print:bg-transparent print:p-0">
-            <div className="shadow-xl print:shadow-none">
-              {printPayload?.kind === "profile-a4" && <ProfileA4 data={printPayload.data as ProfileData} preview />}
-              {printPayload?.kind === "receipt-a5" && <ReceiptA5 data={printPayload.data as ReceiptData} preview />}
-              {printPayload?.kind === "receipt-thermal" && <ReceiptThermal data={printPayload.data as ReceiptData} preview />}
-              {printPayload?.kind === "defaulters" && <RosterPrint payload={printPayload} preview />}
-              {printPayload?.kind === "report" && <RosterPrint payload={printPayload} preview />}
-              {printPayload?.kind === "attendance-sheet" && <AttendancePrint data={printPayload.data as AttendanceData} preview />}
+      {/* ---------- On-screen preview overlay (never prints) ---------- */}
+      <AnimatePresence>
+        {open && printPayload && (
+          <motion.div
+            key="print-preview"
+            className="no-print fixed inset-0 z-[70] flex flex-col bg-slate-950/75"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+          >
+            {/* toolbar */}
+            <div className="flex items-center gap-3 border-b border-white/10 bg-slate-900/95 px-4 py-2.5 text-slate-100 shadow-lg">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+                <FileText className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-[13.5px] font-semibold">{printPayload.title || "Print preview"}</div>
+                <div className="text-[11px] text-slate-400">{KIND_LABEL[printPayload.kind] ?? "Document"} · what you see is exactly what prints</div>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => window.print()}>
+                  <Printer className="h-3.5 w-3.5" /> Print / Save as PDF
+                </Button>
+                <button
+                  aria-label="Close preview"
+                  title="Close (Esc)"
+                  onClick={() => setPrint(null)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+
+            {/* centered paper on a dark desk */}
+            <div className="flex-1 overflow-auto p-6">
+              <motion.div
+                initial={{ opacity: 0, y: 12, scale: 0.985 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="mx-auto w-fit origin-top rounded-[3px] bg-white shadow-[0_34px_90px_-24px_rgba(0,0,0,0.85)] ring-1 ring-black/25"
+              >
+                <PaperFor payload={printPayload} preview />
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }

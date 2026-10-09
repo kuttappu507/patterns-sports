@@ -2,9 +2,10 @@
 
 // ============================================================
 // PS-AMS :: branded splash screen — compact borderless boot card.
-// A small floating "match night" card (dimmed, blurred app behind
-// it): floodlit gradient, perspective court floor, glowing net
-// band and a bouncing, spinning volleyball. Pure ambience is CSS
+// A small floating "match night" card on a fully OPAQUE backdrop
+// (the app behind is not visible until the splash completes):
+// floodlit gradient, perspective court floor, glowing net band
+// and a bouncing, spinning volleyball. Pure ambience is CSS
 // (.splash); the ball is framer-motion.
 // ============================================================
 
@@ -67,8 +68,8 @@ export function Splash({ error }: { error: string | null }) {
       <motion.div
         className="splash"
         initial={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9, filter: "blur(6px)" }}
-        transition={{ duration: 0.42, ease: [0.3, 0.6, 0.3, 1] }}
+        exit={{ opacity: 0, scale: 0.92 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
       >
         {/* corner floodlight flares (clipped by the card) */}
         <div className="splash-glow pointer-events-none absolute -left-14 top-1/4 h-36 w-36 rounded-full bg-[rgba(99,102,241,0.35)] blur-[70px]" />
@@ -158,7 +159,7 @@ export function Splash({ error }: { error: string | null }) {
 
         {/* footer line */}
         <div className="relative z-10 mt-5 text-[9.5px] font-semibold uppercase tracking-[0.24em] text-indigo-200/40">
-          PS-AMS v1.4 · Offline-first
+          PS-AMS v1.4.1 · Offline-first
         </div>
       </motion.div>
     </motion.div>

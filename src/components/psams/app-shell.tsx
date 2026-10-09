@@ -10,7 +10,6 @@ import {
   FileSearch,
   Settings2,
   Database,
-  WifiOff,
   ChevronLeft,
   Plus,
   BadgeIndianRupee,
@@ -18,6 +17,7 @@ import {
   Minus,
   Square,
   X,
+  TriangleAlert,
 } from "lucide-react"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { useAppStore, type ViewKey } from "@/lib/psams/store"
@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div id="psams-root" className="flex h-screen w-screen overflow-hidden">
+      <div id="psams-root" className="relative flex h-screen w-screen overflow-hidden">
         {/* ---------------- Sidebar — always-dark "club room" with court patterns ---------------- */}
         <motion.aside
           animate={{ width: collapsed ? 72 : 268 }}
@@ -116,10 +116,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={() => navigate(item.key)}
                   onMouseMove={onMouseMove}
                   className={cn(
-                    "reveal-item group relative flex w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-[14.5px] font-medium transition-all duration-200",
+                    "reveal-item group relative flex w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-[14.5px] font-medium transition-colors duration-150",
                     isActive
                       ? "text-white"
-                      : "text-indigo-100/55 hover:translate-x-0.5 hover:text-white"
+                      : "text-indigo-100/55 hover:text-white"
                   )}
                 >
                   {isActive && (
@@ -171,49 +171,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          {/* footer block */}
-          <div className="relative z-10 space-y-1.5 px-3 pb-5">
-            {!collapsed && (
-              <div className="sidebar-card mx-1 mb-2 rounded-2xl p-3">
-                {bootError ? (
-                  <>
-                    <div className="flex items-center gap-2 text-[12.5px] font-semibold text-amber-300" title={bootError}>
-                      <span className="pulse-dot inline-block h-2 w-2 rounded-full bg-amber-400" />
-                      Local SQLite · Degraded
-                    </div>
-                    <div className="mt-1.5 text-[11px] leading-relaxed text-amber-200/70" title={bootError}>
-                      Backend failed to start — data ops unavailable. Restart the app; if it persists, check the boot log.
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2 text-[12.5px] font-semibold text-indigo-100">
-                      <span className="pulse-dot inline-block h-2 w-2 rounded-full bg-emerald-400" />
-                      Local SQLite · Connected
-                    </div>
-                    <div className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-indigo-200/55">
-                      <WifiOff className="h-3.5 w-3.5" /> Offline-first · data stays on this PC
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-            <button
-              onClick={() => setCollapsed((c) => !c)}
-              className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13px] font-medium text-indigo-100/55 transition-colors hover:bg-white/[0.06] hover:text-white"
-            >
-              <ChevronLeft className={cn("h-4 w-4 transition-transform duration-300", collapsed && "rotate-180")} />
-              {!collapsed && <span>Collapse</span>}
-            </button>
+          {/* footer — version marker only (status text intentionally removed) */}
+          <div className="relative z-10 pb-4 text-center">
+            <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-indigo-200/30">
+              {collapsed ? "v1.4.1" : "PS-AMS · v1.4.1"}
+            </span>
           </div>
         </motion.aside>
+
+        {/* ---- Protruding collapse handle — vertically centered on the sidebar edge ---- */}
+        <motion.button
+          type="button"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={() => setCollapsed((c) => !c)}
+          animate={{ left: collapsed ? 72 : 268 }}
+          transition={{ type: "spring", stiffness: 380, damping: 34 }}
+          whileHover={{ scale: 1.12 }}
+          whileTap={{ scale: 0.92 }}
+          className="absolute top-1/2 z-30 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-[0_6px_18px_-4px_rgba(15,23,42,0.35)] transition-colors hover:border-primary/40 hover:bg-accent hover:text-accent-foreground dark:shadow-[0_0_16px_-4px_rgba(0,0,0,0.8)]"
+        >
+          <ChevronLeft className={cn("h-4.5 w-4.5 transition-transform duration-300", collapsed && "rotate-180")} />
+        </motion.button>
 
         {/* ---------------- Main column ---------------- */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Header strip — doubles as the frameless window drag region */}
           <header
             data-tauri-drag-region
-            className="z-10 flex items-center gap-4 border-b border-border bg-card/50 px-6 py-3.5 backdrop-blur-xl select-none"
+            className="z-10 flex items-center gap-4 border-b border-border bg-card px-6 py-3.5 select-none"
             style={win ? { paddingTop: 10, paddingBottom: 10 } : undefined}
           >
             <AnimatePresence mode="wait">
@@ -289,16 +275,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          {/* View container with choreographed transitions */}
+          {/* View container with choreographed transitions (transform+opacity only — GPU-cheap) */}
           <main className="min-h-0 flex-1 overflow-y-auto">
             <AnimatePresence mode="wait">
               <motion.div
                 key={view + String(useAppStore.getState().activeStudentId ?? "")}
-                initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
-                transition={{ duration: 0.24, ease: [0.25, 0.6, 0.35, 1] }}
-                className="h-full"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+                className="h-full transform-gpu"
               >
                 {children}
               </motion.div>
@@ -306,10 +292,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </main>
 
           {/* Status bar */}
-          <footer className="court-net flex items-center gap-3 border-t border-border bg-card/50 px-5 py-2 text-[12px] text-muted-foreground backdrop-blur">
+          <footer className="court-net flex items-center gap-3 border-t border-border bg-card px-5 py-2 text-[12px] text-muted-foreground">
+            {bootError ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[11.5px] font-semibold text-amber-700 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-300" title={bootError}>
+                <TriangleAlert className="h-3.5 w-3.5" /> Local database degraded — restart the app
+              </span>
+            ) : null}
             <span className="font-semibold text-muted-foreground">Pattern Sports Volleyball Academy</span>
             <span className="text-border">·</span>
-            <span className="tnum">PS-AMS v1.4</span>
+            <span className="tnum">PS-AMS v1.4.1</span>
             <span className="ml-auto hidden items-center gap-1.5 sm:inline-flex">
               <kbd className="rounded border border-border bg-muted px-1.5 py-px font-sans text-[10px] text-muted-foreground">Alt</kbd>
               <span>+ 1-6 to switch modules</span>

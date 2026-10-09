@@ -106,6 +106,41 @@ export default function Home() {
     }
   }, [])
 
+  // Frameless desktop: the OS window starts hidden (tauri.conf "visible": false)
+  // so the raw white webview frame never flashes. Reveal it as soon as the
+  // branded splash card has painted — the user sees ONLY the splash first,
+  // and the main window content appears after the splash completes.
+  useEffect(() => {
+    if (!isTauri()) return
+    let cancelled = false
+    const raf = requestAnimationFrame(() => {
+      setTimeout(async () => {
+        if (cancelled) return
+        try {
+          const { getCurrentWindow } = await import("@tauri-apps/api/window")
+          await getCurrentWindow().show()
+        } catch (e) {
+          console.warn("Window reveal failed", e)
+        }
+      }, 60)
+    })
+    // hard fallback — never leave the user staring at nothing
+    const failsafe = setTimeout(async () => {
+      if (cancelled) return
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window")
+        await getCurrentWindow().show()
+      } catch {
+        /* already shown */
+      }
+    }, 2500)
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf)
+      clearTimeout(failsafe)
+    }
+  }, [])
+
   // keep the branded splash visible just long enough to feel intentional
   useEffect(() => {
     const t = setTimeout(() => setMinSplashDone(true), 2200)

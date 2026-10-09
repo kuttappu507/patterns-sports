@@ -69,7 +69,7 @@ export const DEMO_COMMITTEE: DemoCommitteeMember[] = [
 export const DEMO_SETTINGS: Record<string, string> = {
   academyName: "Pattern Sports Academy",
   tagline: "Building Champions, One Serve at a Time",
-  address: "Municipal Stadium Road, Kochi, Kerala 682017",
+  address: "Markaz Colony, Karanthur, Kunnamangalam, Kozhikode, Kerala 673571",
   phone: "+91 484 220 1100",
   email: "office@patternsportsacademy.in",
   defaultMonthlyFee: "500",
