@@ -32,6 +32,16 @@ import {
   nextAdmissionNo,
   nextReceiptNo,
 } from "./domain"
+import {
+  DEMO_STUDENTS,
+  DEMO_COMMITTEE,
+  DEMO_SETTINGS,
+  DEMO_ACHIEVEMENTS,
+  demoDob,
+  demoRegistrationDate,
+  planDemoPayments,
+  planDemoAttendance,
+} from "./demo-data"
 
 type DB = Database
 
@@ -763,4 +773,145 @@ export async function uploadMedia(file: File, folder: UploadFolder): Promise<{ p
   }
   await writeFile(abs, bytes)
   return { path: rel }
+}
+
+// ---------- Demo data (Settings → Data Safety) ----------
+
+const DEMO_KEY = "demoRecordIds"
+
+export async function demoStatus(): Promise<{ loaded: boolean; students: number; committee: number }> {
+  const db = await getDb()
+  const [students, committee, flag] = await Promise.all([
+    db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM Student", []),
+    db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM CommitteeMember", []),
+    db.select<{ value: string }[]>("SELECT value FROM Setting WHERE key = $1", [DEMO_KEY]),
+  ])
+  return { loaded: Boolean(flag[0]?.value), students: students[0]?.n ?? 0, committee: committee[0]?.n ?? 0 }
+}
+
+export async function loadDemoData(): Promise<{ students: number; committee: number }> {
+  const db = await getDb()
+  const flag = await db.select<{ value: string }[]>("SELECT value FROM Setting WHERE key = $1", [DEMO_KEY])
+  if (flag[0]?.value) throw new Error("Demo data is already loaded — remove it first if you want a fresh copy.")
+
+  const demoStudentIds: string[] = []
+  const demoCommitteeIds: string[] = []
+  const nowIso = new Date().toISOString()
+
+  const committeeCount = await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM CommitteeMember", [])
+  if ((committeeCount[0]?.n ?? 0) === 0) {
+    for (const c of DEMO_COMMITTEE) {
+      const id = uuid()
+      await db.execute(
+        `INSERT INTO CommitteeMember (id, fullName, role, phone, responsibilities, photoPath, displayOrder, createdAt, updatedAt)
+         VALUES ($1,$2,$3,$4,$5,NULL,$6,$7,$7)`,
+        [id, c.fullName, c.role, c.phone, c.responsibilities, c.displayOrder, nowIso]
+      )
+      demoCommitteeIds.push(id)
+    }
+  }
+
+  const usedAdmissionNos = (await db.select<{ admissionNo: string }[]>("SELECT admissionNo FROM Student", [])).map((r) => r.admissionNo)
+  const usedReceiptNos = (await db.select<{ receiptNo: string }[]>("SELECT receiptNo FROM FeePayment", [])).map((r) => r.receiptNo)
+  const year = new Date().getFullYear()
+  const idByStudentName = new Map<string, string>()
+
+  for (const s of DEMO_STUDENTS) {
+    const admissionNo = nextAdmissionNo(usedAdmissionNos, year)
+    usedAdmissionNos.push(admissionNo)
+    const id = uuid()
+    await db.execute(
+      `INSERT INTO Student (
+        id, admissionNo, registrationDate, fullName, dateOfBirth, parentName, mobile,
+        emergencyContact, address, schoolName, classGrade, division, bloodGroup,
+        heightCm, weightKg, standingReachCm, spikeReachCm, jumpReachCm,
+        primarySport, playingPosition, ageCategory, trainingBatch, monthlyFee,
+        photoPath, birthCertPath, idCardPath, status, createdAt, updatedAt
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,NULL,NULL,NULL,'Active',$24,$24)`,
+      [
+        id,
+        admissionNo,
+        demoRegistrationDate(s).toISOString(),
+        s.fullName,
+        demoDob(s).toISOString(),
+        s.parentName,
+        s.mobile,
+        s.emergencyContact || null,
+        s.address,
+        s.schoolName,
+        s.classGrade,
+        s.division,
+        s.bloodGroup,
+        s.heightCm ?? null,
+        s.weightKg ?? null,
+        s.standingReachCm ?? null,
+        s.spikeReachCm ?? null,
+        s.jumpReachCm ?? null,
+        s.primarySport,
+        s.playingPosition || null,
+        s.ageCategory,
+        s.trainingBatch,
+        s.monthlyFee,
+        nowIso,
+      ]
+    )
+    demoStudentIds.push(id)
+    idByStudentName.set(s.fullName, id)
+
+    for (const p of planDemoPayments(s)) {
+      const receiptNo = nextReceiptNo(usedReceiptNos, p.paymentDate)
+      usedReceiptNos.push(receiptNo)
+      await db.execute(
+        `INSERT INTO FeePayment (id, receiptNo, studentId, paymentDate, months, amount, paymentMode, notes, collectedBy, createdAt)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,NULL,$8,$9)`,
+        [uuid(), receiptNo, id, p.paymentDate.toISOString(), JSON.stringify(p.months), p.amount, p.paymentMode, "Front Desk", nowIso]
+      )
+    }
+
+    for (const a of planDemoAttendance(s)) {
+      await db.execute(
+        `INSERT INTO Attendance (id, studentId, date, batch, status) VALUES ($1,$2,$3,$4,$5)
+         ON CONFLICT(studentId, date) DO UPDATE SET status = excluded.status, batch = excluded.batch`,
+        [uuid(), id, a.date, s.trainingBatch, a.status]
+      )
+    }
+  }
+
+  for (const a of DEMO_ACHIEVEMENTS) {
+    const studentId = idByStudentName.get(a.student)
+    if (!studentId) continue
+    const eventDate = new Date()
+    eventDate.setMonth(eventDate.getMonth() - a.eventDateMonthsAgo)
+    await db.execute(
+      `INSERT INTO Achievement (id, studentId, tournamentName, eventDate, level, medal, notes, certificatePath, createdAt)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,NULL,$8)`,
+      [uuid(), studentId, a.tournamentName, eventDate.toISOString(), a.level, a.medal, a.notes || null, nowIso]
+    )
+  }
+
+  for (const [key, value] of Object.entries(DEMO_SETTINGS)) {
+    await db.execute(`INSERT INTO Setting (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = $2`, [key, value])
+  }
+  const tracked = JSON.stringify({ students: demoStudentIds, committee: demoCommitteeIds })
+  await db.execute(`INSERT INTO Setting (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = $2`, [DEMO_KEY, tracked])
+
+  return { students: demoStudentIds.length, committee: demoCommitteeIds.length }
+}
+
+export async function removeDemoData(): Promise<void> {
+  const db = await getDb()
+  const flag = await db.select<{ value: string }[]>("SELECT value FROM Setting WHERE key = $1", [DEMO_KEY])
+  if (!flag[0]?.value) throw new Error("No demo data to remove.")
+  const { students, committee } = JSON.parse(flag[0].value) as { students: string[]; committee: string[] }
+
+  for (const id of students) {
+    await db.execute("DELETE FROM FeePayment WHERE studentId = $1", [id])
+    await db.execute("DELETE FROM Attendance WHERE studentId = $1", [id])
+    await db.execute("DELETE FROM Achievement WHERE studentId = $1", [id])
+    await db.execute("DELETE FROM Student WHERE id = $1", [id])
+  }
+  for (const id of committee) {
+    await db.execute("DELETE FROM CommitteeMember WHERE id = $1", [id])
+  }
+  await db.execute("DELETE FROM Setting WHERE key = $1", [DEMO_KEY])
 }

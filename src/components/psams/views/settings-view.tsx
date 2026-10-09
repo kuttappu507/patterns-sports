@@ -21,6 +21,7 @@ import {
   Phone,
   Mail,
   MapPin,
+  Volleyball,
 } from "lucide-react"
 import {
   fetchCommittee,
@@ -31,6 +32,10 @@ import {
   saveSettings,
   exportBackup,
   mediaUrl,
+  demoStatus,
+  loadDemoData,
+  removeDemoData,
+  type DemoStatus as DemoStatusT,
 } from "@/lib/psams/api"
 import { COMMITTEE_ROLES, type CommitteeMember, type AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
@@ -52,6 +57,7 @@ export function SettingsView() {
       <div className="space-y-5">
         <AcademyProfile />
         <DataSafety />
+        <DemoDataCard />
       </div>
     </div>
   )
@@ -379,6 +385,104 @@ function AcademyProfile() {
         {saving && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />} Save profile
       </Button>
     </div>
+  )
+}
+
+/* ---------------- Demo data ---------------- */
+
+function DemoDataCard() {
+  const { toast } = useToast()
+  const { refresh } = useAppStore()
+  const [status, setStatus] = useState<DemoStatusT | null>(null)
+  const [busy, setBusy] = useState<"load" | "remove" | null>(null)
+  const [confirm, setConfirm] = useState<"load" | "remove" | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    demoStatus()
+      .then((s) => {
+        if (alive) setStatus(s)
+      })
+      .catch(() => {
+        /* card degrades to hidden — non-critical */
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  async function run(action: "load" | "remove") {
+    setBusy(action)
+    setConfirm(null)
+    try {
+      if (action === "load") {
+        const res = await loadDemoData()
+        toast({ title: "Demo data loaded", description: `${res.students} players, ${res.committee} committee members, fee history and attendance.` })
+      } else {
+        await removeDemoData()
+        toast({ title: "Demo data removed", description: "All demo players and their records were deleted." })
+      }
+      setStatus(await demoStatus())
+      refresh()
+    } catch (e) {
+      toast({ title: action === "load" ? "Could not load demo data" : "Could not remove demo data", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  if (!status) return null
+
+  return (
+    <>
+      <div className="glass rounded-2xl p-4">
+        <div className="mb-2 flex items-center gap-2">
+          <Volleyball className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold">Demo Data</span>
+          {status.loaded && (
+            <Badge variant="outline" className="rounded-full text-[15px] text-emerald-700 dark:text-emerald-300">loaded · {status.students} players</Badge>
+          )}
+        </div>
+        <p className="text-[15.5px] leading-relaxed text-muted-foreground">
+          Populates a realistic sample academy — 12 players across all age categories, committee members, months of fee history with live defaulters, achievements and attendance. Great for exploring every module before real records exist.
+        </p>
+        <div className="mt-3 flex gap-2">
+          {!status.loaded ? (
+            <Button size="sm" className="h-8 gap-1.5 text-xs" disabled={busy !== null} onClick={() => setConfirm("load")}>
+              {busy === "load" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Volleyball className="h-3.5 w-3.5" />} Load demo data
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 border-rose-500/30 text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-300" disabled={busy !== null} onClick={() => setConfirm("remove")}>
+              {busy === "remove" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove demo data
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <AlertDialog open={confirm !== null} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirm === "load" ? "Load demo data?" : "Remove demo data?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirm === "load"
+                ? status.students > 0
+                  ? `The database already has ${status.students} student record(s). Demo players will be added alongside them with new admission numbers and receipts.`
+                  : "12 sample players, committee members, fee history, achievements and attendance will be created. You can remove them anytime."
+                : "Every demo player and their fee payments, attendance and achievements will be permanently deleted. Records you created yourself are not touched."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={`${confirm === "remove" ? "bg-destructive" : "bg-primary"} text-xs text-white hover:bg-destructive/90`}
+              onClick={() => confirm && run(confirm)}
+            >
+              {confirm === "load" ? "Load demo data" : "Remove demo data"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 

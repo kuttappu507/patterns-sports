@@ -279,6 +279,29 @@ export async function exportBackup(): Promise<Blob> {
   return (await ensureOk(res)).blob()
 }
 
+// ---------- Demo data ----------
+
+export interface DemoStatus {
+  loaded: boolean
+  students: number
+  committee: number
+}
+
+export async function demoStatus(): Promise<DemoStatus> {
+  if (isTauri()) return native.demoStatus()
+  return json(await apiFetch(`/api/demo`))
+}
+
+export async function loadDemoData(): Promise<{ students: number; committee: number }> {
+  if (isTauri()) return native.loadDemoData()
+  return json(await apiFetch(`/api/demo`, { method: "POST" }))
+}
+
+export async function removeDemoData(): Promise<void> {
+  if (isTauri()) return native.removeDemoData()
+  await ensureOk(await apiFetch(`/api/demo`, { method: "DELETE" }))
+}
+
 // ---------- Media upload ----------
 
 export type UploadFolder = "photos" | "documents" | "certificates"
