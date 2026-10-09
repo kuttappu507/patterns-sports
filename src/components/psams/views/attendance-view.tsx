@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Check, X, CheckCheck, Loader2, Printer, CalendarDays, Users } from "lucide-react"
+import { Check, X, CheckCheck, Printer, CalendarDays, Users } from "lucide-react"
 import { fetchStudents, fetchAttendance, markAttendance, fetchSettings, mediaUrl } from "@/lib/psams/api"
 import { computeAge, todayKey, CATEGORY_COLORS } from "@/lib/psams/domain"
 import type { Student, AttendanceRecord, AcademySettings } from "@/lib/psams/types"
@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { Shimmer, Stagger, StaggerItem, EmptyState } from "@/components/psams/fx"
 
 const AGE_CATEGORIES = ["Mini", "Sub-Junior", "Junior", "Youth", "Senior"]
 
@@ -98,92 +99,127 @@ export function AttendanceView() {
   return (
     <div className="flex h-full flex-col gap-3 p-5">
       {/* session toolbar */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border acrylic p-3">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-primary" />
-          <Input type="date" className="h-8 w-[150px] bg-white/70 text-xs" value={date} onChange={(e) => setDate(e.target.value)} />
+      <StaggerItem className="shrink-0">
+        <div className="glass flex flex-wrap items-center gap-3 rounded-2xl p-3">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-lime-300" />
+            <Input
+              type="date"
+              className="h-8 w-[150px] rounded-lg border-white/10 bg-white/[0.04] text-xs text-slate-100 focus-visible:border-lime-400/50"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <Select value={segment} onValueChange={setSegment}>
+            <SelectTrigger className="h-8 w-[190px] rounded-lg border-white/10 bg-white/[0.04] text-xs hover:border-lime-400/30"><SelectValue /></SelectTrigger>
+            <SelectContent className="border-white/10 bg-popover">
+              <SelectItem value="all" className="text-xs">Whole academy ({students.length})</SelectItem>
+              <SelectItem value="Morning" className="text-xs">Morning batch</SelectItem>
+              <SelectItem value="Evening" className="text-xs">Evening batch</SelectItem>
+              {AGE_CATEGORIES.map((c) => <SelectItem key={c} value={c} className="text-xs">{c} category</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <div className="tnum flex items-center gap-2 text-xs text-muted-foreground">
+            <Users className="h-3.5 w-3.5" /> {roster.length} in session
+            <Badge className="rounded-full border border-emerald-400/25 bg-emerald-400/10 text-[10.5px] font-semibold text-emerald-300 hover:bg-emerald-400/10">{present} P</Badge>
+            <Badge className="rounded-full border border-rose-400/25 bg-rose-400/10 text-[10.5px] font-semibold text-rose-300 hover:bg-rose-400/10">{absent} A</Badge>
+            {marked < roster.length && <Badge variant="secondary" className="rounded-full text-[10.5px]">{roster.length - marked} unmarked</Badge>}
+          </div>
+          <div className="ml-auto flex gap-2">
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-emerald-400/25 bg-emerald-400/10 text-xs font-medium text-emerald-300 transition-all hover:bg-emerald-400/20 active:scale-[0.97]" onClick={() => markAll("Present")}>
+              <CheckCheck className="h-3.5 w-3.5" /> All present
+            </Button>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-white/12 bg-white/[0.04] text-xs hover:bg-white/[0.08] active:scale-[0.97]" onClick={printSheet}>
+              <Printer className="h-3.5 w-3.5" /> Print sheet
+            </Button>
+          </div>
         </div>
-        <Select value={segment} onValueChange={setSegment}>
-          <SelectTrigger className="h-8 w-[190px] bg-white/70 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-xs">Whole academy ({students.length})</SelectItem>
-            <SelectItem value="Morning" className="text-xs">Morning batch</SelectItem>
-            <SelectItem value="Evening" className="text-xs">Evening batch</SelectItem>
-            {AGE_CATEGORIES.map((c) => <SelectItem key={c} value={c} className="text-xs">{c} category</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Users className="h-3.5 w-3.5" /> {roster.length} in session
-          <Badge className="rounded-full bg-emerald-100 text-[10.5px] text-emerald-700 hover:bg-emerald-100">{present} P</Badge>
-          <Badge className="rounded-full bg-rose-100 text-[10.5px] text-rose-700 hover:bg-rose-100">{absent} A</Badge>
-          {marked < roster.length && <Badge variant="secondary" className="rounded-full text-[10.5px]">{roster.length - marked} unmarked</Badge>}
-        </div>
-        <div className="ml-auto flex gap-2">
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/70 text-xs" onClick={() => markAll("Present")}>
-            <CheckCheck className="h-3.5 w-3.5 text-emerald-600" /> All present
-          </Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/70 text-xs" onClick={printSheet}>
-            <Printer className="h-3.5 w-3.5" /> Print sheet
-          </Button>
-        </div>
-      </div>
+      </StaggerItem>
 
       {/* checklist */}
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-white/70 backdrop-blur">
-        {loading && <div className="py-12 text-center text-xs text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading roster…</div>}
-        {!loading && roster.length === 0 && <div className="py-12 text-center text-xs text-muted-foreground">No active students in this segment.</div>}
-        <div className="grid grid-cols-1 divide-y md:grid-cols-2 md:divide-y-0 md:gap-px md:bg-border/40 lg:grid-cols-3">
-          <AnimatePresence initial={false}>
+      <div className="glass min-h-0 flex-1 overflow-y-auto rounded-2xl">
+        {loading && (
+          <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 9 }).map((_, i) => <Shimmer key={i} className="h-14 rounded-xl" />)}
+          </div>
+        )}
+        {!loading && roster.length === 0 && (
+          <EmptyState
+            icon={<Users className="h-6 w-6" />}
+            title="No active students in this segment"
+            hint="Switch the segment filter or register new players to start marking attendance."
+          />
+        )}
+        {!loading && roster.length > 0 && (
+          <Stagger className="grid grid-cols-1 gap-2.5 p-3 md:grid-cols-2 lg:grid-cols-3">
             {roster.map((s) => {
               const status = records[s.id]
               const busy = savingIds.has(s.id)
               return (
-                <motion.div key={s.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-3 bg-white/85 px-4 py-2.5">
-                  <div className="h-9 w-9 overflow-hidden rounded-full border bg-secondary">
-                    {s.photoPath ? (
-                       
-                      <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
+                <StaggerItem key={s.id}>
+                  <motion.div
+                    layout
+                    className={cn(
+                      "row-hover flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5",
+                      status === "Present" && "border-emerald-400/25 bg-emerald-400/[0.05]",
+                      status === "Absent" && "border-rose-400/25 bg-rose-400/[0.04]"
                     )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-xs font-medium">{s.fullName}</div>
-                    <div className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
-                      {s.admissionNo} · {computeAge(s.dateOfBirth)} yrs
-                      <span className={cn("rounded-full border px-1.5 text-[9px] font-medium", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
-                      {s.trainingBatch && <span className="text-[9px]">{s.trainingBatch}</span>}
+                  >
+                    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/10 bg-gradient-to-br from-lime-400/15 to-cyan-400/10">
+                      {s.photoPath ? (
+                        <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-lime-300/70">
+                          {s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => toggle(s, "Present")}
-                      disabled={busy}
-                      className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-lg border transition-all active:scale-90",
-                        status === "Present" ? "border-emerald-500 bg-emerald-500 text-white shadow-sm" : "bg-white text-muted-foreground hover:border-emerald-400 hover:text-emerald-600"
-                      )}
-                      title="Mark present"
-                    >
-                      <Check className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => toggle(s, "Absent")}
-                      disabled={busy}
-                      className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-lg border transition-all active:scale-90",
-                        status === "Absent" ? "border-rose-500 bg-rose-500 text-white shadow-sm" : "bg-white text-muted-foreground hover:border-rose-400 hover:text-rose-600"
-                      )}
-                      title="Mark absent"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </motion.div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-semibold">{s.fullName}</div>
+                      <div className="tnum flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
+                        {s.admissionNo} · {computeAge(s.dateOfBirth)} yrs
+                        <span className={cn("rounded-full border px-1.5 text-[9px] font-semibold", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
+                        {s.trainingBatch && <span className="text-[9px]">{s.trainingBatch}</span>}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <motion.button
+                        whileTap={{ scale: 0.82 }}
+                        whileHover={{ scale: 1.08 }}
+                        onClick={() => toggle(s, "Present")}
+                        disabled={busy}
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-lg border transition-colors",
+                          status === "Present"
+                            ? "border-emerald-400 bg-emerald-500 text-white shadow-[0_0_12px_-2px_rgba(52,211,153,0.7)]"
+                            : "bg-white/[0.05] text-muted-foreground hover:border-emerald-400 hover:text-emerald-300"
+                        )}
+                        title="Mark present"
+                      >
+                        <Check className="h-4 w-4" strokeWidth={2.6} />
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.82 }}
+                        whileHover={{ scale: 1.08 }}
+                        onClick={() => toggle(s, "Absent")}
+                        disabled={busy}
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-lg border transition-colors",
+                          status === "Absent"
+                            ? "border-rose-400 bg-rose-500 text-white shadow-[0_0_12px_-2px_rgba(251,113,133,0.7)]"
+                            : "bg-white/[0.05] text-muted-foreground hover:border-rose-400 hover:text-rose-300"
+                        )}
+                        title="Mark absent"
+                      >
+                        <X className="h-4 w-4" strokeWidth={2.6} />
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                </StaggerItem>
               )
             })}
-          </AnimatePresence>
-        </div>
+          </Stagger>
+        )}
       </div>
     </div>
   )

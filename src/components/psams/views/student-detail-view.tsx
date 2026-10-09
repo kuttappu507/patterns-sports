@@ -44,6 +44,7 @@ import {
 } from "@/lib/psams/domain"
 import type { Student, Achievement, FeePayment } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
+import { useRevealMouse } from "@/components/psams/fx"
 import { StudentDrawer } from "@/components/psams/student-drawer"
 import { MediaUpload } from "@/components/psams/media-upload"
 import { Button } from "@/components/ui/button"
@@ -70,6 +71,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
   const [achOpen, setAchOpen] = useState(false)
   const { navigate, setPrint, refresh, dataVersion } = useAppStore()
   const { toast } = useToast()
+  const onMouseMove = useRevealMouse()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -117,12 +119,12 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
   return (
     <div className="space-y-4 p-5">
       {/* hero */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border acrylic p-4">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onMouseMove={onMouseMove} className="reveal-item hover-lift glass rounded-2xl p-4">
         <div className="flex flex-wrap items-start gap-4">
           <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => navigate("students")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg border-2 border-white bg-secondary shadow-md">
+          <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg border-2 border-white/10 bg-gradient-to-br from-lime-400/15 to-cyan-400/10 shadow-md">
             {student.photoPath ? (
                
               <img src={mediaUrl(student.photoPath)} alt={student.fullName} className="h-full w-full object-cover" />
@@ -158,7 +160,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
             <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={printProfile}>
               <Printer className="h-3.5 w-3.5" /> Print A4 Profile
             </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/70 text-xs" onClick={() => setEditOpen(true)}>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/[0.04] text-xs" onClick={() => setEditOpen(true)}>
               <Pencil className="h-3.5 w-3.5" /> Edit profile
             </Button>
           </div>
@@ -171,11 +173,11 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
         <StatTile icon={<Weight className="h-3.5 w-3.5" />} label="Weight" value={student.weightKg ? `${student.weightKg} kg` : "—"} />
         <StatTile icon={<ShieldAlert className="h-3.5 w-3.5" />} label="BMI" value={bmi !== null ? bmi.toFixed(1) : "—"} sub={band.label} tone={band.color} />
         <StatTile icon={<Ruler className="h-3.5 w-3.5" />} label="Spike reach" value={student.spikeReachCm ? `${student.spikeReachCm} cm` : "—"} sub={jumpGain ? `+${jumpGain} cm over standing` : undefined} />
-        <StatTile icon={<Receipt className="h-3.5 w-3.5" />} label="Fee dues" value={formatINR(fee.dueAmount)} sub={fee.pendingMonths.length ? `${fee.pendingMonths.length} month(s) pending` : "All settled"} tone={fee.isDefaulter ? "text-rose-600" : fee.dueAmount > 0 ? "text-amber-600" : "text-emerald-600"} />
+        <StatTile icon={<Receipt className="h-3.5 w-3.5" />} label="Fee dues" value={formatINR(fee.dueAmount)} sub={fee.pendingMonths.length ? `${fee.pendingMonths.length} month(s) pending` : "All settled"} tone={fee.isDefaulter ? "text-rose-300" : fee.dueAmount > 0 ? "text-amber-300" : "text-emerald-300"} />
       </div>
 
       <Tabs defaultValue="achievements" className="space-y-3">
-        <TabsList className="h-8 bg-white/70 backdrop-blur">
+        <TabsList className="h-8 bg-white/[0.04] backdrop-blur">
           <TabsTrigger value="achievements" className="h-6 gap-1.5 text-xs"><Trophy className="h-3 w-3" /> Achievements ({student.achievements.length})</TabsTrigger>
           <TabsTrigger value="fee" className="h-6 gap-1.5 text-xs"><Receipt className="h-3 w-3" /> Fee history ({student.payments.length})</TabsTrigger>
           <TabsTrigger value="documents" className="h-6 gap-1.5 text-xs"><FileText className="h-3 w-3" /> Documents</TabsTrigger>
@@ -183,7 +185,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
 
         {/* achievements */}
         <TabsContent value="achievements">
-          <div className="rounded-xl border bg-white/70 backdrop-blur">
+          <div className="rounded-xl border bg-white/[0.04] backdrop-blur">
             <div className="flex items-center justify-between border-b px-4 py-2.5">
               <div>
                 <div className="text-xs font-semibold">Tournaments, Medals & Selections</div>
@@ -209,7 +211,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
                     </div>
                     <Badge variant="outline" className="rounded-full text-[10.5px]">{a.level} level</Badge>
                     {a.medal !== "None" && (
-                      <Badge className="rounded-full bg-amber-100 text-[10.5px] text-amber-800 hover:bg-amber-100">{a.medal}</Badge>
+                      <Badge className="rounded-full bg-amber-400/10 text-[10.5px] text-amber-300 hover:bg-amber-400/10">{a.medal}</Badge>
                     )}
                     {a.certificatePath && (
                       <a href={mediaUrl(a.certificatePath)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
@@ -237,7 +239,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
 
         {/* fee history */}
         <TabsContent value="fee">
-          <div className="rounded-xl border bg-white/70 backdrop-blur">
+          <div className="rounded-xl border bg-white/[0.04] backdrop-blur">
             <div className="border-b px-4 py-2.5">
               <div className="text-xs font-semibold">Payment ledger</div>
               <div className="text-[11px] text-muted-foreground">
@@ -246,7 +248,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
               </div>
             </div>
             <table className="w-full text-left text-xs">
-              <thead className="border-b bg-secondary/60 text-[11px] text-muted-foreground">
+              <thead className="border-b bg-white/[0.03] text-[11px] text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2 font-medium">Receipt</th>
                   <th className="px-3 py-2 font-medium">Date</th>
@@ -275,7 +277,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
 
         {/* documents */}
         <TabsContent value="documents">
-          <div className="grid grid-cols-1 gap-4 rounded-xl border bg-white/70 p-4 backdrop-blur md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 rounded-xl border bg-white/[0.04] p-4 backdrop-blur md:grid-cols-2">
             <MediaUpload
               folder="documents"
               value={student.birthCertPath}
@@ -324,7 +326,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
 
 function Chip({ label, value }: { label: string; value: string }) {
   return (
-    <span className="rounded-md border bg-white/60 px-2 py-1">
+    <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 transition-colors hover:border-lime-400/30">
       <span className="text-muted-foreground">{label}: </span>
       <span className="font-medium">{value}</span>
     </span>
@@ -333,11 +335,11 @@ function Chip({ label, value }: { label: string; value: string }) {
 
 function StatTile({ icon, label, value, sub, tone }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: string }) {
   return (
-    <div className="rounded-xl border bg-white/70 p-3 backdrop-blur">
+    <div className="hover-lift rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 backdrop-blur transition-colors hover:border-lime-400/30">
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
         {icon} {label}
       </div>
-      <div className={`mt-1 text-lg font-bold leading-none ${tone || ""}`}>{value}</div>
+      <div className={`mt-1 font-display text-lg font-bold leading-none tnum ${tone || ""}`}>{value}</div>
       {sub && <div className="mt-1 text-[10.5px] text-muted-foreground">{sub}</div>}
     </div>
   )

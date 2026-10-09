@@ -65,11 +65,11 @@ export function computeBMI(weightKg?: number | null, heightCm?: number | null): 
 
 export function bmiBand(bmi: number | null): { label: string; color: string } {
   if (bmi === null) return { label: "—", color: "text-muted-foreground" }
-  if (bmi < 16) return { label: "Severe underweight", color: "text-red-600" }
-  if (bmi < 18.5) return { label: "Underweight", color: "text-amber-600" }
-  if (bmi < 25) return { label: "Healthy", color: "text-emerald-600" }
-  if (bmi < 30) return { label: "Overweight", color: "text-amber-600" }
-  return { label: "Obese", color: "text-red-600" }
+  if (bmi < 16) return { label: "Severe underweight", color: "text-red-400" }
+  if (bmi < 18.5) return { label: "Underweight", color: "text-amber-300" }
+  if (bmi < 25) return { label: "Healthy", color: "text-emerald-400" }
+  if (bmi < 30) return { label: "Overweight", color: "text-amber-300" }
+  return { label: "Obese", color: "text-red-400" }
 }
 
 // ---------- Vertical jump / reach metrics ----------
@@ -216,11 +216,20 @@ export function isSafeMediaPath(p: string): boolean {
 }
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  Mini: "bg-sky-100 text-sky-700 border-sky-200",
-  "Sub-Junior": "bg-violet-100 text-violet-700 border-violet-200",
-  Junior: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  Youth: "bg-amber-100 text-amber-700 border-amber-200",
-  Senior: "bg-rose-100 text-rose-700 border-rose-200",
+  Mini: "bg-sky-400/10 text-sky-300 border-sky-400/25",
+  "Sub-Junior": "bg-violet-400/10 text-violet-300 border-violet-400/25",
+  Junior: "bg-emerald-400/10 text-emerald-300 border-emerald-400/25",
+  Youth: "bg-amber-400/10 text-amber-300 border-amber-400/25",
+  Senior: "bg-rose-400/10 text-rose-300 border-rose-400/25",
+}
+
+/** Bar gradient per age category (dashboard distribution chart). */
+export const CATEGORY_GRADIENTS: Record<string, string> = {
+  Mini: "from-sky-400 to-sky-300",
+  "Sub-Junior": "from-violet-400 to-violet-300",
+  Junior: "from-emerald-400 to-emerald-300",
+  Youth: "from-amber-400 to-amber-300",
+  Senior: "from-rose-400 to-rose-300",
 }
 
 export const MEDAL_ICONS: Record<string, string> = {

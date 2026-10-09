@@ -83,4 +83,4 @@ server.log
 
 # sqlite sidecar files
 *.db-wal
-*.db-shm
+*.db-shmtool-results/

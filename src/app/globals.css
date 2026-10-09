@@ -6,7 +6,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Inter", sans-serif;
+  --font-sans: var(--font-inter), "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-sora), var(--font-inter), "Segoe UI", system-ui, sans-serif;
   --font-mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -37,45 +38,65 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: calc(var(--radius) - 2px);
+  --radius-xl: var(--radius);
 }
 
+/* ============================================================
+   PS-AMS :: "Dark Court" design system
+   Deep navy arena + volt-lime accent — premium sports-tech look
+   ============================================================ */
+
 :root {
-  --radius: 0.5rem; /* Windows 11 8px corner geometry */
-  --background: #f2f3f7;
-  --foreground: #1a1d21;
-  --card: rgba(255, 255, 255, 0.82);
-  --card-foreground: #1a1d21;
-  --popover: #ffffff;
-  --popover-foreground: #1a1d21;
-  --primary: #0067c0; /* Windows 11 system accent */
-  --primary-foreground: #ffffff;
-  --secondary: #eef0f4;
-  --secondary-foreground: #2b2f33;
-  --muted: #eef0f4;
-  --muted-foreground: #5f646b;
-  --accent: #e8f1fa;
-  --accent-foreground: #005fb8;
-  --destructive: #c42b1c;
-  --border: rgba(0, 0, 0, 0.08);
-  --input: #d8dbe0;
-  --ring: #0067c0;
-  --chart-1: #0067c0;
-  --chart-2: #0f9d58;
-  --chart-3: #ca5010;
-  --chart-4: #744da9;
-  --chart-5: #c239b3;
-  --sidebar: rgba(248, 249, 251, 0.78);
-  --sidebar-foreground: #2b2f33;
-  --sidebar-primary: #0067c0;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(0, 103, 192, 0.09);
-  --sidebar-accent-foreground: #005fb8;
-  --sidebar-border: rgba(0, 0, 0, 0.07);
-  --sidebar-ring: #0067c0;
+  --radius: 0.875rem; /* soft 14px geometry — modern web app feel */
+
+  --background: #07090f;
+  --foreground: #e8ecf4;
+
+  --card: rgba(255, 255, 255, 0.035);
+  --card-foreground: #e8ecf4;
+  --popover: #0e131f;
+  --popover-foreground: #e8ecf4;
+
+  --primary: #a3e635;                       /* volt lime */
+  --primary-foreground: #0b0e14;
+
+  --secondary: rgba(255, 255, 255, 0.06);
+  --secondary-foreground: #cbd5e1;
+
+  --muted: rgba(255, 255, 255, 0.06);
+  --muted-foreground: #8b94a7;
+
+  --accent: rgba(163, 230, 53, 0.12);
+  --accent-foreground: #d9f99d;
+
+  --destructive: #f87171;
+  --success: #34d399;
+  --warning: #fbbf24;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --input: rgba(255, 255, 255, 0.10);
+  --ring: #a3e635;
+
+  --chart-1: #a3e635;
+  --chart-2: #22d3ee;
+  --chart-3: #a78bfa;
+  --chart-4: #fbbf24;
+  --chart-5: #fb7185;
+
+  --sidebar: rgba(10, 13, 21, 0.72);
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-primary: #a3e635;
+  --sidebar-primary-foreground: #0b0e14;
+  --sidebar-accent: rgba(163, 230, 53, 0.10);
+  --sidebar-accent-foreground: #d9f99d;
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --sidebar-ring: #a3e635;
 }
 
 @layer base {
@@ -84,63 +105,84 @@
   }
   html {
     height: 100%;
+    color-scheme: dark;
   }
   body {
     @apply text-foreground;
     background:
-      radial-gradient(1100px 520px at 88% -8%, rgba(0, 103, 192, 0.055), transparent 62%),
-      radial-gradient(900px 480px at -6% 104%, rgba(116, 77, 169, 0.05), transparent 58%),
+      radial-gradient(1200px 560px at 85% -10%, rgba(163, 230, 53, 0.07), transparent 60%),
+      radial-gradient(1000px 520px at -10% 108%, rgba(34, 211, 238, 0.06), transparent 58%),
+      radial-gradient(700px 420px at 50% 118%, rgba(167, 139, 250, 0.045), transparent 62%),
       var(--background);
     background-attachment: fixed;
-    font-feature-settings: "tnum" 0;
     height: 100%;
     overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display), system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+  ::selection {
+    background: rgba(163, 230, 53, 0.28);
+    color: #f4fdf0;
   }
 }
 
-/* ---- Windows 11 style scrollbars ---- */
+/* ---- sleek dark scrollbars ---- */
 *::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
 }
 *::-webkit-scrollbar-track {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 8px;
-  border: 4px solid transparent;
+  border: 3px solid transparent;
   background-clip: content-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.32);
+  background: rgba(163, 230, 53, 0.45);
   border: 3px solid transparent;
   background-clip: content-box;
 }
 
-/* ---- Acrylic surface utility ---- */
-.acrylic {
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(24px) saturate(1.25);
-  -webkit-backdrop-filter: blur(24px) saturate(1.25);
-  border: 1px solid rgba(0, 0, 0, 0.07);
-}
-.acrylic-dark-strip {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.72));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+/* ============================================================
+   Shared surfaces & micro-interactions
+   ============================================================ */
+
+/* frosted glass panel */
+.glass {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.05) inset, 0 12px 32px -18px rgba(0, 0, 0, 0.55);
 }
 
-/* reveal-style hover */
+/* hover: lift + glow — the signature card interaction */
+.hover-lift {
+  transition: transform 0.22s cubic-bezier(0.22, 0.68, 0.31, 1), border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  border-color: rgba(163, 230, 53, 0.32);
+  box-shadow: 0 14px 34px -16px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(163, 230, 53, 0.10), 0 0 28px -6px rgba(163, 230, 53, 0.12);
+}
+
+/* pointer-tracked sheen (set --mx/--my from JS) */
 .reveal-item {
   position: relative;
+  overflow: hidden;
 }
 .reveal-item::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(120px 60px at var(--mx, 50%) var(--my, 50%), rgba(0, 103, 192, 0.07), transparent 80%);
+  background: radial-gradient(160px 80px at var(--mx, 50%) var(--my, 50%), rgba(163, 230, 53, 0.10), transparent 80%);
   opacity: 0;
   transition: opacity 0.25s ease;
   pointer-events: none;
@@ -149,9 +191,113 @@
   opacity: 1;
 }
 
-/* ================= PRINT DISCIPLINE =================
+/* table / list row hover with accent rail */
+.row-hover {
+  position: relative;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.row-hover::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #bef264, #22d3ee);
+  opacity: 0;
+  transform: scaleY(0.3);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.row-hover:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.row-hover:hover::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* gradient headline text */
+.text-gradient {
+  background: linear-gradient(92deg, #f0fdf4 10%, #bef264 55%, #67e8f9 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* shimmer skeleton */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  animation: psams-shimmer 1.6s infinite;
+}
+@keyframes psams-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* primary button sheen sweep */
+.btn-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.btn-sheen::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.5s ease;
+  pointer-events: none;
+}
+.btn-sheen:hover::before {
+  left: 130%;
+}
+
+/* soft pulse for live indicators */
+@keyframes psams-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5); }
+  50% { opacity: 0.75; box-shadow: 0 0 0 5px rgba(52, 211, 153, 0); }
+}
+.pulse-dot {
+  animation: psams-pulse 2.2s ease-in-out infinite;
+}
+
+/* floating orb behind hero band */
+@keyframes psams-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+.float-slow {
+  animation: psams-float 7s ease-in-out infinite;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+/* ============================================================
+   PRINT DISCIPLINE
    The shell (#psams-root) is suppressed during printing; only
-   the isolated #psams-print-root renders on paper. */
+   the isolated #psams-print-root renders on paper.
+   ============================================================ */
 
 #psams-print-root {
   display: none;
@@ -172,17 +318,14 @@
   @page {
     margin: 10mm;
   }
-  /* A4 player profile */
   @page profileA4 {
     size: A4 portrait;
     margin: 8mm;
   }
-  /* A5 receipt */
   @page receiptA5 {
     size: A5 portrait;
     margin: 6mm;
   }
-  /* 80mm thermal POS slip */
   @page thermal80 {
     size: 80mm auto;
     margin: 2mm;

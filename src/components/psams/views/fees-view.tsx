@@ -54,7 +54,7 @@ export function FeesView() {
   return (
     <div className="h-full p-5">
       <Tabs defaultValue="collect" className="space-y-4">
-        <TabsList className="h-9 bg-white/70 backdrop-blur">
+        <TabsList className="h-9 border border-white/10 bg-white/[0.04]">
           <TabsTrigger value="collect" className="h-7 gap-1.5 text-xs"><Receipt className="h-3.5 w-3.5" /> Collect Fee</TabsTrigger>
           <TabsTrigger value="defaulters" className="h-7 gap-1.5 text-xs"><AlertTriangle className="h-3.5 w-3.5" /> Defaulters Monitor</TabsTrigger>
           <TabsTrigger value="history" className="h-7 gap-1.5 text-xs"><History className="h-3.5 w-3.5" /> Receipt History</TabsTrigger>
@@ -189,7 +189,7 @@ function CollectTab() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]">
       {/* student picker */}
-      <div className="rounded-xl border bg-white/70 backdrop-blur">
+      <div className="glass rounded-2xl">
         <div className="border-b p-3">
           <div className="text-xs font-semibold">1 · Select Student</div>
           <p className="text-[11px] text-muted-foreground">Pending months are retrieved automatically</p>
@@ -201,7 +201,7 @@ function CollectTab() {
         <div className="max-h-[420px] divide-y overflow-y-auto">
           {filtered.map((s) => (
             <button key={s.id} onClick={() => pick(s)} className={cn("flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-accent/50", selected?.id === s.id && "bg-accent")}>
-              <div className="h-8 w-8 overflow-hidden rounded-full border bg-secondary">
+              <div className="h-8 w-8 overflow-hidden rounded-full border border-white/10 bg-gradient-to-br from-lime-400/15 to-cyan-400/10">
                 {s.photoPath ? (
                    
                   <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
@@ -221,7 +221,7 @@ function CollectTab() {
       </div>
 
       {/* payment entry */}
-      <div className="rounded-xl border bg-white/70 backdrop-blur">
+      <div className="glass rounded-2xl">
         <div className="border-b p-3">
           <div className="text-xs font-semibold">2 · Payment Entry</div>
           <p className="text-[11px] text-muted-foreground">Multi-month settlement with automatic amount suggestion</p>
@@ -233,14 +233,14 @@ function CollectTab() {
             </motion.div>
           ) : (
             <motion.div key={selected.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4 p-4">
-              <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-secondary/40 p-3">
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-white/[0.04] p-3">
                 <div>
                   <div className="text-sm font-semibold">{selected.fullName}</div>
                   <div className="text-[11px] text-muted-foreground">{selected.admissionNo} · {selected.ageCategory} · fee {formatINR(selected.monthlyFee)}/month</div>
                 </div>
                 <div className="ml-auto text-right">
                   <div className="text-[11px] text-muted-foreground">Outstanding</div>
-                  <div className="text-sm font-bold text-rose-600">{formatINR(pending.length * selected.monthlyFee)}</div>
+                  <div className="text-sm font-bold text-rose-300">{formatINR(pending.length * selected.monthlyFee)}</div>
                 </div>
                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setSelected(null)}><X className="h-3.5 w-3.5" /></Button>
               </div>
@@ -248,7 +248,7 @@ function CollectTab() {
               <div>
                 <div className="mb-1.5 text-xs font-medium">Billing periods to settle <span className="font-normal text-muted-foreground">({pending.length} pending)</span></div>
                 {pending.length === 0 ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700">
+                  <div className="flex items-center gap-2 rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-xs text-emerald-300">
                     <CheckCircle2 className="h-4 w-4" /> All billing months are settled — no dues.
                   </div>
                 ) : (
@@ -261,13 +261,13 @@ function CollectTab() {
                           key={m}
                           className={cn(
                             "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-all",
-                            on ? "border-primary bg-primary/10 font-medium text-primary shadow-sm" : "bg-white hover:border-primary/40",
-                            isOverdue && !on && "border-rose-200"
+                            on ? "border-primary bg-primary/10 font-medium text-primary shadow-sm" : "bg-white/[0.06] hover:border-primary/40",
+                            isOverdue && !on && "border-rose-400/40"
                           )}
                         >
                           <Checkbox checked={on} onCheckedChange={() => toggleMonth(m)} />
                           <span>{monthLabel(m)}</span>
-                          {isOverdue && <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[9.5px] font-semibold text-rose-700">OVERDUE</span>}
+                          {isOverdue && <span className="rounded bg-rose-400/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-rose-300">OVERDUE</span>}
                           <span className="text-[10px] text-muted-foreground">{formatINR(perMonth)}</span>
                         </label>
                       )
@@ -298,7 +298,7 @@ function CollectTab() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg border bg-secondary/40 p-3">
+              <div className="flex items-center justify-between rounded-lg border bg-white/[0.04] p-3">
                 <div className="text-xs text-muted-foreground">
                   {chosen.length} month{chosen.length === 1 ? "" : "s"} × {formatINR(perMonth)} = <b className="text-foreground">{formatINR(chosen.length * perMonth)}</b>
                 </div>
@@ -366,23 +366,23 @@ export function ReceiptDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Payment recorded — {receipt.receiptNo}
+            <CheckCircle2 className="h-4 w-4 text-emerald-300" /> Payment recorded — {receipt.receiptNo}
           </DialogTitle>
         </DialogHeader>
-        <div className="rounded-lg border bg-secondary/40 p-3 text-xs">
+        <div className="rounded-lg border bg-white/[0.04] p-3 text-xs">
           <div className="flex justify-between"><span className="text-muted-foreground">Student</span><span className="font-semibold">{receipt.studentName} · {receipt.admissionNo}</span></div>
           <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Period{months.length > 1 ? "s" : ""}</span><span className="font-medium">{months.map(monthLabel).join(", ")}</span></div>
-          <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Amount</span><span className="font-bold text-emerald-700">{formatINR(receipt.amount)}</span></div>
+          <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Amount</span><span className="font-bold text-emerald-300">{formatINR(receipt.amount)}</span></div>
           <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-medium">{receipt.paymentMode}</span></div>
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Button size="sm" className="h-9 gap-1.5 text-xs" onClick={() => setPrint({ kind: "receipt-a5", title: "Fee Receipt (A5)", data: { receipt, settings } })}>
             <Printer className="h-3.5 w-3.5" /> Print A5
           </Button>
-          <Button size="sm" variant="outline" className="h-9 gap-1.5 bg-white/70 text-xs" onClick={() => setPrint({ kind: "receipt-thermal", title: "POS Slip (80mm)", data: { receipt, settings } })}>
+          <Button size="sm" variant="outline" className="h-9 gap-1.5 border-white/12 bg-white/[0.04] text-xs hover:bg-white/[0.08]" onClick={() => setPrint({ kind: "receipt-thermal", title: "POS Slip (80mm)", data: { receipt, settings } })}>
             <Printer className="h-3.5 w-3.5" /> 80mm Slip
           </Button>
-          <Button size="sm" variant="outline" className="h-9 gap-1.5 bg-emerald-50 text-xs text-emerald-700 hover:bg-emerald-100" onClick={waDispatch}>
+          <Button size="sm" variant="outline" className="h-9 gap-1.5 border-emerald-400/25 bg-emerald-400/10 text-xs text-emerald-300 hover:bg-emerald-400/20" onClick={waDispatch}>
             <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
           </Button>
         </div>
@@ -453,27 +453,27 @@ function DefaultersTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border acrylic p-3">
+      <div className="glass flex flex-wrap items-center gap-3 rounded-2xl p-3">
         <div>
           <div className="text-xs font-semibold">Defaulters — overdue by more than one month</div>
           <div className="text-[11px] text-muted-foreground">
-            <span className="font-semibold text-rose-600">{defaulterCount}</span> defaulter(s) of {rows.length} with any dues · total outstanding <b>{formatINR(totalDue)}</b>
+            <span className="font-semibold text-rose-300">{defaulterCount}</span> defaulter(s) of {rows.length} with any dues · total outstanding <b>{formatINR(totalDue)}</b>
           </div>
         </div>
         <div className="ml-auto flex gap-2">
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/70 text-xs" onClick={printRoster}><Printer className="h-3.5 w-3.5" /> Print</Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/70 text-xs" onClick={() => exportExcel({ sheetName: "Defaulters", fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster — overdue by more than one month", academy: settings ?? undefined, columns: cols, rows: exportRows, totalsRow: { name: "TOTAL", due: totalDue } })}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-white/12 bg-white/[0.04] text-xs hover:bg-white/[0.08]" onClick={printRoster}><Printer className="h-3.5 w-3.5" /> Print</Button>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-white/12 bg-white/[0.04] text-xs hover:bg-white/[0.08]" onClick={() => exportExcel({ sheetName: "Defaulters", fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster — overdue by more than one month", academy: settings ?? undefined, columns: cols, rows: exportRows, totalsRow: { name: "TOTAL", due: totalDue } })}>
             <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
           </Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/70 text-xs" onClick={() => exportPDF({ fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster", subtitle: "Overdue by more than one billing month", academy: settings ?? undefined, columns: cols, rows: exportRows, orientation: "l", totals: undefined })}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-white/12 bg-white/[0.04] text-xs hover:bg-white/[0.08]" onClick={() => exportPDF({ fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster", subtitle: "Overdue by more than one billing month", academy: settings ?? undefined, columns: cols, rows: exportRows, orientation: "l", totals: undefined })}>
             <FileText className="h-3.5 w-3.5" /> PDF
           </Button>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-white/70 backdrop-blur">
+      <div className="overflow-hidden glass rounded-2xl">
         <table className="w-full text-left text-xs">
-          <thead className="border-b bg-secondary/70 text-[11px] uppercase tracking-wide text-muted-foreground">
+          <thead className="border-b border-white/[0.08] bg-white/[0.03] text-[11px] uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-2.5 font-medium">Student</th>
               <th className="px-3 py-2.5 font-medium">Category</th>
@@ -486,10 +486,10 @@ function DefaultersTab() {
           <tbody>
             {loading && <tr><td colSpan={6} className="py-10 text-center"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Computing ledger…</td></tr>}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={6} className="py-10 text-center text-emerald-600">Excellent — no pending dues across the academy.</td></tr>
+              <tr><td colSpan={6} className="py-10 text-center text-emerald-300">Excellent — no pending dues across the academy.</td></tr>
             )}
             {rows.map((r) => (
-              <tr key={r.student.id} className={cn("border-b border-border/40", r.isDefaulter && "bg-rose-50/50")}>
+              <tr key={r.student.id} className={cn("border-b border-border/40", r.isDefaulter && "bg-rose-400/[0.05]")}>
                 <td className="px-4 py-2.5">
                   <button className="text-left font-medium hover:text-primary hover:underline" onClick={() => navigate("student-detail", r.student.id)}>
                     {r.student.fullName}
@@ -501,18 +501,18 @@ function DefaultersTab() {
                 </td>
                 <td className="px-3 py-2.5">
                   {r.isDefaulter ? (
-                    <Badge className="rounded-full bg-rose-100 text-[10.5px] text-rose-700 hover:bg-rose-100">{r.overdueMonths.length} months overdue</Badge>
+                    <Badge className="rounded-full border border-rose-400/25 bg-rose-400/10 text-[10.5px] font-semibold text-rose-300 hover:bg-rose-400/10">{r.overdueMonths.length} months overdue</Badge>
                   ) : (
                     <Badge variant="secondary" className="rounded-full text-[10.5px]">Current month only</Badge>
                   )}
                   <div className="mt-0.5 text-[10.5px] text-muted-foreground">{r.pendingMonths.map(monthLabel).join(", ")}</div>
                 </td>
-                <td className="px-3 py-2.5 font-semibold tabular-nums text-rose-600">{formatINR(r.dueAmount)}</td>
+                <td className="px-3 py-2.5 font-semibold tabular-nums text-rose-300">{formatINR(r.dueAmount)}</td>
                 <td className="hidden px-3 py-2.5 md:table-cell">
                   <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3 text-muted-foreground" />{r.student.parentName} · {r.student.mobile}</span>
                 </td>
                 <td className="px-3 py-2.5 text-right">
-                  <Button size="sm" variant="outline" className="h-7 bg-white/80 text-[11px]" onClick={() => navigate("student-detail", r.student.id)}>Open</Button>
+                  <Button size="sm" variant="outline" className="h-7 border-white/12 bg-white/[0.05] text-[11px] hover:bg-white/[0.09]" onClick={() => navigate("student-detail", r.student.id)}>Open</Button>
                 </td>
               </tr>
             ))}
@@ -541,10 +541,10 @@ function HistoryTab() {
   }, [])
 
   return (
-    <div className="overflow-hidden rounded-xl border bg-white/70 backdrop-blur">
+    <div className="overflow-hidden glass rounded-2xl">
       <div className="border-b px-4 py-2.5 text-xs font-semibold">Recent receipts (latest 60)</div>
       <table className="w-full text-left text-xs">
-        <thead className="border-b bg-secondary/60 text-[11px] text-muted-foreground">
+        <thead className="border-b border-white/[0.08] bg-white/[0.03] text-[11px] uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-4 py-2 font-medium">Receipt No</th>
             <th className="px-3 py-2 font-medium">Date</th>

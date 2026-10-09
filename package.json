@@ -1,7 +1,7 @@
 {
   "name": "ps-ams",
-  "version": "1.0.0",
-  "description": "Pattern Sports Academy Management System — offline-first academy suite (Next.js SPA + Tauri v2 packaging kit)",
+  "version": "1.1.0",
+  "description": "Pattern Sports Academy Management System \u2014 offline-first academy suite (Next.js SPA + Tauri v2 desktop shell, Dark Court UI)",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
