@@ -28,8 +28,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#07090f",
+  themeColor: "#f2f5f0",
 };
+
+// Applied before first paint so the saved theme never flashes.
+const themeBootScript = `(function(){try{var t=localStorage.getItem("psams-theme");if(t==="dark"){document.documentElement.classList.add("dark")}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -38,6 +41,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${sora.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body className="antialiased font-sans">
         {children}
         <Toaster />

@@ -120,7 +120,7 @@ function CommitteeManager() {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="row-hover flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-2.5"
+                className="row-hover flex items-center gap-3 rounded-xl border border-border bg-card/60 px-3 py-2.5"
               >
                 <div className="flex flex-col gap-0.5">
                   <Button size="icon" variant="ghost" className="h-5 w-6" disabled={i === 0} onClick={() => move(i, -1)}>
@@ -130,7 +130,7 @@ function CommitteeManager() {
                     <ChevronDown className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border bg-white/[0.05]">
+                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border bg-muted">
                   {m.photoPath ? (
                      
                     <img src={mediaUrl(m.photoPath)} alt={m.fullName} className="h-full w-full object-cover" />
@@ -375,11 +375,11 @@ function DataSafety() {
         <Button size="sm" className="h-8 gap-1.5 text-xs" disabled={busy} onClick={downloadBackup}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Backup now
         </Button>
-        <Button size="sm" variant="outline" className="h-8 gap-1.5 border-white/12 bg-white/[0.04] text-xs hover:bg-white/[0.08]" onClick={() => toast({ title: "Restore from backup", description: "Use the restore command in the Tauri shell or copy the backup file into the database folder while the app is closed." })}>
+        <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => toast({ title: "Restore from backup", description: "Use the restore command in the Tauri shell or copy the backup file into the database folder while the app is closed." })}>
           <Upload className="h-3.5 w-3.5" /> Restore guide
         </Button>
       </div>
-      <div className="mt-3 rounded-lg border bg-white/[0.04] p-2.5 text-[10.5px] text-muted-foreground">
+      <div className="mt-3 rounded-lg border bg-muted/40 p-2.5 text-[10.5px] text-muted-foreground">
         Windows data location: <span className="font-mono">%APPDATA%\PS-AMS\</span> — database <span className="font-mono">ps-ams.db</span>, media in <span className="font-mono">media\</span>.
       </div>
     </div>

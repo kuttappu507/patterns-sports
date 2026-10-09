@@ -42,19 +42,19 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
       return (
         <div className="flex min-h-screen items-center justify-center bg-background p-8 text-foreground">
           <div className="glass w-full max-w-lg rounded-2xl p-6 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-400/10 text-rose-300">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-300">
               <AlertTriangle className="h-6 w-6" />
             </div>
             <h1 className="mt-3 font-display text-lg font-bold">Something went wrong</h1>
             <p className="mt-1 text-xs text-muted-foreground">
               PS-AMS hit an unexpected error. Your data is safe — the local database was not touched.
             </p>
-            <pre className="mt-3 max-h-32 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-white/[0.03] p-2.5 text-left text-[10.5px] text-rose-200">
+            <pre className="mt-3 max-h-32 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-2.5 text-left text-[10.5px] text-rose-600 dark:text-rose-300">
               {this.state.error.message}
             </pre>
             <Button
               size="sm"
-              className="mt-4 rounded-lg bg-lime-400 font-semibold text-[#0b0e14] hover:bg-lime-300"
+              className="mt-4 rounded-lg bg-primary font-semibold text-primary-foreground hover:brightness-110"
               onClick={() => this.setState({ error: null })}
             >
               <RotateCcw className="h-3.5 w-3.5" /> Reload interface
@@ -87,21 +87,21 @@ function BootScreen({ error }: { error: string | null }) {
       </motion.div>
       <div className="text-center">
         <p className="font-display text-lg font-extrabold tracking-tight">
-          PS<span className="text-lime-400">-</span>AMS
+          PS<span className="text-primary">-</span>AMS
         </p>
         <p className="mt-0.5 text-[11.5px] text-muted-foreground">Starting Pattern Sports Academy Suite…</p>
       </div>
-      <div className="h-1 w-44 overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="h-1 w-44 overflow-hidden rounded-full bg-foreground/10">
         <motion.div
           animate={{ x: ["-100%", "220%"] }}
           transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
-          className="h-full w-1/3 rounded-full bg-gradient-to-r from-lime-300 to-cyan-400"
+          className="h-full w-1/3 rounded-full bg-gradient-to-r from-primary to-cyan-500"
         />
       </div>
       {error && (
-        <div className="mt-2 w-[min(92vw,520px)] rounded-xl border border-amber-400/30 bg-amber-400/[0.08] p-3 text-center">
-          <p className="text-xs font-semibold text-amber-300">Offline backend warning</p>
-          <p className="mt-1 break-words text-[11px] leading-relaxed text-amber-200/80">{error}</p>
+        <div className="mt-2 w-[min(92vw,520px)] rounded-xl border border-amber-500/30 bg-amber-500/[0.08] p-3 text-center">
+          <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">Offline backend warning</p>
+          <p className="mt-1 break-words text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-200/80">{error}</p>
           <p className="mt-1 text-[10.5px] text-muted-foreground">
             The interface will still load — data operations may be unavailable.
           </p>

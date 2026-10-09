@@ -83,4 +83,7 @@ server.log
 
 # sqlite sidecar files
 *.db-wal
-*.db-shmtool-results/
+*.db-shm
+
+# stray agent tool artifacts
+tool-results/

@@ -1,0 +1,8 @@
+# Statically link the Visual C++ runtime so the exe runs on any
+# Windows 10/11 machine — no "VCRUNTIME140.dll not found" failures,
+# the #1 silent killer of freshly installed unsigned apps.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

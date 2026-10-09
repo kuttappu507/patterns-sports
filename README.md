@@ -1,8 +1,12 @@
 # PS-AMS — Pattern Sports Academy Management System
 
-Offline-first academy management suite for sports academies: student records with live age/BMI profiling, POS-style fee collection with dual-format receipts, defaulter monitoring, committee governance, daily attendance, and letterhead reporting. The project ships as a **Next.js 16 single-page application** plus a **Tauri v2 packaging kit** that compiles the same UI into a Windows 10/11 `.exe` installer (NSIS/MSI).
+Offline-first academy management suite for sports academies: student records with live age/BMI profiling, POS-style fee collection with dual-format receipts, defaulter monitoring, committee governance, daily attendance, and letterhead reporting. The project ships as a **Next.js 16 single-page application** plus a **Tauri v2 packaging kit** that compiles the same UI into a Windows 10/11 `.exe` installer (NSIS/MSI) and a **portable no-install edition**.
 
 No cloud. No accounts. All data stays in a local SQLite database with media on disk, and the app backs itself up automatically every time it exits.
+
+## Themes & UI
+
+The UI ships with a **light "Clean Court" theme by default** (paper-white surfaces, emerald accent, airy modern web-app look) and an optional **"Dark Court" mode** (deep-navy arena + volt-lime). Switch anytime with the sun/moon toggle in the header — the choice is remembered across sessions and even recolours the native window title bar. Every surface keeps the modern interaction language: hover lift + glow on cards, animated page transitions, springy micro-interactions, shimmer skeletons and accent-rail row hovers.
 
 ## Feature Map
 
@@ -18,15 +22,13 @@ No cloud. No accounts. All data stays in a local SQLite database with media on d
 
 ## Screenshots
 
-Captured during end-to-end verification (all flows exercised in a real browser):
+Captured during end-to-end verification (all flows exercised in a real browser). Recent captures in the light default theme:
 
 | | |
 |---|---|
-| ![Dashboard](docs/screenshots/verify-01-dashboard.png) | ![Students](docs/screenshots/verify-02-students.png) |
-| ![Student detail](docs/screenshots/verify-03-detail.png) | ![A4 print preview](docs/screenshots/verify-04-print.png) |
-| ![Fee collection](docs/screenshots/verify-06-collect.png) | ![A5 receipt](docs/screenshots/verify-07-receipt.png) |
-| ![80mm thermal slip](docs/screenshots/verify-08-thermal.png) | ![Defaulters monitor](docs/screenshots/verify-09-defaulters.png) |
-| ![Reports](docs/screenshots/verify-10-reports.png) | ![Attendance](docs/screenshots/verify-11-attendance.png) |
+| ![Dashboard light](docs/screenshots-v12/01-dashboard-light.png) | ![Dashboard dark](docs/screenshots-v12/02-dashboard-dark.png) |
+| ![Fee POS light](docs/screenshots-v12/03-fees-light.png) | ![Student profiles light](docs/screenshots-v12/05-students-light.png) |
+| ![Fee entry light](docs/screenshots-v12/04-fee-entry-light.png) | ![Player profile light](docs/screenshots-v12/06-student-detail-light.png) |
 
 The full set of 18 verification captures lives in [`docs/screenshots/`](docs/screenshots/).
 
@@ -100,12 +102,33 @@ and the offline backend.
 on every push to `main`:
 
 1. Open the repository's **Actions** tab and select **Build Windows EXE (PS-AMS)**.
-2. Download the `PS-AMS-windows-installers` artifact (NSIS `.exe` + MSI).
-3. To publish installers as a GitHub Release, push a version tag:
+2. Download the `PS-AMS-windows-installers` artifact (NSIS `.exe` + MSI + portable zip).
+3. To publish all deliverables as a GitHub Release, push a version tag:
 
    ```bash
-   git tag v1.0.0 && git push origin v1.0.0
+   git tag v1.2.0 && git push origin v1.2.0
    ```
+
+### Portable edition (no installation)
+
+The portable zip from the release (`PS-AMS_v*_portable_x64.zip`) contains just
+`PS-AMS.exe`, a `portable.flag` marker and a README. Unzip anywhere writable
+(Desktop, `D:\`, USB stick) and double-click `PS-AMS.exe` — no installer, no
+admin rights. Media files and backups are created inside `PS-AMS-Data\` next
+to the exe; the database is mirrored into `PS-AMS-Data\backups\` on every exit.
+
+### If the app ever fails to open
+
+Every boot step (and any panic) is written to a log file:
+
+- installed: `%LOCALAPPDATA%\PS-AMS\boot.log`
+- portable: `PS-AMS-Data\boot.log`
+
+The build statically links the VC++ runtime, forces the WebView2 user-data
+folder into a writable location and applies the database schema from an
+embedded copy — the three classic causes of "installed but never opens" on
+Windows are all engineered out. If you still see a problem, share the last
+lines of `boot.log`.
 
 ### Build locally on Windows
 

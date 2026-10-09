@@ -9,7 +9,8 @@
 import Database from "@tauri-apps/plugin-sql"
 import { writeFile, writeTextFile, mkdir, readTextFile } from "@tauri-apps/plugin-fs"
 import { save as saveDialog } from "@tauri-apps/plugin-dialog"
-import { appDataDir, join, resolveResource } from "@tauri-apps/api/path"
+import { appDataDir, join } from "@tauri-apps/api/path"
+import { invoke } from "@tauri-apps/api/core"
 import type {
   Achievement,
   AttendanceRecord,
@@ -43,8 +44,10 @@ export async function getDb(): Promise<DB> {
 
 async function ensureSchema(db: DB): Promise<void> {
   try {
-    const resPath = await resolveResource("resources/schema.sql")
-    const sql = await readTextFile(resPath)
+    // Schema DDL is embedded in the Rust binary (include_str!) and served
+    // by the `schema_sql` command — no runtime resource files needed, so
+    // the portable exe works with zero sidecar assets.
+    const sql = await invoke<string>("schema_sql")
     const statements = sql
       .split(";")
       .map((s) => s.trim())
@@ -57,15 +60,21 @@ async function ensureSchema(db: DB): Promise<void> {
       }
     }
   } catch {
-    /* schema file unavailable — assume the shell bootstrapped it */
+    /* schema command unavailable — assume the shell bootstrapped it */
   }
 }
 
 /** Boot the offline backend: DB + media directories. Called once at app start. */
 export async function initBackend(): Promise<void> {
   await getDb()
-  const dataDir = await appDataDir()
-  _mediaBase = await join(dataDir, "media")
+  // Media root comes from the Rust data layout so portable builds
+  // (portable.flag) get their media tree next to the exe.
+  try {
+    const paths = await invoke<{ app_data: string; database: string; media: string; backup: string }>("data_paths")
+    _mediaBase = paths.media
+  } catch {
+    _mediaBase = await join(await appDataDir(), "media")
+  }
   for (const sub of ["photos", "documents", "certificates"]) {
     try {
       await mkdir(await join(_mediaBase, sub), { recursive: true })

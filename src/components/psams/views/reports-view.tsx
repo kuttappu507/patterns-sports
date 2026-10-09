@@ -126,44 +126,44 @@ export function ReportsView() {
         </div>
         <div className="relative mb-2">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input className="h-8 rounded-lg border-white/10 bg-white/[0.04] pl-8 text-xs placeholder:text-slate-500 focus-visible:border-lime-400/50" placeholder="Real-time search — name, admission number, parent mobile…" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
+          <Input className="h-8 rounded-lg border-border bg-card pl-8 text-xs placeholder:text-muted-foreground focus-visible:border-primary/50" placeholder="Real-time search — name, admission number, parent mobile…" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
         </div>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
           <Select value={filters.category} onValueChange={(v) => setFilters({ ...filters, category: v })}>
-            <SelectTrigger className="h-8 bg-white/[0.04] text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
+            <SelectTrigger className="h-8 border-border bg-card text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All categories</SelectItem>
               {AGE_CATEGORIES.map((c) => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
             </SelectContent>
           </Select>
           <div className="flex gap-1">
-            <Input type="number" placeholder="Min age" className="h-8 bg-white/[0.04] text-xs" value={filters.minAge} onChange={(e) => setFilters({ ...filters, minAge: e.target.value })} />
-            <Input type="number" placeholder="Max age" className="h-8 bg-white/[0.04] text-xs" value={filters.maxAge} onChange={(e) => setFilters({ ...filters, maxAge: e.target.value })} />
+            <Input type="number" placeholder="Min age" className="h-8 border-border bg-card text-xs" value={filters.minAge} onChange={(e) => setFilters({ ...filters, minAge: e.target.value })} />
+            <Input type="number" placeholder="Max age" className="h-8 border-border bg-card text-xs" value={filters.maxAge} onChange={(e) => setFilters({ ...filters, maxAge: e.target.value })} />
           </div>
-          <Input type="number" placeholder="Height > (cm)" className="h-8 bg-white/[0.04] text-xs" value={filters.minHeight} onChange={(e) => setFilters({ ...filters, minHeight: e.target.value })} />
+          <Input type="number" placeholder="Height > (cm)" className="h-8 border-border bg-card text-xs" value={filters.minHeight} onChange={(e) => setFilters({ ...filters, minHeight: e.target.value })} />
           <Select value={filters.school} onValueChange={(v) => setFilters({ ...filters, school: v })}>
-            <SelectTrigger className="h-8 bg-white/[0.04] text-xs"><SelectValue placeholder="School" /></SelectTrigger>
+            <SelectTrigger className="h-8 border-border bg-card text-xs"><SelectValue placeholder="School" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All schools</SelectItem>
               {schools.map((s) => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filters.sport} onValueChange={(v) => setFilters({ ...filters, sport: v, position: "all" })}>
-            <SelectTrigger className="h-8 bg-white/[0.04] text-xs"><SelectValue placeholder="Sport" /></SelectTrigger>
+            <SelectTrigger className="h-8 border-border bg-card text-xs"><SelectValue placeholder="Sport" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All sports</SelectItem>
               {SPORTS.map((s) => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filters.position} onValueChange={(v) => setFilters({ ...filters, position: v })}>
-            <SelectTrigger className="h-8 bg-white/[0.04] text-xs"><SelectValue placeholder="Position" /></SelectTrigger>
+            <SelectTrigger className="h-8 border-border bg-card text-xs"><SelectValue placeholder="Position" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All positions</SelectItem>
               {positions.map((p) => <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filters.batch} onValueChange={(v) => setFilters({ ...filters, batch: v })}>
-            <SelectTrigger className="h-8 bg-white/[0.04] text-xs"><SelectValue placeholder="Batch" /></SelectTrigger>
+            <SelectTrigger className="h-8 border-border bg-card text-xs"><SelectValue placeholder="Batch" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All batches</SelectItem>
               <SelectItem value="Morning" className="text-xs">Morning</SelectItem>
@@ -179,11 +179,11 @@ export function ReportsView() {
           <b className="text-foreground">{rows.length}</b> student{rows.length === 1 ? "" : "s"} matched
         </span>
         <div className="ml-auto flex gap-2">
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/[0.04] text-xs" onClick={printReport}><Printer className="h-3.5 w-3.5" /> A4 Print</Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/[0.04] text-xs" onClick={() => exportPDF({ fileName: "PS-AMS-report", title: "Student Registry Report", subtitle: `${rows.length} records · generated ${new Date().toLocaleDateString("en-IN")}`, academy: settings ?? undefined, columns: cols.slice(1), rows: exportRows, orientation: "l" })}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={printReport}><Printer className="h-3.5 w-3.5" /> A4 Print</Button>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => exportPDF({ fileName: "PS-AMS-report", title: "Student Registry Report", subtitle: `${rows.length} records · generated ${new Date().toLocaleDateString("en-IN")}`, academy: settings ?? undefined, columns: cols.slice(1), rows: exportRows, orientation: "l" })}>
             <FileText className="h-3.5 w-3.5" /> PDF
           </Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/[0.04] text-xs" onClick={() => exportExcel({ sheetName: "Student Report", fileName: "PS-AMS-report", title: "Student Registry Report", subtitle: `${rows.length} records`, academy: settings ?? undefined, columns: cols, rows: exportRows })}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => exportExcel({ sheetName: "Student Report", fileName: "PS-AMS-report", title: "Student Registry Report", subtitle: `${rows.length} records`, academy: settings ?? undefined, columns: cols, rows: exportRows })}>
             <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
           </Button>
         </div>
@@ -211,7 +211,7 @@ export function ReportsView() {
                 <tr key={s.id} className="cursor-pointer border-b border-border/40 hover:bg-accent/40" onClick={() => navigate("student-detail", s.id)}>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2.5">
-                      <div className="h-8 w-8 overflow-hidden rounded-full border bg-white/[0.05]">
+                      <div className="h-8 w-8 overflow-hidden rounded-full border bg-muted">
                         {s.photoPath ? (
                            
                           <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />

@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useRevealMouse } from "@/components/psams/fx"
+import { ThemeToggle } from "@/components/psams/theme"
 
 const NAV: { key: ViewKey; label: string; icon: typeof LayoutDashboard; title: string; subtitle: string; hint: string }[] = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, hint: "Alt+1", title: "Executive Dashboard", subtitle: "Academy at a glance — enrolment, fee cycle and leadership" },
@@ -68,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <motion.aside
           animate={{ width: collapsed ? 64 : 244 }}
           transition={{ type: "spring", stiffness: 380, damping: 34 }}
-          className="relative z-20 flex h-full shrink-0 flex-col border-r border-white/[0.06] backdrop-blur-2xl"
+          className="relative z-20 flex h-full shrink-0 flex-col border-r border-sidebar-border backdrop-blur-2xl"
           style={{ background: "var(--sidebar)" }}
         >
           {/* brand */}
@@ -105,30 +106,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   className={cn(
                     "reveal-item group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200",
                     isActive
-                      ? "text-lime-200"
-                      : "text-slate-400 hover:translate-x-0.5 hover:text-slate-100"
+                      ? "text-primary"
+                      : "text-muted-foreground hover:translate-x-0.5 hover:text-foreground"
                   )}
                 >
                   {isActive && (
                     <motion.span
                       layoutId="nav-pill"
                       transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                      className="absolute inset-0 rounded-xl border border-lime-400/25 bg-lime-400/[0.09] shadow-[0_0_18px_-4px_rgba(163,230,53,0.35)]"
+                      className="absolute inset-0 rounded-xl border border-primary/25 bg-primary/10 shadow-[0_8px_20px_-10px_rgba(5,150,105,0.45)] dark:shadow-[0_0_18px_-4px_rgba(163,230,53,0.35)]"
                     />
                   )}
                   {isActive && (
                     <motion.span
                       layoutId="nav-rail"
                       transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                      className="absolute -left-2.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-gradient-to-b from-lime-300 to-cyan-400 shadow-[0_0_10px_rgba(163,230,53,0.7)]"
+                      className="absolute -left-2.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-gradient-to-b from-primary to-cyan-500 shadow-[0_0_10px_rgba(5,150,105,0.55)] dark:shadow-[0_0_10px_rgba(163,230,53,0.7)]"
                     />
                   )}
                   <Icon
                     className={cn(
                       "relative z-10 h-[18px] w-[18px] shrink-0 transition-all duration-200",
                       isActive
-                        ? "text-lime-300 drop-shadow-[0_0_6px_rgba(163,230,53,0.55)]"
-                        : "text-slate-500 group-hover:text-slate-200 group-hover:scale-110"
+                        ? "text-primary drop-shadow-[0_0_6px_rgba(5,150,105,0.35)] dark:drop-shadow-[0_0_6px_rgba(163,230,53,0.55)]"
+                        : "text-muted-foreground group-hover:text-foreground group-hover:scale-110"
                     )}
                     strokeWidth={isActive ? 2.3 : 2}
                   />
@@ -136,8 +137,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {!collapsed && (
                     <span
                       className={cn(
-                        "relative z-10 ml-auto text-[9.5px] font-semibold tracking-wider text-slate-600 transition-colors group-hover:text-slate-500",
-                        isActive && "text-lime-700"
+                        "relative z-10 ml-auto text-[9.5px] font-semibold tracking-wider text-muted-foreground/60 transition-colors group-hover:text-muted-foreground",
+                        isActive && "text-primary/80"
                       )}
                     >
                       {item.hint}
@@ -148,7 +149,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               return collapsed ? (
                 <Tooltip key={item.key}>
                   <TooltipTrigger asChild>{button}</TooltipTrigger>
-                  <TooltipContent side="right" className="border border-white/10 bg-popover text-popover-foreground">
+                  <TooltipContent side="right" className="border border-border bg-popover text-popover-foreground">
                     {item.label} <span className="ml-1 text-muted-foreground">{item.hint}</span>
                   </TooltipContent>
                 </Tooltip>
@@ -161,9 +162,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* footer block */}
           <div className="space-y-1 px-2.5 pb-4">
             {!collapsed && (
-              <div className="mx-1 mb-2 rounded-xl border border-white/[0.07] bg-white/[0.03] p-2.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300">
-                  <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <div className="mx-1 mb-2 rounded-xl border border-border bg-card/60 p-2.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-300">
+                  <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                   Local SQLite · Connected
                 </div>
                 <div className="mt-1 flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
@@ -173,7 +174,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
             <button
               onClick={() => setCollapsed((c) => !c)}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[12.5px] text-slate-500 transition-colors hover:bg-white/[0.04] hover:text-slate-200"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <ChevronLeft className={cn("h-4 w-4 transition-transform duration-300", collapsed && "rotate-180")} />
               {!collapsed && <span>Collapse</span>}
@@ -184,7 +185,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* ---------------- Main column ---------------- */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Header strip */}
-          <header className="z-10 flex items-center gap-4 border-b border-white/[0.06] bg-white/[0.02] px-5 py-3 backdrop-blur-xl">
+          <header className="z-10 flex items-center gap-4 border-b border-border bg-card/50 px-5 py-3 backdrop-blur-xl">
             <AnimatePresence mode="wait">
               <motion.div
                 key={active.key + (isDetail ? "-detail" : "")}
@@ -204,9 +205,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </AnimatePresence>
 
             <div className="ml-auto flex items-center gap-2">
+              <ThemeToggle />
               <Button
                 size="sm"
-                className="btn-sheen h-8 gap-1.5 rounded-lg bg-lime-400 text-[12px] font-semibold text-[#0b0e14] shadow-[0_0_16px_-4px_rgba(163,230,53,0.5)] transition-all hover:bg-lime-300 hover:shadow-[0_0_22px_-4px_rgba(163,230,53,0.7)] active:scale-[0.97]"
+                className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-[12px] font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(5,150,105,0.55)] transition-all hover:brightness-110 hover:shadow-[0_10px_22px_-8px_rgba(5,150,105,0.65)] active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(163,230,53,0.5)] dark:hover:shadow-[0_0_22px_-4px_rgba(163,230,53,0.7)]"
                 onClick={() => navigate("students")}
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2.6} /> Add New Student
@@ -214,13 +216,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 gap-1.5 rounded-lg border-white/12 bg-white/[0.04] text-[12px] font-medium text-slate-200 transition-all hover:border-lime-400/40 hover:bg-white/[0.07] hover:text-lime-200 active:scale-[0.97]"
+                className="h-8 gap-1.5 rounded-lg border-border bg-card text-[12px] font-medium text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]"
                 onClick={() => navigate("fees")}
               >
                 <BadgeIndianRupee className="h-3.5 w-3.5" /> Collect Fee
               </Button>
-              <div className="hidden items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[11.5px] text-muted-foreground lg:flex">
-                <Database className="h-3 w-3 text-lime-400/80" />
+              <div className="hidden items-center gap-2 rounded-lg border border-border bg-card/60 px-2.5 py-1.5 text-[11.5px] text-muted-foreground lg:flex">
+                <Database className="h-3 w-3 text-primary/80" />
                 {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })} · {clock}
               </div>
             </div>
@@ -243,12 +245,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </main>
 
           {/* Status bar */}
-          <footer className="flex items-center gap-3 border-t border-white/[0.06] bg-white/[0.02] px-4 py-1.5 text-[10.5px] text-muted-foreground backdrop-blur">
-            <span className="font-semibold text-slate-400">Pattern Sports Academy Management System</span>
-            <span className="text-slate-700">·</span>
-            <span className="tnum">PS-AMS v1.1</span>
+          <footer className="flex items-center gap-3 border-t border-border bg-card/50 px-4 py-1.5 text-[10.5px] text-muted-foreground backdrop-blur">
+            <span className="font-semibold text-muted-foreground">Pattern Sports Academy Management System</span>
+            <span className="text-border">·</span>
+            <span className="tnum">PS-AMS v1.2</span>
             <span className="ml-auto hidden items-center gap-1.5 sm:inline-flex">
-              <kbd className="rounded border border-white/10 bg-white/[0.05] px-1 py-px font-sans text-[9px] text-slate-500">Alt</kbd>
+              <kbd className="rounded border border-border bg-muted px-1 py-px font-sans text-[9px] text-muted-foreground">Alt</kbd>
               <span>+ 1-6 to switch modules</span>
             </span>
             <span className="hidden lg:inline">Print: A4 profile · A5 receipt · 80 mm thermal</span>

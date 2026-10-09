@@ -111,7 +111,7 @@ export function PageHeader({
   return (
     <div className={cn("flex flex-wrap items-end justify-between gap-3", className)}>
       <div className="flex items-start gap-3">
-        <span className="mt-1 h-8 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-lime-300 via-lime-400 to-cyan-400 shadow-[0_0_14px_rgba(163,230,53,0.45)]" />
+        <span className="mt-1 h-8 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-primary via-primary to-cyan-500 shadow-[0_0_14px_rgba(5,150,105,0.4)] dark:shadow-[0_0_14px_rgba(163,230,53,0.45)]" />
         <div>
           <h2 className="font-display text-xl font-bold tracking-tight text-foreground">{title}</h2>
           {subtitle && <p className="mt-0.5 text-[12.5px] text-muted-foreground">{subtitle}</p>}
@@ -125,13 +125,13 @@ export function PageHeader({
 /* ---------------- status chip ---------------- */
 
 const CHIP_TONES = {
-  lime: "bg-lime-400/10 text-lime-300 border-lime-400/25",
-  cyan: "bg-cyan-400/10 text-cyan-300 border-cyan-400/25",
-  rose: "bg-rose-400/10 text-rose-300 border-rose-400/25",
-  amber: "bg-amber-400/10 text-amber-300 border-amber-400/25",
-  violet: "bg-violet-400/10 text-violet-300 border-violet-400/25",
-  slate: "bg-white/5 text-slate-300 border-white/12",
-  emerald: "bg-emerald-400/10 text-emerald-300 border-emerald-400/25",
+  lime: "bg-lime-500/10 text-lime-700 border-lime-500/30 dark:bg-lime-400/10 dark:text-lime-300 dark:border-lime-400/25",
+  cyan: "bg-cyan-600/10 text-cyan-700 border-cyan-600/25 dark:bg-cyan-400/10 dark:text-cyan-300 dark:border-cyan-400/25",
+  rose: "bg-rose-500/10 text-rose-700 border-rose-500/25 dark:bg-rose-400/10 dark:text-rose-300 dark:border-rose-400/25",
+  amber: "bg-amber-500/10 text-amber-700 border-amber-500/25 dark:bg-amber-400/10 dark:text-amber-300 dark:border-amber-400/25",
+  violet: "bg-violet-500/10 text-violet-700 border-violet-500/25 dark:bg-violet-400/10 dark:text-violet-300 dark:border-violet-400/25",
+  slate: "bg-muted text-muted-foreground border-border",
+  emerald: "bg-emerald-500/10 text-emerald-700 border-emerald-500/25 dark:bg-emerald-400/10 dark:text-emerald-300 dark:border-emerald-400/25",
 } as const
 
 export type ChipTone = keyof typeof CHIP_TONES
@@ -179,7 +179,7 @@ export function EmptyState({
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
-        className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-muted-foreground shadow-inner"
+        className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-muted text-muted-foreground shadow-inner"
       >
         {icon}
       </motion.div>

@@ -102,17 +102,17 @@ export function AttendanceView() {
       <StaggerItem className="shrink-0">
         <div className="glass flex flex-wrap items-center gap-3 rounded-2xl p-3">
           <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-lime-300" />
+            <CalendarDays className="h-4 w-4 text-primary" />
             <Input
               type="date"
-              className="h-8 w-[150px] rounded-lg border-white/10 bg-white/[0.04] text-xs text-slate-100 focus-visible:border-lime-400/50"
+              className="h-8 w-[150px] rounded-lg border-border bg-card text-xs text-foreground focus-visible:border-primary/50"
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
           </div>
           <Select value={segment} onValueChange={setSegment}>
-            <SelectTrigger className="h-8 w-[190px] rounded-lg border-white/10 bg-white/[0.04] text-xs hover:border-lime-400/30"><SelectValue /></SelectTrigger>
-            <SelectContent className="border-white/10 bg-popover">
+            <SelectTrigger className="h-8 w-[190px] rounded-lg border-border bg-card text-xs hover:border-primary/30"><SelectValue /></SelectTrigger>
+            <SelectContent className="border-border bg-popover">
               <SelectItem value="all" className="text-xs">Whole academy ({students.length})</SelectItem>
               <SelectItem value="Morning" className="text-xs">Morning batch</SelectItem>
               <SelectItem value="Evening" className="text-xs">Evening batch</SelectItem>
@@ -121,15 +121,15 @@ export function AttendanceView() {
           </Select>
           <div className="tnum flex items-center gap-2 text-xs text-muted-foreground">
             <Users className="h-3.5 w-3.5" /> {roster.length} in session
-            <Badge className="rounded-full border border-emerald-400/25 bg-emerald-400/10 text-[10.5px] font-semibold text-emerald-300 hover:bg-emerald-400/10">{present} P</Badge>
-            <Badge className="rounded-full border border-rose-400/25 bg-rose-400/10 text-[10.5px] font-semibold text-rose-300 hover:bg-rose-400/10">{absent} A</Badge>
+            <Badge className="rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[10.5px] font-semibold text-emerald-700 hover:bg-emerald-500/15 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300">{present} P</Badge>
+            <Badge className="rounded-full border border-rose-500/30 bg-rose-500/10 text-[10.5px] font-semibold text-rose-700 hover:bg-rose-500/15 dark:border-rose-400/25 dark:bg-rose-400/10 dark:text-rose-300">{absent} A</Badge>
             {marked < roster.length && <Badge variant="secondary" className="rounded-full text-[10.5px]">{roster.length - marked} unmarked</Badge>}
           </div>
           <div className="ml-auto flex gap-2">
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-emerald-400/25 bg-emerald-400/10 text-xs font-medium text-emerald-300 transition-all hover:bg-emerald-400/20 active:scale-[0.97]" onClick={() => markAll("Present")}>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-emerald-500/30 bg-emerald-500/10 text-xs font-medium text-emerald-700 transition-all hover:bg-emerald-500/20 active:scale-[0.97] dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300" onClick={() => markAll("Present")}>
               <CheckCheck className="h-3.5 w-3.5" /> All present
             </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-white/12 bg-white/[0.04] text-xs hover:bg-white/[0.08] active:scale-[0.97]" onClick={printSheet}>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-xs hover:bg-muted active:scale-[0.97]" onClick={printSheet}>
               <Printer className="h-3.5 w-3.5" /> Print sheet
             </Button>
           </div>
@@ -160,16 +160,16 @@ export function AttendanceView() {
                   <motion.div
                     layout
                     className={cn(
-                      "row-hover flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5",
+                      "row-hover flex items-center gap-3 rounded-xl border border-border bg-card/50 px-3.5 py-2.5",
                       status === "Present" && "border-emerald-400/25 bg-emerald-400/[0.05]",
                       status === "Absent" && "border-rose-400/25 bg-rose-400/[0.04]"
                     )}
                   >
-                    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/10 bg-gradient-to-br from-lime-400/15 to-cyan-400/10">
+                    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-cyan-500/10">
                       {s.photoPath ? (
                         <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-lime-300/70">
+                        <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-primary/70">
                           {s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
                         </div>
                       )}
@@ -192,7 +192,7 @@ export function AttendanceView() {
                           "flex h-8 w-8 items-center justify-center rounded-lg border transition-colors",
                           status === "Present"
                             ? "border-emerald-400 bg-emerald-500 text-white shadow-[0_0_12px_-2px_rgba(52,211,153,0.7)]"
-                            : "bg-white/[0.05] text-muted-foreground hover:border-emerald-400 hover:text-emerald-300"
+                            : "bg-muted text-muted-foreground hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-300"
                         )}
                         title="Mark present"
                       >
@@ -207,7 +207,7 @@ export function AttendanceView() {
                           "flex h-8 w-8 items-center justify-center rounded-lg border transition-colors",
                           status === "Absent"
                             ? "border-rose-400 bg-rose-500 text-white shadow-[0_0_12px_-2px_rgba(251,113,133,0.7)]"
-                            : "bg-white/[0.05] text-muted-foreground hover:border-rose-400 hover:text-rose-300"
+                            : "bg-muted text-muted-foreground hover:border-rose-500 hover:text-rose-600 dark:hover:text-rose-300"
                         )}
                         title="Mark absent"
                       >

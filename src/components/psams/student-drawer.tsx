@@ -302,7 +302,7 @@ export function StudentDrawer({
             </div>
             <div className="space-y-1">
               <Label className="text-xs">BMI — auto</Label>
-              <div className="flex h-8 items-center justify-between rounded-md border bg-white/[0.05] px-2.5 text-xs">
+              <div className="flex h-8 items-center justify-between rounded-md border bg-muted px-2.5 text-xs">
                 <span className={`font-bold tabular-nums ${band.color}`}>{bmi !== null ? bmi.toFixed(1) : "—"}</span>
                 <span className="text-[10px] text-muted-foreground">{band.label}</span>
               </div>
@@ -320,7 +320,7 @@ export function StudentDrawer({
               <Input className="h-8 text-xs" type="number" min="0" value={form.jumpReachCm} onChange={(e) => set("jumpReachCm", e.target.value)} />
             </div>
             {jumpGain !== null && jumpGain > 0 && (
-              <div className="col-span-3 rounded-md bg-emerald-400/10 px-3 py-1.5 text-[11px] text-emerald-300">
+              <div className="col-span-3 rounded-md bg-emerald-500/10 px-3 py-1.5 text-[11px] text-emerald-700 dark:text-emerald-300">
                 Vertical gain (standing → spike): <b>+{jumpGain} cm</b>
               </div>
             )}
@@ -398,7 +398,7 @@ export function StudentDrawer({
         </div>
 
         {/* footer */}
-        <div className="flex items-center gap-2 border-t bg-white/[0.04] px-5 py-3">
+        <div className="flex items-center gap-2 border-t bg-card/60 px-5 py-3">
           <Button onClick={save} disabled={saving} className="h-9 gap-1.5 text-xs">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {editing ? "Save changes" : "Register student"}

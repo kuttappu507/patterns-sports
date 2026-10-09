@@ -99,7 +99,7 @@ export function MediaUpload({
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
           className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-input bg-white/[0.04] px-3 py-3 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/50 hover:text-accent-foreground",
+            "flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-input bg-muted/50 px-3 py-3 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/50 hover:text-accent-foreground",
             previewShape === "portrait" && "py-8",
             uploading && "opacity-60"
           )}

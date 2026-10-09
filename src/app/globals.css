@@ -47,13 +47,65 @@
 }
 
 /* ============================================================
-   PS-AMS :: "Dark Court" design system
-   Deep navy arena + volt-lime accent — premium sports-tech look
+   PS-AMS :: "Clean Court" light design system (default)
+   Crisp paper-white surfaces + emerald/volt accent — a modern,
+   airy web-app look. Dark mode (.dark) restores the premium
+   "Dark Court" arena palette. Switch via the header toggle.
    ============================================================ */
 
 :root {
   --radius: 0.875rem; /* soft 14px geometry — modern web app feel */
 
+  --background: #f2f5f0;
+  --foreground: #101828;
+
+  --card: #ffffff;
+  --card-foreground: #101828;
+  --popover: #ffffff;
+  --popover-foreground: #101828;
+
+  --primary: #059669;                       /* court emerald */
+  --primary-foreground: #ffffff;
+
+  --secondary: rgba(16, 24, 40, 0.05);
+  --secondary-foreground: #344054;
+
+  --muted: rgba(16, 24, 40, 0.05);
+  --muted-foreground: #5d6b7e;
+
+  --accent: rgba(5, 150, 105, 0.09);
+  --accent-foreground: #047857;
+
+  --destructive: #dc2626;
+  --success: #059669;
+  --warning: #d97706;
+
+  --border: rgba(16, 24, 40, 0.10);
+  --border-strong: rgba(16, 24, 40, 0.16);
+  --input: rgba(16, 24, 40, 0.12);
+  --ring: #10b981;
+
+  --chart-1: #65a30d;
+  --chart-2: #0891b2;
+  --chart-3: #7c3aed;
+  --chart-4: #d97706;
+  --chart-5: #e11d48;
+
+  --sidebar: rgba(255, 255, 255, 0.78);
+  --sidebar-foreground: #475467;
+  --sidebar-primary: #059669;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(5, 150, 105, 0.08);
+  --sidebar-accent-foreground: #047857;
+  --sidebar-border: rgba(16, 24, 40, 0.08);
+  --sidebar-ring: #10b981;
+}
+
+/* ============================================================
+   "Dark Court" — the original premium arena palette (opt-in)
+   ============================================================ */
+
+.dark {
   --background: #07090f;
   --foreground: #e8ecf4;
 
@@ -105,31 +157,44 @@
   }
   html {
     height: 100%;
+    color-scheme: light;
+  }
+  html.dark {
     color-scheme: dark;
   }
   body {
     @apply text-foreground;
     background:
-      radial-gradient(1200px 560px at 85% -10%, rgba(163, 230, 53, 0.07), transparent 60%),
-      radial-gradient(1000px 520px at -10% 108%, rgba(34, 211, 238, 0.06), transparent 58%),
-      radial-gradient(700px 420px at 50% 118%, rgba(167, 139, 250, 0.045), transparent 62%),
+      radial-gradient(1200px 560px at 85% -10%, rgba(5, 150, 105, 0.055), transparent 60%),
+      radial-gradient(1000px 520px at -10% 108%, rgba(8, 145, 178, 0.05), transparent 58%),
+      radial-gradient(700px 420px at 50% 118%, rgba(124, 58, 237, 0.035), transparent 62%),
       var(--background);
     background-attachment: fixed;
     height: 100%;
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
   }
+  .dark body {
+    background:
+      radial-gradient(1200px 560px at 85% -10%, rgba(163, 230, 53, 0.07), transparent 60%),
+      radial-gradient(1000px 520px at -10% 108%, rgba(34, 211, 238, 0.06), transparent 58%),
+      radial-gradient(700px 420px at 50% 118%, rgba(167, 139, 250, 0.045), transparent 62%),
+      var(--background);
+  }
   h1, h2, h3, h4 {
     font-family: var(--font-display), system-ui, sans-serif;
     letter-spacing: -0.02em;
   }
   ::selection {
+    background: rgba(16, 185, 129, 0.24);
+  }
+  .dark ::selection {
     background: rgba(163, 230, 53, 0.28);
     color: #f4fdf0;
   }
 }
 
-/* ---- sleek dark scrollbars ---- */
+/* ---- theme-aware scrollbars ---- */
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -138,27 +203,42 @@
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(16, 24, 40, 0.16);
   border-radius: 8px;
   border: 3px solid transparent;
   background-clip: content-box;
 }
 *::-webkit-scrollbar-thumb:hover {
+  background: rgba(5, 150, 105, 0.5);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.dark *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.dark *::-webkit-scrollbar-thumb:hover {
   background: rgba(163, 230, 53, 0.45);
   border: 3px solid transparent;
   background-clip: content-box;
 }
 
 /* ============================================================
-   Shared surfaces & micro-interactions
+   Shared surfaces & micro-interactions (theme-aware)
    ============================================================ */
 
 /* frosted glass panel */
 .glass {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.78));
+  border: 1px solid rgba(16, 24, 40, 0.08);
   backdrop-filter: blur(18px) saturate(1.15);
   -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px -18px rgba(16, 24, 40, 0.14);
+}
+.dark .glass {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
+  border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.05) inset, 0 12px 32px -18px rgba(0, 0, 0, 0.55);
 }
 
@@ -168,6 +248,10 @@
 }
 .hover-lift:hover {
   transform: translateY(-2px);
+  border-color: rgba(5, 150, 105, 0.35);
+  box-shadow: 0 16px 36px -18px rgba(16, 24, 40, 0.22), 0 0 0 1px rgba(5, 150, 105, 0.08), 0 0 28px -6px rgba(5, 150, 105, 0.14);
+}
+.dark .hover-lift:hover {
   border-color: rgba(163, 230, 53, 0.32);
   box-shadow: 0 14px 34px -16px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(163, 230, 53, 0.10), 0 0 28px -6px rgba(163, 230, 53, 0.12);
 }
@@ -182,10 +266,13 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(160px 80px at var(--mx, 50%) var(--my, 50%), rgba(163, 230, 53, 0.10), transparent 80%);
+  background: radial-gradient(160px 80px at var(--mx, 50%) var(--my, 50%), rgba(5, 150, 105, 0.09), transparent 80%);
   opacity: 0;
   transition: opacity 0.25s ease;
   pointer-events: none;
+}
+.dark .reveal-item::after {
+  background: radial-gradient(160px 80px at var(--mx, 50%) var(--my, 50%), rgba(163, 230, 53, 0.10), transparent 80%);
 }
 .reveal-item:hover::after {
   opacity: 1;
@@ -204,12 +291,19 @@
   bottom: 18%;
   width: 3px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #bef264, #22d3ee);
+  background: linear-gradient(180deg, #10b981, #0891b2);
   opacity: 0;
   transform: scaleY(0.3);
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
+.dark .row-hover::before {
+  background: linear-gradient(180deg, #bef264, #22d3ee);
+}
 .row-hover:hover {
+  background: rgba(16, 24, 40, 0.035);
+  border-color: rgba(16, 24, 40, 0.14);
+}
+.dark .row-hover:hover {
   background: rgba(255, 255, 255, 0.045);
   border-color: rgba(255, 255, 255, 0.14);
 }
@@ -220,25 +314,36 @@
 
 /* gradient headline text */
 .text-gradient {
-  background: linear-gradient(92deg, #f0fdf4 10%, #bef264 55%, #67e8f9 95%);
+  background: linear-gradient(92deg, #101828 10%, #047857 55%, #0e7490 95%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+.dark .text-gradient {
+  background: linear-gradient(92deg, #f0fdf4 10%, #bef264 55%, #67e8f9 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 /* shimmer skeleton */
 .shimmer {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(16, 24, 40, 0.06);
 }
 .shimmer::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
   animation: psams-shimmer 1.6s infinite;
+}
+.dark .shimmer {
+  background: rgba(255, 255, 255, 0.05);
+}
+.dark .shimmer::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
 }
 @keyframes psams-shimmer {
   100% { transform: translateX(100%); }
@@ -281,6 +386,22 @@
 }
 .float-slow {
   animation: psams-float 7s ease-in-out infinite;
+}
+
+/* hero band on the dashboard — theme-aware gradient wash */
+.hero-band {
+  border: 1px solid rgba(5, 150, 105, 0.14);
+  background:
+    linear-gradient(115deg, rgba(5, 150, 105, 0.10) 0%, rgba(8, 145, 178, 0.07) 45%, rgba(124, 58, 237, 0.06) 100%),
+    rgba(255, 255, 255, 0.66);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.dark .hero-band {
+  border-color: rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(115deg, rgba(163, 230, 53, 0.13) 0%, rgba(34, 211, 238, 0.07) 45%, rgba(167, 139, 250, 0.08) 100%),
+    rgba(255, 255, 255, 0.02);
 }
 
 .tnum {

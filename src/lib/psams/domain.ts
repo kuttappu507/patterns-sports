@@ -216,11 +216,11 @@ export function isSafeMediaPath(p: string): boolean {
 }
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  Mini: "bg-sky-400/10 text-sky-300 border-sky-400/25",
-  "Sub-Junior": "bg-violet-400/10 text-violet-300 border-violet-400/25",
-  Junior: "bg-emerald-400/10 text-emerald-300 border-emerald-400/25",
-  Youth: "bg-amber-400/10 text-amber-300 border-amber-400/25",
-  Senior: "bg-rose-400/10 text-rose-300 border-rose-400/25",
+  Mini: "bg-sky-500/10 text-sky-700 border-sky-500/30 dark:bg-sky-400/10 dark:text-sky-300 dark:border-sky-400/25",
+  "Sub-Junior": "bg-violet-500/10 text-violet-700 border-violet-500/30 dark:bg-violet-400/10 dark:text-violet-300 dark:border-violet-400/25",
+  Junior: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:bg-emerald-400/10 dark:text-emerald-300 dark:border-emerald-400/25",
+  Youth: "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-300 dark:border-amber-400/25",
+  Senior: "bg-rose-500/10 text-rose-700 border-rose-500/30 dark:bg-rose-400/10 dark:text-rose-300 dark:border-rose-400/25",
 }
 
 /** Bar gradient per age category (dashboard distribution chart). */
