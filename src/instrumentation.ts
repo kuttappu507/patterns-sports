@@ -3,8 +3,9 @@
 // Runs once when the web/preview server boots: guarantees the
 // SQLite schema exists and seeds the demo academy the first time
 // the database is empty (see src/lib/psams/bootstrap.ts).
-// Skipped in the Tauri desktop build (no server there — the Rust
-// shell applies the schema itself) and never throws into boot.
+// Skipped in the Tauri desktop build (no server there — the frontend
+// ensureSchema() in tauri-api.ts applies the DDL itself) and never
+// throws into boot.
 // ============================================================
 
 export async function register() {

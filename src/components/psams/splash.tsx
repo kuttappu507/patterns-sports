@@ -150,7 +150,7 @@ export function Splash({ error }: { error: string | null }) {
 
       {/* footer strip */}
       <div className="absolute bottom-5 left-0 right-0 flex items-center justify-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.24em] text-indigo-200/40">
-        PS-AMS v1.3 · Offline-first
+        PS-AMS v1.4 · Offline-first
       </div>
     </motion.div>
   )

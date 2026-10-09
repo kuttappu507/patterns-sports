@@ -82,25 +82,38 @@ async function ensureSchema(db: DB): Promise<void> {
     // by the `schema_sql` command — no runtime resource files needed, so
     // the portable exe works with zero sidecar assets.
     const sql = await invoke<string>("schema_sql")
-    const statements = sql
+    // IMPORTANT: strip comment-only lines BEFORE splitting on ";".
+    // schema.sql places a "-- ----------" banner above every CREATE TABLE;
+    // naive splitting lumps the banner into the statement that follows, and
+    // filtering chunks that start with "--" silently dropped EVERY
+    // CREATE TABLE — the desktop DB booted with zero tables, which looked
+    // like "demo data not coming / dashboard / pages not loading".
+    const cleaned = sql
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n")
+    const statements = cleaned
       .split(";")
       .map((s) => s.trim())
-      .filter((s) => s.length > 0 && !s.startsWith("--"))
+      .filter((s) => s.length > 0)
     for (const stmt of statements) {
       try {
         await db.execute(stmt)
-      } catch {
-        /* statement already applied */
+      } catch (e) {
+        // Idempotent DDL — "already exists" is expected on later boots.
+        // Anything else is a REAL failure that used to vanish silently;
+        // surface it so boot problems are diagnosable from the console.
+        console.warn("[PS-AMS] schema statement failed:", e instanceof Error ? e.message : e, "→", stmt.slice(0, 90))
       }
     }
-  } catch {
-    /* schema command unavailable — assume the shell bootstrapped it */
+  } catch (e) {
+    console.warn("[PS-AMS] schema bootstrap unavailable:", e instanceof Error ? e.message : e)
   }
 }
 
 /** Boot the offline backend: DB + media directories. Called once at app start. */
 export async function initBackend(): Promise<void> {
-  await getDb()
+  const db = await getDb()
   // Media root comes from the Rust data layout so portable builds
   // (portable.flag) get their media tree next to the exe.
   try {
@@ -115,6 +128,31 @@ export async function initBackend(): Promise<void> {
     } catch {
       /* already exists */
     }
+  }
+  // First-launch experience: an empty desktop database is seeded once with
+  // the demo academy (same dataset as the web bootstrapper), so a fresh
+  // install never opens into a blank shell. autoSeedDone makes this a
+  // one-shot — removing demo data from Settings stays removed.
+  await autoSeedDemoIfEmpty(db)
+}
+
+const AUTO_SEED_KEY = "autoSeedDone"
+
+async function autoSeedDemoIfEmpty(db: DB): Promise<void> {
+  try {
+    const flag = await db.select<{ value: string }[]>("SELECT value FROM Setting WHERE key = $1", [AUTO_SEED_KEY])
+    if (flag[0]?.value) return
+    const count = await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM Student", [])
+    if ((count[0]?.n ?? 0) === 0) {
+      await loadDemoData()
+      console.warn("[PS-AMS] first launch on empty database — demo academy seeded")
+    }
+    await db.execute(`INSERT INTO Setting (key, value) VALUES ($1, '1') ON CONFLICT(key) DO UPDATE SET value = '1'`, [
+      AUTO_SEED_KEY,
+    ])
+  } catch (e) {
+    // Never block the boot path — Settings → Demo Data still works manually.
+    console.warn("[PS-AMS] demo auto-seed skipped:", e instanceof Error ? e.message : e)
   }
 }
 

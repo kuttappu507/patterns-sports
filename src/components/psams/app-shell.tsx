@@ -265,7 +265,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <footer className="court-net flex items-center gap-3 border-t border-border bg-card/50 px-5 py-2 text-[12px] text-muted-foreground backdrop-blur">
             <span className="font-semibold text-muted-foreground">Pattern Sports Volleyball Academy</span>
             <span className="text-border">·</span>
-            <span className="tnum">PS-AMS v1.3</span>
+            <span className="tnum">PS-AMS v1.4</span>
             <span className="ml-auto hidden items-center gap-1.5 sm:inline-flex">
               <kbd className="rounded border border-border bg-muted px-1.5 py-px font-sans text-[10px] text-muted-foreground">Alt</kbd>
               <span>+ 1-6 to switch modules</span>
