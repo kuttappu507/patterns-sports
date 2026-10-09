@@ -114,7 +114,7 @@ export function DashboardView() {
             <div className="flex items-center gap-6">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Month revenue</p>
-                <p className="mt-0.5 font-display text-2xl font-bold tnum text-emerald-600 dark:text-emerald-300">
+                <p className="mt-0.5 font-display text-2xl font-bold tnum text-orange-600 dark:text-orange-300">
                   <CountUp value={stats.monthRevenue} format={(n) => formatINR(Math.round(n))} />
                 </p>
               </div>
@@ -134,7 +134,7 @@ export function DashboardView() {
             </div>
 
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              <Button size="sm" className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-[12px] font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(5,150,105,0.55)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(163,230,53,0.5)]" onClick={() => navigate("students")}>
+              <Button size="sm" className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-[12px] font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(36,86,230,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(109,155,255,0.55)]" onClick={() => navigate("students")}>
                 <UserPlus className="h-3.5 w-3.5" strokeWidth={2.6} /> Add New Student
               </Button>
               <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-[12px] text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]" onClick={() => navigate("fees")}>
@@ -166,7 +166,7 @@ export function DashboardView() {
         <MetricCard
           index={1}
           icon={<BadgeIndianRupee className="h-4 w-4" />}
-          tint="bg-emerald-500/10 text-emerald-600 shadow-[0_0_14px_-4px_rgba(5,150,105,0.4)] dark:bg-emerald-400/10 dark:text-emerald-300 dark:shadow-[0_0_14px_-4px_rgba(52,211,153,0.5)]"
+          tint="bg-blue-500/10 text-blue-600 shadow-[0_0_14px_-4px_rgba(36,86,230,0.45)] dark:bg-blue-400/10 dark:text-blue-300 dark:shadow-[0_0_14px_-4px_rgba(109,155,255,0.5)]"
           label="Revenue — Current Month"
           value={stats.monthRevenue}
           format={(n) => formatINR(Math.round(n))}
@@ -219,7 +219,7 @@ export function DashboardView() {
                       initial={{ width: 0 }}
                       animate={{ width: `${(c.count / maxCat) * 100}%` }}
                       transition={{ duration: 0.8, ease: [0.22, 0.68, 0.31, 1], delay: 0.15 }}
-                      className={`h-full rounded-full bg-gradient-to-r ${CATEGORY_GRADIENTS[c.category] ?? "from-primary to-emerald-400"} shadow-[0_0_10px_-2px_rgba(5,150,105,0.45)] dark:shadow-[0_0_10px_-2px_rgba(163,230,53,0.6)]`}
+                      className={`h-full rounded-full bg-gradient-to-r ${CATEGORY_GRADIENTS[c.category] ?? "from-primary to-orange-400"} shadow-[0_0_10px_-2px_rgba(36,86,230,0.5)] dark:shadow-[0_0_10px_-2px_rgba(109,155,255,0.65)]`}
                     />
                   </div>
                 </div>
@@ -257,9 +257,9 @@ export function DashboardView() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.2 + i * 0.05 }}
                       whileHover={{ y: -4 }}
-                      className="group rounded-xl border border-border bg-card/60 p-3 text-center transition-colors duration-200 hover:border-primary/30 hover:bg-accent/60 hover:shadow-[0_10px_24px_-12px_rgba(5,150,105,0.4)] dark:hover:shadow-[0_0_20px_-8px_rgba(163,230,53,0.4)]"
+                      className="group rounded-xl border border-border bg-card/60 p-3 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/60 hover:shadow-[0_10px_24px_-12px_rgba(36,86,230,0.45)] dark:hover:shadow-[0_0_20px_-8px_rgba(109,155,255,0.45)]"
                     >
-                      <div className="mx-auto h-14 w-14 overflow-hidden rounded-full border-2 border-border bg-gradient-to-br from-primary/15 to-cyan-500/10 shadow-inner transition-all duration-200 group-hover:border-primary/40">
+                      <div className="mx-auto h-14 w-14 overflow-hidden rounded-full border-2 border-border bg-gradient-to-br from-primary/15 to-orange-500/10 shadow-inner transition-all duration-200 group-hover:border-primary/40">
                         {m.photoPath ? (
                           <img src={mediaUrl(m.photoPath)} alt={m.fullName} className="h-full w-full object-cover" />
                         ) : (
@@ -311,7 +311,7 @@ export function DashboardView() {
                     transition={{ delay: 0.25 + i * 0.05 }}
                     className="row-hover flex items-center gap-3 rounded-xl border border-border bg-card/50 pl-4 pr-3 py-2"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 shadow-[0_0_12px_-4px_rgba(5,150,105,0.5)] dark:bg-emerald-400/10 dark:text-emerald-300 dark:shadow-[0_0_12px_-4px_rgba(52,211,153,0.6)]">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500/10 text-orange-600 shadow-[0_0_12px_-4px_rgba(249,115,22,0.5)] dark:bg-orange-400/10 dark:text-orange-300 dark:shadow-[0_0_12px_-4px_rgba(251,146,60,0.6)]">
                       <Receipt className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -320,7 +320,7 @@ export function DashboardView() {
                         {p.receiptNo} · {p.paymentMode} · {formatDate(p.paymentDate)}
                       </div>
                     </div>
-                    <span className="tnum text-xs font-bold text-emerald-600 dark:text-emerald-300">{formatINR(p.amount)}</span>
+                    <span className="tnum text-xs font-bold text-orange-600 dark:text-orange-300">{formatINR(p.amount)}</span>
                   </motion.div>
                 ))
               )}

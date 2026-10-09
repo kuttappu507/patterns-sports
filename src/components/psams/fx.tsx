@@ -111,7 +111,7 @@ export function PageHeader({
   return (
     <div className={cn("flex flex-wrap items-end justify-between gap-3", className)}>
       <div className="flex items-start gap-3">
-        <span className="mt-1 h-8 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-primary via-primary to-cyan-500 shadow-[0_0_14px_rgba(5,150,105,0.4)] dark:shadow-[0_0_14px_rgba(163,230,53,0.45)]" />
+        <span className="mt-1 h-8 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-primary via-primary to-orange-500 shadow-[0_0_14px_rgba(36,86,230,0.45)] dark:shadow-[0_0_14px_rgba(109,155,255,0.5)]" />
         <div>
           <h2 className="font-display text-xl font-bold tracking-tight text-foreground">{title}</h2>
           {subtitle && <p className="mt-0.5 text-[12.5px] text-muted-foreground">{subtitle}</p>}
@@ -125,7 +125,7 @@ export function PageHeader({
 /* ---------------- status chip ---------------- */
 
 const CHIP_TONES = {
-  lime: "bg-lime-500/10 text-lime-700 border-lime-500/30 dark:bg-lime-400/10 dark:text-lime-300 dark:border-lime-400/25",
+  blue: "bg-blue-500/10 text-blue-700 border-blue-500/30 dark:bg-blue-400/10 dark:text-blue-300 dark:border-blue-400/25",
   cyan: "bg-cyan-600/10 text-cyan-700 border-cyan-600/25 dark:bg-cyan-400/10 dark:text-cyan-300 dark:border-cyan-400/25",
   rose: "bg-rose-500/10 text-rose-700 border-rose-500/25 dark:bg-rose-400/10 dark:text-rose-300 dark:border-rose-400/25",
   amber: "bg-amber-500/10 text-amber-700 border-amber-500/25 dark:bg-amber-400/10 dark:text-amber-300 dark:border-amber-400/25",

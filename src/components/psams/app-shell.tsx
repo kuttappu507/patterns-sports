@@ -14,7 +14,7 @@ import {
   ChevronLeft,
   Plus,
   BadgeIndianRupee,
-  Trophy,
+  Volleyball,
 } from "lucide-react"
 import { useAppStore, type ViewKey } from "@/lib/psams/store"
 import { cn } from "@/lib/utils"
@@ -72,19 +72,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className="relative z-20 flex h-full shrink-0 flex-col border-r border-sidebar-border backdrop-blur-2xl"
           style={{ background: "var(--sidebar)" }}
         >
-          {/* brand */}
+          {/* brand — volleyball tile with spin-on-hover ball */}
           <div className={cn("flex items-center gap-2.5 px-3 pb-4 pt-5", collapsed && "justify-center px-0")}>
             <motion.div
-              whileHover={{ rotate: -8, scale: 1.06 }}
-              transition={{ type: "spring", stiffness: 300, damping: 18 }}
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-lime-300 to-emerald-500 shadow-[0_0_22px_rgba(163,230,53,0.35)]"
+              whileHover={{ y: -4, scale: 1.08 }}
+              transition={{ type: "spring", stiffness: 380, damping: 15 }}
+              className="group relative flex h-10 w-10 shrink-0 cursor-default items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500 shadow-[0_0_22px_rgba(36,86,230,0.38)] dark:shadow-[0_0_24px_rgba(109,155,255,0.4)]"
             >
-              <Trophy className="h-5 w-5 text-[#0b0e14]" strokeWidth={2.4} />
+              <Volleyball className="spin-on-hover h-5 w-5 text-white" strokeWidth={2.2} />
+              <span className="absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
             </motion.div>
             {!collapsed && (
               <div className="min-w-0">
                 <div className="font-display text-[15px] font-extrabold leading-tight tracking-tight">
-                  PS<span className="text-lime-400">-</span>AMS
+                  PS<span className="text-orange-500">-</span>AMS
                 </div>
                 <div className="truncate text-[10.5px] font-medium leading-tight text-muted-foreground">
                   Pattern Sports Academy
@@ -114,21 +115,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <motion.span
                       layoutId="nav-pill"
                       transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                      className="absolute inset-0 rounded-xl border border-primary/25 bg-primary/10 shadow-[0_8px_20px_-10px_rgba(5,150,105,0.45)] dark:shadow-[0_0_18px_-4px_rgba(163,230,53,0.35)]"
+                      className="absolute inset-0 rounded-xl border border-primary/25 bg-primary/10 shadow-[0_8px_20px_-10px_rgba(36,86,230,0.5)] dark:shadow-[0_0_18px_-4px_rgba(109,155,255,0.4)]"
                     />
                   )}
                   {isActive && (
                     <motion.span
                       layoutId="nav-rail"
                       transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                      className="absolute -left-2.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-gradient-to-b from-primary to-cyan-500 shadow-[0_0_10px_rgba(5,150,105,0.55)] dark:shadow-[0_0_10px_rgba(163,230,53,0.7)]"
+                      className="absolute -left-2.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-gradient-to-b from-primary to-orange-500 shadow-[0_0_10px_rgba(36,86,230,0.6)] dark:shadow-[0_0_10px_rgba(109,155,255,0.75)]"
                     />
                   )}
                   <Icon
                     className={cn(
                       "relative z-10 h-[18px] w-[18px] shrink-0 transition-all duration-200",
                       isActive
-                        ? "text-primary drop-shadow-[0_0_6px_rgba(5,150,105,0.35)] dark:drop-shadow-[0_0_6px_rgba(163,230,53,0.55)]"
+                        ? "text-primary drop-shadow-[0_0_6px_rgba(36,86,230,0.4)] dark:drop-shadow-[0_0_6px_rgba(109,155,255,0.6)]"
                         : "text-muted-foreground group-hover:text-foreground group-hover:scale-110"
                     )}
                     strokeWidth={isActive ? 2.3 : 2}
@@ -163,8 +164,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="space-y-1 px-2.5 pb-4">
             {!collapsed && (
               <div className="mx-1 mb-2 rounded-xl border border-border bg-card/60 p-2.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-300">
-                  <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary dark:text-blue-300">
+                  <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-primary dark:bg-blue-400" />
                   Local SQLite · Connected
                 </div>
                 <div className="mt-1 flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
@@ -208,7 +209,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <ThemeToggle />
               <Button
                 size="sm"
-                className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-[12px] font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(5,150,105,0.55)] transition-all hover:brightness-110 hover:shadow-[0_10px_22px_-8px_rgba(5,150,105,0.65)] active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(163,230,53,0.5)] dark:hover:shadow-[0_0_22px_-4px_rgba(163,230,53,0.7)]"
+                className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-[12px] font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(36,86,230,0.6)] transition-all hover:brightness-110 hover:shadow-[0_10px_22px_-8px_rgba(36,86,230,0.7)] active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(109,155,255,0.55)] dark:hover:shadow-[0_0_22px_-4px_rgba(109,155,255,0.75)]"
                 onClick={() => navigate("students")}
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2.6} /> Add New Student
@@ -245,10 +246,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </main>
 
           {/* Status bar */}
-          <footer className="flex items-center gap-3 border-t border-border bg-card/50 px-4 py-1.5 text-[10.5px] text-muted-foreground backdrop-blur">
+          <footer className="court-net flex items-center gap-3 border-t border-border bg-card/50 px-4 py-1.5 text-[10.5px] text-muted-foreground backdrop-blur">
             <span className="font-semibold text-muted-foreground">Pattern Sports Academy Management System</span>
             <span className="text-border">·</span>
-            <span className="tnum">PS-AMS v1.2</span>
+            <span className="tnum">PS-AMS v1.3</span>
             <span className="ml-auto hidden items-center gap-1.5 sm:inline-flex">
               <kbd className="rounded border border-border bg-muted px-1 py-px font-sans text-[9px] text-muted-foreground">Alt</kbd>
               <span>+ 1-6 to switch modules</span>

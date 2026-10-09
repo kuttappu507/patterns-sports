@@ -3,18 +3,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Family names of the self-hosted fontsource variable fonts imported in
-   layout.tsx (replaces the CSS variables next/font/google used to set). */
+/* Family names of the self-hosted fonts imported in layout.tsx.
+   Poppins carries the entire UI — geometric, round, athletic. */
 :root {
-  --font-inter: "Inter Variable";
-  --font-sora: "Sora Variable";
+  --font-body: "Poppins";
+  --font-head: "Poppins";
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter), "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-display: var(--font-sora), var(--font-inter), "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-body), "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-head), var(--font-body), "Segoe UI", system-ui, sans-serif;
   --font-mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -54,108 +54,118 @@
 }
 
 /* ============================================================
-   PS-AMS :: "Clean Court" light design system (default)
-   Crisp paper-white surfaces + emerald/volt accent — a modern,
-   airy web-app look. Dark mode (.dark) restores the premium
-   "Dark Court" arena palette. Switch via the header toggle.
+   PS-AMS :: "Volley Arena" light design system (default)
+   A volleyball-court inspired sports identity: royal court blue
+   as the primary, spike orange as the energy accent, sand yellow
+   highlights, on a crisp cool-white arena floor. Fluid animated
+   aurora orbs drift behind the UI. Dark mode (.dark) switches to
+   the "Night Arena" — floodlit navy court with electric accents.
    ============================================================ */
 
 :root {
-  --radius: 0.875rem; /* soft 14px geometry — modern web app feel */
+  --radius: 0.9rem;
 
-  --background: #f2f5f0;
-  --foreground: #101828;
+  --background: #f5f7fd;
+  --foreground: #0e1a3a;
 
   --card: #ffffff;
-  --card-foreground: #101828;
+  --card-foreground: #0e1a3a;
   --popover: #ffffff;
-  --popover-foreground: #101828;
+  --popover-foreground: #0e1a3a;
 
-  --primary: #059669;                       /* court emerald */
+  --primary: #2456e6;                       /* royal court blue */
   --primary-foreground: #ffffff;
 
-  --secondary: rgba(16, 24, 40, 0.05);
-  --secondary-foreground: #344054;
+  --secondary: rgba(14, 26, 58, 0.05);
+  --secondary-foreground: #33415e;
 
-  --muted: rgba(16, 24, 40, 0.05);
-  --muted-foreground: #5d6b7e;
+  --muted: rgba(14, 26, 58, 0.05);
+  --muted-foreground: #5a6b8c;
 
-  --accent: rgba(5, 150, 105, 0.09);
-  --accent-foreground: #047857;
+  --accent: rgba(37, 86, 230, 0.08);
+  --accent-foreground: #1d4ed8;
 
   --destructive: #dc2626;
-  --success: #059669;
+  --success: #16a34a;
   --warning: #d97706;
 
-  --border: rgba(16, 24, 40, 0.10);
-  --border-strong: rgba(16, 24, 40, 0.16);
-  --input: rgba(16, 24, 40, 0.12);
-  --ring: #10b981;
+  --border: rgba(14, 26, 58, 0.10);
+  --border-strong: rgba(14, 26, 58, 0.16);
+  --input: rgba(14, 26, 58, 0.12);
+  --ring: #3b82f6;
 
-  --chart-1: #65a30d;
-  --chart-2: #0891b2;
-  --chart-3: #7c3aed;
-  --chart-4: #d97706;
+  --chart-1: #2456e6;
+  --chart-2: #f97316;
+  --chart-3: #0891b2;
+  --chart-4: #f59e0b;
   --chart-5: #e11d48;
 
-  --sidebar: rgba(255, 255, 255, 0.78);
-  --sidebar-foreground: #475467;
-  --sidebar-primary: #059669;
+  --sidebar: rgba(255, 255, 255, 0.80);
+  --sidebar-foreground: #46536f;
+  --sidebar-primary: #2456e6;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(5, 150, 105, 0.08);
-  --sidebar-accent-foreground: #047857;
-  --sidebar-border: rgba(16, 24, 40, 0.08);
-  --sidebar-ring: #10b981;
+  --sidebar-accent: rgba(37, 86, 230, 0.08);
+  --sidebar-accent-foreground: #1d4ed8;
+  --sidebar-border: rgba(14, 26, 58, 0.08);
+  --sidebar-ring: #3b82f6;
+
+  --net-line: rgba(14, 26, 58, 0.07);
+  --glow: 36, 86, 230;                      /* rgb triplet of primary glow */
+  --spike: 249, 115, 22;                    /* rgb triplet of orange accent */
 }
 
 /* ============================================================
-   "Dark Court" — the original premium arena palette (opt-in)
+   "Night Arena" — floodlit indoor court (opt-in dark mode)
    ============================================================ */
 
 .dark {
-  --background: #07090f;
-  --foreground: #e8ecf4;
+  --background: #080d1d;
+  --foreground: #e7ecf9;
 
-  --card: rgba(255, 255, 255, 0.035);
-  --card-foreground: #e8ecf4;
-  --popover: #0e131f;
-  --popover-foreground: #e8ecf4;
+  --card: rgba(255, 255, 255, 0.040);
+  --card-foreground: #e7ecf9;
+  --popover: #0d1530;
+  --popover-foreground: #e7ecf9;
 
-  --primary: #a3e635;                       /* volt lime */
-  --primary-foreground: #0b0e14;
+  --primary: #6d9bff;                       /* electric court blue */
+  --primary-foreground: #071022;
 
   --secondary: rgba(255, 255, 255, 0.06);
-  --secondary-foreground: #cbd5e1;
+  --secondary-foreground: #c6d2ec;
 
   --muted: rgba(255, 255, 255, 0.06);
-  --muted-foreground: #8b94a7;
+  --muted-foreground: #8fa0c2;
 
-  --accent: rgba(163, 230, 53, 0.12);
-  --accent-foreground: #d9f99d;
+  --accent: rgba(251, 146, 60, 0.13);
+  --accent-foreground: #fdba74;
 
   --destructive: #f87171;
   --success: #34d399;
   --warning: #fbbf24;
 
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.14);
-  --input: rgba(255, 255, 255, 0.10);
-  --ring: #a3e635;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --input: rgba(255, 255, 255, 0.11);
+  --ring: #6d9bff;
 
-  --chart-1: #a3e635;
-  --chart-2: #22d3ee;
-  --chart-3: #a78bfa;
+  --chart-1: #6d9bff;
+  --chart-2: #fb923c;
+  --chart-3: #22d3ee;
   --chart-4: #fbbf24;
   --chart-5: #fb7185;
 
-  --sidebar: rgba(10, 13, 21, 0.72);
-  --sidebar-foreground: #cbd5e1;
-  --sidebar-primary: #a3e635;
-  --sidebar-primary-foreground: #0b0e14;
-  --sidebar-accent: rgba(163, 230, 53, 0.10);
-  --sidebar-accent-foreground: #d9f99d;
-  --sidebar-border: rgba(255, 255, 255, 0.07);
-  --sidebar-ring: #a3e635;
+  --sidebar: rgba(9, 14, 32, 0.78);
+  --sidebar-foreground: #c6d2ec;
+  --sidebar-primary: #6d9bff;
+  --sidebar-primary-foreground: #071022;
+  --sidebar-accent: rgba(109, 155, 255, 0.11);
+  --sidebar-accent-foreground: #b6ccff;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #6d9bff;
+
+  --net-line: rgba(255, 255, 255, 0.06);
+  --glow: 109, 155, 255;
+  --spike: 251, 146, 60;
 }
 
 @layer base {
@@ -172,33 +182,85 @@
   body {
     @apply text-foreground;
     background:
-      radial-gradient(1200px 560px at 85% -10%, rgba(5, 150, 105, 0.055), transparent 60%),
-      radial-gradient(1000px 520px at -10% 108%, rgba(8, 145, 178, 0.05), transparent 58%),
-      radial-gradient(700px 420px at 50% 118%, rgba(124, 58, 237, 0.035), transparent 62%),
+      radial-gradient(1100px 520px at 88% -12%, rgba(var(--glow), 0.07), transparent 60%),
+      radial-gradient(900px 480px at -8% 110%, rgba(var(--spike), 0.05), transparent 58%),
       var(--background);
     background-attachment: fixed;
     height: 100%;
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
-  }
-  .dark body {
-    background:
-      radial-gradient(1200px 560px at 85% -10%, rgba(163, 230, 53, 0.07), transparent 60%),
-      radial-gradient(1000px 520px at -10% 108%, rgba(34, 211, 238, 0.06), transparent 58%),
-      radial-gradient(700px 420px at 50% 118%, rgba(167, 139, 250, 0.045), transparent 62%),
-      var(--background);
+    letter-spacing: -0.006em;
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display), system-ui, sans-serif;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
   }
   ::selection {
-    background: rgba(16, 185, 129, 0.24);
+    background: rgba(var(--glow), 0.22);
   }
   .dark ::selection {
-    background: rgba(163, 230, 53, 0.28);
-    color: #f4fdf0;
+    background: rgba(var(--glow), 0.30);
+    color: #f2f6ff;
   }
+}
+
+/* ============================================================
+   FLUID AURORA — three drifting light orbs behind the whole UI.
+   Pure GPU transforms, ~60fps, zero JS. Blue / orange / cyan.
+   ============================================================ */
+
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aurora span {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.5;
+  will-change: transform;
+}
+.dark .aurora span {
+  opacity: 0.30;
+  filter: blur(110px);
+}
+.aurora .orb-a {
+  width: 560px; height: 560px;
+  top: -180px; right: -120px;
+  background: radial-gradient(circle at 35% 35%, rgba(var(--glow), 0.34), transparent 65%);
+  animation: orb-drift-a 26s ease-in-out infinite;
+}
+.aurora .orb-b {
+  width: 520px; height: 520px;
+  bottom: -200px; left: -140px;
+  background: radial-gradient(circle at 60% 40%, rgba(var(--spike), 0.30), transparent 65%);
+  animation: orb-drift-b 32s ease-in-out infinite;
+}
+.aurora .orb-c {
+  width: 380px; height: 380px;
+  top: 42%; left: 46%;
+  background: radial-gradient(circle at 50% 50%, rgba(8, 145, 178, 0.22), transparent 65%);
+  animation: orb-drift-c 38s ease-in-out infinite;
+}
+@keyframes orb-drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(-90px, 70px) scale(1.12); }
+  66%      { transform: translate(50px, 120px) scale(0.94); }
+}
+@keyframes orb-drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%      { transform: translate(110px, -80px) scale(1.15); }
+  70%      { transform: translate(30px, -30px) scale(0.92); }
+}
+@keyframes orb-drift-c {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(-38%, -62%) scale(1.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aurora span { animation: none; }
 }
 
 /* ---- theme-aware scrollbars ---- */
@@ -210,13 +272,13 @@
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(16, 24, 40, 0.16);
+  background: rgba(14, 26, 58, 0.16);
   border-radius: 8px;
   border: 3px solid transparent;
   background-clip: content-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(5, 150, 105, 0.5);
+  background: rgba(var(--glow), 0.55);
   border: 3px solid transparent;
   background-clip: content-box;
 }
@@ -226,7 +288,7 @@
   background-clip: content-box;
 }
 .dark *::-webkit-scrollbar-thumb:hover {
-  background: rgba(163, 230, 53, 0.45);
+  background: rgba(var(--glow), 0.50);
   border: 3px solid transparent;
   background-clip: content-box;
 }
@@ -235,32 +297,40 @@
    Shared surfaces & micro-interactions (theme-aware)
    ============================================================ */
 
-/* frosted glass panel */
+/* frosted glass panel with a subtle top sheen */
 .glass {
-  background: linear-gradient(165deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.78));
-  border: 1px solid rgba(16, 24, 40, 0.08);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.78));
+  border: 1px solid rgba(14, 26, 58, 0.08);
   backdrop-filter: blur(18px) saturate(1.15);
   -webkit-backdrop-filter: blur(18px) saturate(1.15);
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px -18px rgba(16, 24, 40, 0.14);
+  box-shadow: 0 1px 2px rgba(14, 26, 58, 0.04), 0 12px 32px -18px rgba(14, 26, 58, 0.16);
 }
 .dark .glass {
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.05) inset, 0 12px 32px -18px rgba(0, 0, 0, 0.55);
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.05) inset, 0 12px 32px -18px rgba(0, 0, 0, 0.60);
 }
 
-/* hover: lift + glow — the signature card interaction */
+/* hover: lift + blue glow + warm orange under-glow — the signature card interaction */
 .hover-lift {
-  transition: transform 0.22s cubic-bezier(0.22, 0.68, 0.31, 1), border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+  transition: transform 0.25s cubic-bezier(0.22, 0.68, 0.31, 1), border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
 .hover-lift:hover {
-  transform: translateY(-2px);
-  border-color: rgba(5, 150, 105, 0.35);
-  box-shadow: 0 16px 36px -18px rgba(16, 24, 40, 0.22), 0 0 0 1px rgba(5, 150, 105, 0.08), 0 0 28px -6px rgba(5, 150, 105, 0.14);
+  transform: translateY(-3px);
+  border-color: rgba(var(--glow), 0.38);
+  box-shadow:
+    0 18px 38px -18px rgba(14, 26, 58, 0.24),
+    0 6px 22px -12px rgba(var(--spike), 0.20),
+    0 0 0 1px rgba(var(--glow), 0.08),
+    0 0 30px -6px rgba(var(--glow), 0.16);
 }
 .dark .hover-lift:hover {
-  border-color: rgba(163, 230, 53, 0.32);
-  box-shadow: 0 14px 34px -16px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(163, 230, 53, 0.10), 0 0 28px -6px rgba(163, 230, 53, 0.12);
+  border-color: rgba(var(--glow), 0.35);
+  box-shadow:
+    0 16px 36px -16px rgba(0, 0, 0, 0.68),
+    0 6px 22px -12px rgba(var(--spike), 0.22),
+    0 0 0 1px rgba(var(--glow), 0.11),
+    0 0 30px -6px rgba(var(--glow), 0.16);
 }
 
 /* pointer-tracked sheen (set --mx/--my from JS) */
@@ -273,19 +343,16 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(160px 80px at var(--mx, 50%) var(--my, 50%), rgba(5, 150, 105, 0.09), transparent 80%);
+  background: radial-gradient(170px 85px at var(--mx, 50%) var(--my, 50%), rgba(var(--glow), 0.10), transparent 80%);
   opacity: 0;
   transition: opacity 0.25s ease;
   pointer-events: none;
-}
-.dark .reveal-item::after {
-  background: radial-gradient(160px 80px at var(--mx, 50%) var(--my, 50%), rgba(163, 230, 53, 0.10), transparent 80%);
 }
 .reveal-item:hover::after {
   opacity: 1;
 }
 
-/* table / list row hover with accent rail */
+/* table / list row hover with blue→orange accent rail */
 .row-hover {
   position: relative;
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
@@ -298,17 +365,14 @@
   bottom: 18%;
   width: 3px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #10b981, #0891b2);
+  background: linear-gradient(180deg, rgb(var(--glow)), rgb(var(--spike)));
   opacity: 0;
   transform: scaleY(0.3);
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
-.dark .row-hover::before {
-  background: linear-gradient(180deg, #bef264, #22d3ee);
-}
 .row-hover:hover {
-  background: rgba(16, 24, 40, 0.035);
-  border-color: rgba(16, 24, 40, 0.14);
+  background: rgba(14, 26, 58, 0.035);
+  border-color: rgba(14, 26, 58, 0.14);
 }
 .dark .row-hover:hover {
   background: rgba(255, 255, 255, 0.045);
@@ -319,15 +383,15 @@
   transform: scaleY(1);
 }
 
-/* gradient headline text */
+/* gradient headline text — navy into blue into spike orange */
 .text-gradient {
-  background: linear-gradient(92deg, #101828 10%, #047857 55%, #0e7490 95%);
+  background: linear-gradient(92deg, #0e1a3a 8%, #2456e6 52%, #f97316 96%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 .dark .text-gradient {
-  background: linear-gradient(92deg, #f0fdf4 10%, #bef264 55%, #67e8f9 95%);
+  background: linear-gradient(92deg, #eef3ff 8%, #8fb0ff 50%, #ffb27a 96%);
   -webkit-background-clip: text;
   background-clip: text;
 }
@@ -336,7 +400,7 @@
 .shimmer {
   position: relative;
   overflow: hidden;
-  background: rgba(16, 24, 40, 0.06);
+  background: rgba(14, 26, 58, 0.06);
 }
 .shimmer::after {
   content: "";
@@ -379,8 +443,8 @@
 
 /* soft pulse for live indicators */
 @keyframes psams-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5); }
-  50% { opacity: 0.75; box-shadow: 0 0 0 5px rgba(52, 211, 153, 0); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(var(--glow), 0.45); }
+  50% { opacity: 0.75; box-shadow: 0 0 0 5px rgba(var(--glow), 0); }
 }
 .pulse-dot {
   animation: psams-pulse 2.2s ease-in-out infinite;
@@ -395,19 +459,53 @@
   animation: psams-float 7s ease-in-out infinite;
 }
 
-/* hero band on the dashboard — theme-aware gradient wash */
+/* sporty badge pop-in — small scale bounce */
+@keyframes psams-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pop-in {
+  animation: psams-pop 0.45s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+/* idle spin (volleyball motif) */
+@keyframes psams-spin {
+  to { transform: rotate(360deg); }
+}
+.spin-slow {
+  animation: psams-spin 9s linear infinite;
+}
+.group:hover .spin-on-hover {
+  animation: psams-spin 1.6s linear infinite;
+}
+
+/* volleyball net mesh — decorative texture strip */
+.court-net {
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 8px, var(--net-line) 8px, var(--net-line) 9px),
+    repeating-linear-gradient(90deg, transparent, transparent 8px, var(--net-line) 8px, var(--net-line) 9px);
+}
+
+/* dashed court boundary line — decorative */
+.court-line {
+  border-style: dashed;
+  border-color: rgba(var(--glow), 0.22);
+}
+
+/* hero band on the dashboard — blue/orange court wash */
 .hero-band {
-  border: 1px solid rgba(5, 150, 105, 0.14);
+  border: 1px solid rgba(var(--glow), 0.15);
   background:
-    linear-gradient(115deg, rgba(5, 150, 105, 0.10) 0%, rgba(8, 145, 178, 0.07) 45%, rgba(124, 58, 237, 0.06) 100%),
+    linear-gradient(115deg, rgba(var(--glow), 0.10) 0%, rgba(var(--spike), 0.08) 48%, rgba(8, 145, 178, 0.06) 100%),
     rgba(255, 255, 255, 0.66);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
 .dark .hero-band {
-  border-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.09);
   background:
-    linear-gradient(115deg, rgba(163, 230, 53, 0.13) 0%, rgba(34, 211, 238, 0.07) 45%, rgba(167, 139, 250, 0.08) 100%),
+    linear-gradient(115deg, rgba(var(--glow), 0.14) 0%, rgba(var(--spike), 0.09) 48%, rgba(34, 211, 238, 0.06) 100%),
     rgba(255, 255, 255, 0.02);
 }
 
@@ -436,6 +534,9 @@
     background: #fff !important;
     overflow: visible !important;
     height: auto !important;
+  }
+  .aurora {
+    display: none !important;
   }
   #psams-root {
     display: none !important;

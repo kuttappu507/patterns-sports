@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
-// Self-hosted variable fonts (no build-time Google Fonts network fetch).
-import "@fontsource-variable/inter";
-import "@fontsource-variable/sora";
+// Self-hosted fonts (no build-time Google Fonts network fetch).
+// Poppins carries the whole UI — geometric, sporty, athletic letterforms.
+import "@fontsource/poppins/400.css";
+import "@fontsource/poppins/500.css";
+import "@fontsource/poppins/600.css";
+import "@fontsource/poppins/700.css";
+import "@fontsource/poppins/800.css";
+import "@fontsource/poppins/400-italic.css";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -17,7 +22,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#f2f5f0",
+  themeColor: "#f5f7fd",
 };
 
 // Applied before first paint so the saved theme never flashes.
@@ -34,6 +39,11 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body className="antialiased font-sans">
+        <div className="aurora" aria-hidden>
+          <span className="orb-a" />
+          <span className="orb-b" />
+          <span className="orb-c" />
+        </div>
         {children}
         <Toaster />
       </body>

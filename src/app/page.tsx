@@ -10,7 +10,7 @@
 
 import { Component, useEffect, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
-import { AlertTriangle, RotateCcw, Trophy } from "lucide-react"
+import { AlertTriangle, RotateCcw, Volleyball } from "lucide-react"
 import { useAppStore } from "@/lib/psams/store"
 import { AppShell } from "@/components/psams/app-shell"
 import { PrintRoot } from "@/components/psams/prints/print-root"
@@ -76,13 +76,13 @@ function BootScreen({ error }: { error: string | null }) {
         initial={{ scale: 0.85, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 220, damping: 18 }}
-        className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-lime-300 to-emerald-500 shadow-[0_0_36px_rgba(163,230,53,0.4)]"
+        className="group relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500 shadow-[0_0_36px_rgba(36,86,230,0.45)]"
       >
-        <Trophy className="h-8 w-8 text-[#0b0e14]" strokeWidth={2.2} />
+        <Volleyball className="spin-slow h-8 w-8 text-white" strokeWidth={2.1} />
         <motion.span
           animate={{ scale: [1, 1.35], opacity: [0.5, 0] }}
           transition={{ repeat: Infinity, duration: 1.6, ease: "easeOut" }}
-          className="absolute inset-0 rounded-2xl border-2 border-lime-300/60"
+          className="absolute inset-0 rounded-2xl border-2 border-blue-400/60"
         />
       </motion.div>
       <div className="text-center">
@@ -95,7 +95,7 @@ function BootScreen({ error }: { error: string | null }) {
         <motion.div
           animate={{ x: ["-100%", "220%"] }}
           transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
-          className="h-full w-1/3 rounded-full bg-gradient-to-r from-primary to-cyan-500"
+          className="h-full w-1/3 rounded-full bg-gradient-to-r from-primary to-orange-500"
         />
       </div>
       {error && (
