@@ -1,11 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0f7ad6"/>
-      <stop offset="1" stop-color="#005fb8"/>
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="0.55" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#372fae"/>
     </linearGradient>
   </defs>
-  <rect x="2" y="2" width="44" height="44" rx="10" fill="url(#g)"/>
-  <path d="M15 34V16.5c0-1.4 1.1-2.5 2.5-2.5H24c4.4 0 7 2.3 7 6 0 2.6-1.4 4.5-3.7 5.4L32 34h-5l-4.2-8H19v8h-4zm4-11.5h4.7c2.2 0 3.5-1.1 3.5-3s-1.3-3-3.5-3H19v6z" fill="#fff"/>
-  <circle cx="34.5" cy="15.5" r="2.5" fill="#ffd23f"/>
+  <rect x="2" y="2" width="44" height="44" rx="11" fill="url(#g)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" opacity="0.95">
+    <circle cx="24" cy="24" r="12.5"/>
+    <path d="M24 11.5c-7 3.7-9.7 11.7-6.2 19"/>
+    <path d="M24 11.5c7 3.7 9.7 11.7 6.2 19"/>
+    <path d="M11.8 21.6c5.6 4.4 18.8 4.4 24.4-1.8"/>
+    <path d="M12.6 31.4c4-3.2 8.1-4.1 11.4-2.9"/>
+    <path d="M35.4 31.4c-4-3.2-8.1-4.1-11.4-2.9"/>
+  </g>
+  <circle cx="36.5" cy="12.5" r="3" fill="#fbbf24"/>
 </svg>

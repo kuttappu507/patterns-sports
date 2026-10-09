@@ -1,8 +1,7 @@
 // PS-AMS demo data seeder — populates a realistic academy dataset
-import { PrismaClient } from "@prisma/client"
+// Uses the shared libsql-backed Prisma client from src/lib/db.
 import { nextAdmissionNo, nextReceiptNo } from "../src/lib/psams/domain"
-
-const db = new PrismaClient()
+import { db } from "../src/lib/db"
 
 function dob(year: number, month: number, day: number) {
   return new Date(year, month - 1, day)

@@ -1,19 +1,23 @@
 import type { Metadata, Viewport } from "next";
 // Self-hosted fonts (no build-time Google Fonts network fetch).
-// Poppins carries the whole UI — geometric, sporty, athletic letterforms.
+// Sora carries display/headings — geometric, electric, modern.
+// Poppins carries body copy — round, sporty, highly readable.
 import "@fontsource/poppins/400.css";
 import "@fontsource/poppins/500.css";
 import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
 import "@fontsource/poppins/800.css";
 import "@fontsource/poppins/400-italic.css";
+import "@fontsource/sora/600.css";
+import "@fontsource/sora/700.css";
+import "@fontsource/sora/800.css";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "PS-AMS — Pattern Sports Academy Management System",
+  title: "Pattern Sports — Volleyball Academy Management System",
   description:
-    "Offline-first academy management: student profiling, fee collection with POS receipts, attendance, committee showcase, smart reports and A4/thermal printing.",
+    "Offline-first volleyball academy management: player profiling, fee collection with POS receipts, attendance, committee showcase, smart reports and A4/thermal printing.",
   icons: {
     icon: "/psams-icon.svg",
   },
@@ -22,7 +26,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#f5f7fd",
+  themeColor: "#f3f5fc",
 };
 
 // Applied before first paint so the saved theme never flashes.

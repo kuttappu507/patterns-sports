@@ -119,7 +119,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
           <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => navigate("students")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg border-2 border-border bg-gradient-to-br from-primary/15 to-cyan-500/10 shadow-md">
+          <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg border-2 border-border bg-gradient-to-br from-primary/15 to-teal-500/10 shadow-md">
             {student.photoPath ? (
                
               <img src={mediaUrl(student.photoPath)} alt={student.fullName} className="h-full w-full object-cover" />
@@ -132,10 +132,10 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-bold">{student.fullName}</h2>
-              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${CATEGORY_COLORS[student.ageCategory] || ""}`}>
+              <span className={`rounded-full border px-2 py-0.5 text-[15px] font-medium ${CATEGORY_COLORS[student.ageCategory] || ""}`}>
                 {student.ageCategory}
               </span>
-              <Badge variant={student.status === "Active" ? "default" : "secondary"} className="rounded-full text-[11px]">
+              <Badge variant={student.status === "Active" ? "default" : "secondary"} className="rounded-full text-[15px]">
                 {student.status}
               </Badge>
             </div>
@@ -144,7 +144,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
               <span className="inline-flex items-center gap-1"><GraduationCap className="h-3 w-3" />{student.schoolName || "School not set"}</span>
               <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{student.parentName} · {student.mobile}</span>
             </div>
-            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            <div className="mt-2 flex flex-wrap gap-2 text-[15px]">
               <Chip label="Age" value={`${age} yrs (${ageDetailed(student.dateOfBirth)})`} />
               <Chip label="Sport" value={`${student.primarySport}${student.playingPosition ? " · " + student.playingPosition : ""}`} />
               <Chip label="Batch" value={student.trainingBatch ? `${student.trainingBatch} batch` : "—"} />
@@ -184,9 +184,9 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
             <div className="flex items-center justify-between border-b px-4 py-2.5">
               <div>
                 <div className="text-xs font-semibold">Tournaments, Medals & Selections</div>
-                <div className="text-[11px] text-muted-foreground">Career milestones log with certificate attachments</div>
+                <div className="text-[15px] text-muted-foreground">Career milestones log with certificate attachments</div>
               </div>
-              <Button size="sm" className="h-7 gap-1 text-[11px]" onClick={() => setAchOpen(true)}>
+              <Button size="sm" className="h-7 gap-1 text-[15px]" onClick={() => setAchOpen(true)}>
                 <Plus className="h-3 w-3" /> Log achievement
               </Button>
             </div>
@@ -200,16 +200,16 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
                     <span className="text-xl" title={a.medal}>{MEDAL_ICONS[a.medal] || "•"}</span>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-semibold">{a.tournamentName}</div>
-                      <div className="text-[11px] text-muted-foreground">
+                      <div className="text-[15px] text-muted-foreground">
                         {a.eventDate ? formatDate(a.eventDate) : "Date not set"} · {a.notes || ""}
                       </div>
                     </div>
-                    <Badge variant="outline" className="rounded-full text-[10.5px]">{a.level} level</Badge>
+                    <Badge variant="outline" className="rounded-full text-[14.5px]">{a.level} level</Badge>
                     {a.medal !== "None" && (
-                      <Badge className="rounded-full bg-amber-500/10 text-[10.5px] text-amber-700 hover:bg-amber-500/15 dark:bg-amber-400/10 dark:text-amber-300">{a.medal}</Badge>
+                      <Badge className="rounded-full bg-amber-500/10 text-[14.5px] text-amber-700 hover:bg-amber-500/15 dark:bg-amber-400/10 dark:text-amber-300">{a.medal}</Badge>
                     )}
                     {a.certificatePath && (
-                      <a href={mediaUrl(a.certificatePath)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+                      <a href={mediaUrl(a.certificatePath)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[15px] text-primary hover:underline">
                         <Download className="h-3 w-3" /> Certificate
                       </a>
                     )}
@@ -237,13 +237,13 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
           <div className="rounded-xl border bg-card/60 backdrop-blur">
             <div className="border-b px-4 py-2.5">
               <div className="text-xs font-semibold">Payment ledger</div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-[15px] text-muted-foreground">
                 Settled months: {fee.paidMonths.length ? fee.paidMonths.map(monthLabel).join(", ") : "none yet"}
                 {fee.pendingMonths.length > 0 && `  ·  Pending: ${fee.pendingMonths.map(monthLabel).join(", ")}`}
               </div>
             </div>
             <table className="w-full text-left text-xs">
-              <thead className="border-b bg-muted/30 text-[11px] text-muted-foreground">
+              <thead className="border-b bg-muted/30 text-[15px] text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2 font-medium">Receipt</th>
                   <th className="px-3 py-2 font-medium">Date</th>
@@ -258,7 +258,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
                 )}
                 {student.payments.map((p) => (
                   <tr key={p.id} className="border-b border-border/40">
-                    <td className="px-4 py-2 font-mono text-[11px]">{p.receiptNo}</td>
+                    <td className="px-4 py-2 font-mono text-[15px]">{p.receiptNo}</td>
                     <td className="px-3 py-2">{formatDate(p.paymentDate)}</td>
                     <td className="px-3 py-2">{parsePaidMonths(p.months).map(monthLabel).join(", ")}</td>
                     <td className="px-3 py-2">{p.paymentMode}</td>
@@ -305,7 +305,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
               hint="Upload PDF / PNG / JPG"
               previewShape="wide"
             />
-            <p className="col-span-full text-[11px] text-muted-foreground">
+            <p className="col-span-full text-[15px] text-muted-foreground">
               Stored locally on disk under the application data directory — the database only records sanitized relative paths.
             </p>
           </div>
@@ -339,11 +339,11 @@ function Chip({ label, value }: { label: string; value: string }) {
 function StatTile({ icon, label, value, sub, tone }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: string }) {
   return (
     <div className="hover-lift rounded-xl border border-border bg-card/60 p-3 backdrop-blur transition-colors hover:border-primary/30">
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[15px] text-muted-foreground">
         {icon} {label}
       </div>
       <div className={`mt-1 font-display text-lg font-bold leading-none tnum ${tone || ""}`}>{value}</div>
-      {sub && <div className="mt-1 text-[10.5px] text-muted-foreground">{sub}</div>}
+      {sub && <div className="mt-1 text-[14.5px] text-muted-foreground">{sub}</div>}
     </div>
   )
 }

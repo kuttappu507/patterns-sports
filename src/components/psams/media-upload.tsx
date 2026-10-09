@@ -68,7 +68,7 @@ export function MediaUpload({
             ) : (
               <div className="flex flex-col items-center gap-1 text-muted-foreground">
                 <FileText className="h-6 w-6" />
-                <span className="text-[10px]">PDF</span>
+                <span className="text-[15.5px]">PDF</span>
               </div>
             )}
           </div>

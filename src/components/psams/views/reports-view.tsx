@@ -116,10 +116,10 @@ export function ReportsView() {
           <Filter className="h-3.5 w-3.5 text-primary" />
           <span className="text-xs font-semibold">Multi-Parameter Filtering Engine</span>
           {activeFilterCount > 0 && (
-            <Badge className="rounded-full text-[10px]">{activeFilterCount} active</Badge>
+            <Badge className="rounded-full text-[15.5px]">{activeFilterCount} active</Badge>
           )}
           {activeFilterCount > 0 && (
-            <Button size="sm" variant="ghost" className="ml-auto h-6 gap-1 text-[11px]" onClick={() => setFilters(EMPTY)}>
+            <Button size="sm" variant="ghost" className="ml-auto h-6 gap-1 text-[15px]" onClick={() => setFilters(EMPTY)}>
               <RotateCcw className="h-3 w-3" /> Reset
             </Button>
           )}
@@ -192,7 +192,7 @@ export function ReportsView() {
       {/* results table */}
       <div className="glass min-h-0 flex-1 overflow-y-auto rounded-2xl">
         <table className="w-full text-left text-xs">
-          <thead className="sticky top-0 z-10 border-b bg-[#0b0f18]/95 text-[11px] uppercase tracking-wide text-muted-foreground backdrop-blur">
+          <thead className="sticky top-0 z-10 border-b bg-[#0b0f18]/95 text-[15px] uppercase tracking-wide text-muted-foreground backdrop-blur">
             <tr>
               <th className="px-4 py-2.5 font-medium">Student</th>
               <th className="px-3 py-2.5 font-medium">Age / Category</th>
@@ -216,25 +216,25 @@ export function ReportsView() {
                            
                           <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
+                          <div className="flex h-full w-full items-center justify-center text-[15.5px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
                         )}
                       </div>
                       <div>
                         <div className="font-medium">{s.fullName}</div>
-                        <div className="text-[10.5px] text-muted-foreground">{s.admissionNo}</div>
+                        <div className="text-[14.5px] text-muted-foreground">{s.admissionNo}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="tabular-nums">{computeAge(s.dateOfBirth)} yrs</div>
-                    <span className={cn("mt-0.5 inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
+                    <span className={cn("mt-0.5 inline-block rounded-full border px-2 py-0.5 text-[15.5px] font-medium", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
                   </td>
                   <td className="px-3 py-2.5 tabular-nums">
                     {s.heightCm ?? "—"} cm · {s.weightKg ?? "—"} kg · <span className="font-medium">{bmi !== null ? bmi.toFixed(1) : "—"}</span>
                   </td>
                   <td className="px-3 py-2.5">
                     <div>{s.primarySport}</div>
-                    <div className="text-[10.5px] text-muted-foreground">{s.playingPosition || "—"}</div>
+                    <div className="text-[14.5px] text-muted-foreground">{s.playingPosition || "—"}</div>
                   </td>
                   <td className="hidden max-w-[180px] truncate px-3 py-2.5 lg:table-cell">{s.schoolName || "—"}</td>
                   <td className="px-3 py-2.5 text-right font-medium tabular-nums">{formatINR(s.monthlyFee)}</td>

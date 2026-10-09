@@ -117,9 +117,9 @@ export function AttendanceView() {
           </Select>
           <div className="tnum flex items-center gap-2 text-xs text-muted-foreground">
             <Users className="h-3.5 w-3.5" /> {roster.length} in session
-            <Badge className="rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[10.5px] font-semibold text-emerald-700 hover:bg-emerald-500/15 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300">{present} P</Badge>
-            <Badge className="rounded-full border border-rose-500/30 bg-rose-500/10 text-[10.5px] font-semibold text-rose-700 hover:bg-rose-500/15 dark:border-rose-400/25 dark:bg-rose-400/10 dark:text-rose-300">{absent} A</Badge>
-            {marked < roster.length && <Badge variant="secondary" className="rounded-full text-[10.5px]">{roster.length - marked} unmarked</Badge>}
+            <Badge className="rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[14.5px] font-semibold text-emerald-700 hover:bg-emerald-500/15 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300">{present} P</Badge>
+            <Badge className="rounded-full border border-rose-500/30 bg-rose-500/10 text-[14.5px] font-semibold text-rose-700 hover:bg-rose-500/15 dark:border-rose-400/25 dark:bg-rose-400/10 dark:text-rose-300">{absent} A</Badge>
+            {marked < roster.length && <Badge variant="secondary" className="rounded-full text-[14.5px]">{roster.length - marked} unmarked</Badge>}
           </div>
           <div className="ml-auto flex gap-2">
             <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-emerald-500/30 bg-emerald-500/10 text-xs font-medium text-emerald-700 transition-all hover:bg-emerald-500/20 active:scale-[0.97] dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300" onClick={() => markAll("Present")}>
@@ -161,21 +161,21 @@ export function AttendanceView() {
                       status === "Absent" && "border-rose-400/25 bg-rose-400/[0.04]"
                     )}
                   >
-                    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-cyan-500/10">
+                    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-teal-500/10">
                       {s.photoPath ? (
                         <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-primary/70">
+                        <div className="flex h-full w-full items-center justify-center text-[15.5px] font-bold text-primary/70">
                           {s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-semibold">{s.fullName}</div>
-                      <div className="tnum flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
+                      <div className="tnum flex items-center gap-1.5 text-[14.5px] text-muted-foreground">
                         {s.admissionNo} · {computeAge(s.dateOfBirth)} yrs
-                        <span className={cn("rounded-full border px-1.5 text-[9px] font-semibold", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
-                        {s.trainingBatch && <span className="text-[9px]">{s.trainingBatch}</span>}
+                        <span className={cn("rounded-full border px-1.5 text-[14.5px] font-semibold", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
+                        {s.trainingBatch && <span className="text-[14.5px]">{s.trainingBatch}</span>}
                       </div>
                     </div>
                     <div className="flex gap-1">
