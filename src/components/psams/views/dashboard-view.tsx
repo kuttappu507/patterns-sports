@@ -31,7 +31,7 @@ const stagger = {
 export function DashboardView() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const { navigate, dataVersion } = useAppStore()
+  const { navigate, dataVersion, openStudentForm, openCollectFee } = useAppStore()
   const onMouseMove = useRevealMouse()
 
   useEffect(() => {
@@ -135,10 +135,10 @@ export function DashboardView() {
             </div>
 
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              <Button size="sm" className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-[14px] font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(99, 102, 241,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(129, 140, 248,0.55)]" onClick={() => navigate("students")}>
+              <Button size="sm" className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-[14px] font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(99, 102, 241,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(129, 140, 248,0.55)]" onClick={() => openStudentForm(null)}>
                 <UserPlus className="h-3.5 w-3.5" strokeWidth={2.6} /> Add New Student
               </Button>
-              <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-[14px] text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]" onClick={() => navigate("fees")}>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-[14px] text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]" onClick={() => openCollectFee()}>
                 <Receipt className="h-3.5 w-3.5" /> Collect Fee
               </Button>
               <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-[14px] text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]" onClick={() => navigate("reports")}>

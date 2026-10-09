@@ -7,7 +7,6 @@ import { fetchStudents, deleteStudent, mediaUrl } from "@/lib/psams/api"
 import { CATEGORY_COLORS, computeAge, formatINR } from "@/lib/psams/domain"
 import type { Student } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
-import { StudentDrawer } from "@/components/psams/student-drawer"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -27,11 +26,9 @@ export function StudentsView() {
   const [category, setCategory] = useState("all")
   const [status, setStatus] = useState("Active")
   const [batch, setBatch] = useState("all")
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [editing, setEditing] = useState<Student | null>(null)
   const [deleting, setDeleting] = useState<Student | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
-  const { navigate, refresh, dataVersion } = useAppStore()
+  const { navigate, refresh, dataVersion, openStudentForm } = useAppStore()
   const { toast } = useToast()
 
   const load = useCallback(async () => {
@@ -115,10 +112,7 @@ export function StudentsView() {
             <Button
               size="sm"
               className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-xs font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(99, 102, 241,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(129, 140, 248,0.55)]"
-              onClick={() => {
-                setEditing(null)
-                setDrawerOpen(true)
-              }}
+              onClick={() => openStudentForm(null)}
             >
               <UserPlus className="h-3.5 w-3.5" strokeWidth={2.6} /> Register Student
             </Button>
@@ -211,7 +205,7 @@ export function StudentsView() {
                           <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-teal-500/10 hover:text-teal-600 dark:hover:text-teal-300" title="Open profile" onClick={() => navigate("student-detail", s.id)}>
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Edit" onClick={() => { setEditing(s); setDrawerOpen(true) }}>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Edit" onClick={() => openStudentForm(s)}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300" title="Delete" onClick={() => setDeleting(s)}>
@@ -227,13 +221,6 @@ export function StudentsView() {
           </div>
         </div>
       </StaggerItem>
-
-      <StudentDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        editing={editing}
-        onSaved={() => refresh()}
-      />
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent className="border-border bg-popover">

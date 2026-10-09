@@ -1,23 +1,25 @@
 "use client"
 
 // ============================================================
-// PS-AMS :: Student registration / edit slide-over drawer.
-// Spring-animated, live age + BMI computation, sectioned form.
+// PS-AMS :: Player register / edit — centered POPUP dialog.
+// Globally mounted once (see app page) and driven by the app
+// store, so "Add New Player" works from the sidebar header, the
+// dashboard hero, the roster toolbar and the profile page.
+// Live age + BMI computation, sectioned form, field validation.
 // ============================================================
 
 import { useMemo, useState } from "react"
-import { motion } from "framer-motion"
-import { X, Loader2, Sparkles } from "lucide-react"
-import { createStudent, updateStudent } from "@/lib/psams/api"
+import { Loader2, Sparkles } from "lucide-react"
+import { createStudent, updateStudent, fetchSettings } from "@/lib/psams/api"
 import {
   AGE_CATEGORIES,
   BLOOD_GROUPS,
   SPORTS,
   SPORT_POSITIONS,
   TRAINING_BATCHES,
-  type Student,
 } from "@/lib/psams/types"
 import { computeAge, suggestAgeCategory, computeBMI, bmiBand, ageDetailed } from "@/lib/psams/domain"
+import { useAppStore } from "@/lib/psams/store"
 import { MediaUpload } from "@/components/psams/media-upload"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,25 +27,14 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 
-export interface StudentFormDefaults {
-  defaultMonthlyFee?: number
-}
-
-export function StudentDrawer({
-  open,
-  onClose,
-  editing,
-  defaults,
-  onSaved,
-}: {
-  open: boolean
-  onClose: () => void
-  editing?: Student | null
-  defaults?: StudentFormDefaults
-  onSaved?: (s: Student) => void
-}) {
+export function StudentFormDialog() {
+  const open = useAppStore((s) => s.studentFormOpen)
+  const editing = useAppStore((s) => s.studentFormEditing)
+  const onClose = useAppStore((s) => s.closeStudentForm)
+  const refresh = useAppStore((s) => s.refresh)
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
 
@@ -69,7 +60,7 @@ export function StudentDrawer({
     ageCategory: "",
     ageCategoryTouched: false,
     trainingBatch: "",
-    monthlyFee: String(defaults?.defaultMonthlyFee ?? 500),
+    monthlyFee: "",
     photoPath: null as string | null,
     birthCertPath: null as string | null,
     idCardPath: null as string | null,
@@ -80,7 +71,7 @@ export function StudentDrawer({
 
   const [form, setForm] = useState<FormState>(blank)
 
-  // Reset the form when the drawer opens (or the edited student changes).
+  // Reset the form when the dialog opens (or the edited student changes).
   // Adjusting state during render (guarded by the previous values) instead
   // of in an effect: no post-paint flash of the previous form content.
   const [prevOpenState, setPrevOpenState] = useState({ open, editing })
@@ -89,35 +80,39 @@ export function StudentDrawer({
     if (open) {
       if (editing) {
         setForm({
-        fullName: editing.fullName,
-        dateOfBirth: editing.dateOfBirth.slice(0, 10),
-        registrationDate: editing.registrationDate.slice(0, 10),
-        parentName: editing.parentName,
-        mobile: editing.mobile,
-        emergencyContact: editing.emergencyContact || "",
-        address: editing.address || "",
-        schoolName: editing.schoolName || "",
-        classGrade: editing.classGrade || "",
-        division: editing.division || "",
-        bloodGroup: editing.bloodGroup || "",
-        heightCm: editing.heightCm != null ? String(editing.heightCm) : "",
-        weightKg: editing.weightKg != null ? String(editing.weightKg) : "",
-        standingReachCm: editing.standingReachCm != null ? String(editing.standingReachCm) : "",
-        spikeReachCm: editing.spikeReachCm != null ? String(editing.spikeReachCm) : "",
-        jumpReachCm: editing.jumpReachCm != null ? String(editing.jumpReachCm) : "",
-        primarySport: editing.primarySport || "Volleyball",
-        playingPosition: editing.playingPosition || "",
-        ageCategory: editing.ageCategory || "",
-        ageCategoryTouched: true,
-        trainingBatch: editing.trainingBatch || "",
-        monthlyFee: String(editing.monthlyFee ?? 500),
-        photoPath: editing.photoPath || null,
-        birthCertPath: editing.birthCertPath || null,
-        idCardPath: editing.idCardPath || null,
-        status: editing.status || "Active",
+          fullName: editing.fullName,
+          dateOfBirth: editing.dateOfBirth.slice(0, 10),
+          registrationDate: editing.registrationDate.slice(0, 10),
+          parentName: editing.parentName,
+          mobile: editing.mobile,
+          emergencyContact: editing.emergencyContact || "",
+          address: editing.address || "",
+          schoolName: editing.schoolName || "",
+          classGrade: editing.classGrade || "",
+          division: editing.division || "",
+          bloodGroup: editing.bloodGroup || "",
+          heightCm: editing.heightCm != null ? String(editing.heightCm) : "",
+          weightKg: editing.weightKg != null ? String(editing.weightKg) : "",
+          standingReachCm: editing.standingReachCm != null ? String(editing.standingReachCm) : "",
+          spikeReachCm: editing.spikeReachCm != null ? String(editing.spikeReachCm) : "",
+          jumpReachCm: editing.jumpReachCm != null ? String(editing.jumpReachCm) : "",
+          primarySport: editing.primarySport || "Volleyball",
+          playingPosition: editing.playingPosition || "",
+          ageCategory: editing.ageCategory || "",
+          ageCategoryTouched: true,
+          trainingBatch: editing.trainingBatch || "",
+          monthlyFee: String(editing.monthlyFee ?? 500),
+          photoPath: editing.photoPath || null,
+          birthCertPath: editing.birthCertPath || null,
+          idCardPath: editing.idCardPath || null,
+          status: editing.status || "Active",
         })
       } else {
-        setForm({ ...blank, monthlyFee: String(defaults?.defaultMonthlyFee ?? 500) })
+        setForm({ ...blank, monthlyFee: "" })
+        // prefill the suggested monthly fee from the academy profile
+        fetchSettings()
+          .then((st) => setForm((f) => (f.monthlyFee === "" ? { ...f, monthlyFee: String(st.defaultMonthlyFee ?? 500) } : f)))
+          .catch(() => setForm((f) => (f.monthlyFee === "" ? { ...f, monthlyFee: "500" } : f)))
       }
     }
   }
@@ -194,7 +189,7 @@ export function StudentDrawer({
       }
       const saved = editing ? await updateStudent(editing.id, payload) : await createStudent(payload)
       toast({ title: editing ? "Student updated" : "Student registered", description: `${saved.fullName} · ${saved.admissionNo}` })
-      onSaved?.(saved)
+      refresh()
       onClose()
     } catch (e) {
       toast({ title: "Save failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
@@ -204,35 +199,22 @@ export function StudentDrawer({
   }
 
   return (
-    <motion.div
-      initial={false}
-      animate={{ opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none" }}
-      transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px]"
-      onClick={onClose}
-    >
-      <motion.aside
-        initial={false}
-        animate={{ x: open ? 0 : "100%" }}
-        transition={{ type: "spring", stiffness: 320, damping: 34 }}
-        onClick={(e) => e.stopPropagation()}
-        className="absolute right-0 top-0 flex h-full w-full max-w-[640px] flex-col bg-background/95 shadow-2xl backdrop-blur-xl"
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        className="flex max-h-[92vh] w-[min(58rem,calc(100vw-2rem))] flex-col overflow-hidden gap-0 rounded-2xl border-border p-0 sm:max-w-[min(58rem,calc(100vw-2rem))]"
       >
         {/* header */}
-        <div className="flex items-center gap-3 border-b px-5 py-3.5">
-          <div>
-            <h2 className="text-sm font-semibold">{editing ? `Edit — ${editing.fullName}` : "Register New Student"}</h2>
-            <p className="text-[15px] text-muted-foreground">
-              {editing ? editing.admissionNo : "Admission number will be generated automatically on save"}
-            </p>
-          </div>
-          <Button variant="ghost" size="icon" className="ml-auto h-8 w-8" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        <DialogHeader className="border-b px-5 py-3.5">
+          <DialogTitle className="text-sm font-semibold">
+            {editing ? `Edit Player — ${editing.fullName}` : "Register New Player"}
+          </DialogTitle>
+          <DialogDescription className="text-[15px]">
+            {editing ? editing.admissionNo : "Admission number will be generated automatically on save"}
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* body */}
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+        {/* scrollable body */}
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
           {/* photo + identity */}
           <section className="flex gap-4">
             <div className="shrink-0">
@@ -395,7 +377,7 @@ export function StudentDrawer({
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Monthly fee (₹)</Label>
-              <Input className="h-8 text-xs" type="number" min="0" value={form.monthlyFee} onChange={(e) => set("monthlyFee", e.target.value)} />
+              <Input className="h-8 text-xs" type="number" min="0" value={form.monthlyFee} onChange={(e) => set("monthlyFee", e.target.value)} placeholder="e.g. 500" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Status</Label>
@@ -414,7 +396,7 @@ export function StudentDrawer({
             <MediaUpload folder="documents" value={form.idCardPath} onChange={(p) => set("idCardPath", p)} label="Govt / School ID card (PDF / PNG / JPG)" hint="Upload ID card" previewShape="wide" />
           </div>
           <Separator />
-          <p className="pb-2 text-[15px] text-muted-foreground">
+          <p className="pb-1 text-[15px] text-muted-foreground">
             Files are stored on the local application data disk — the database keeps only sanitized relative paths.
           </p>
         </div>
@@ -428,8 +410,8 @@ export function StudentDrawer({
           <Button variant="ghost" className="h-9 text-xs" onClick={onClose}>Cancel</Button>
           <span className="ml-auto text-[15px] text-muted-foreground">* required fields</span>
         </div>
-      </motion.aside>
-    </motion.div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

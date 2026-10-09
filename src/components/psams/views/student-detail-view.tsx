@@ -46,7 +46,6 @@ import type {
 } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { useRevealMouse } from "@/components/psams/fx"
-import { StudentDrawer } from "@/components/psams/student-drawer"
 import { MediaUpload } from "@/components/psams/media-upload"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -63,9 +62,8 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
   const [student, setStudent] = useState<StudentWithRelations | null>(null)
   const [settings, setSettings] = useState<AcademySettings | null>(null)
   const [loading, setLoading] = useState(true)
-  const [editOpen, setEditOpen] = useState(false)
   const [achOpen, setAchOpen] = useState(false)
-  const { navigate, setPrint, refresh, dataVersion } = useAppStore()
+  const { navigate, setPrint, refresh, dataVersion, openStudentForm } = useAppStore()
   const { toast } = useToast()
   const onMouseMove = useRevealMouse()
 
@@ -155,7 +153,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
             <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={printProfile}>
               <Printer className="h-3.5 w-3.5" /> Print A4 Profile
             </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => setEditOpen(true)}>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => openStudentForm(student)}>
               <Pencil className="h-3.5 w-3.5" /> Edit profile
             </Button>
           </div>
@@ -315,8 +313,6 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
           </div>
         </TabsContent>
       </Tabs>
-
-      <StudentDrawer open={editOpen} onClose={() => setEditOpen(false)} editing={student} onSaved={() => refresh()} />
 
       <AchievementDialog
         open={achOpen}

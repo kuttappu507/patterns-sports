@@ -1,14 +1,12 @@
 "use client"
 
 // ============================================================
-// PS-AMS :: Fee Management — collection workflow, receipt dispatch,
+// PS-AMS :: Fee Management — POS collection popup, receipt dispatch,
 // defaulters monitoring & export pipelines.
 // ============================================================
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useEffect, useState } from "react"
 import {
-  Search,
   Receipt,
   AlertTriangle,
   Printer,
@@ -17,36 +15,28 @@ import {
   MessageCircle,
   Loader2,
   CheckCircle2,
-  X,
+  BadgeIndianRupee,
   Phone,
   History,
 } from "lucide-react"
 import {
-  fetchStudents,
   fetchFeeStatuses,
   fetchPayments,
-  collectPayment,
   fetchSettings,
-  mediaUrl,
 } from "@/lib/psams/api"
 import {
-  computeFeeStatus,
-  monthKey,
   monthLabel,
   formatINR,
   formatDate,
   parsePaidMonths,
   CATEGORY_COLORS,
 } from "@/lib/psams/domain"
-import { PAYMENT_MODES, type FeePayment, type Student, type StudentFeeStatus, type AcademySettings } from "@/lib/psams/types"
+import { type FeePayment, type StudentFeeStatus, type AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { exportExcel, exportPDF } from "@/lib/psams/export"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -71,246 +61,48 @@ export function FeesView() {
 /* ============================ COLLECT ============================ */
 
 function CollectTab() {
-  const { refresh } = useAppStore()
-  const { toast } = useToast()
-  const [students, setStudents] = useState<Student[]>([])
-  const [settings, setSettings] = useState<AcademySettings | null>(null)
-  const [q, setQ] = useState("")
-  const [selected, setSelected] = useState<Student | null>(null)
-  const [pending, setPending] = useState<string[]>([])
-  const [chosen, setChosen] = useState<string[]>([])
-  const [amount, setAmount] = useState("")
-  const [mode, setMode] = useState<string>("Cash")
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10))
-  const [notes, setNotes] = useState("")
-  const [saving, setSaving] = useState(false)
-  const pickSeq = useRef(0)
-  const [receipt, setReceipt] = useState<(FeePayment & { studentName: string; admissionNo: string; studentMobile?: string }) | null>(null)
-
-  useEffect(() => {
-    let alive = true
-    Promise.all([fetchStudents({ status: "Active" }), fetchSettings()])
-      .then(([s, st]) => {
-        if (!alive) return
-        setStudents(s)
-        setSettings(st)
-      })
-      .catch((e) => {
-        if (alive) toast({ title: "Could not load fee data", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
-      })
-    return () => {
-      alive = false
-    }
-  }, [toast])
-
-  function computeLocal(s: Student, payments: { months: string; paymentDate: string | Date }[]) {
-    const st = computeFeeStatus(s, payments)
-    return { pendingMonths: st.pendingMonths, paidMonths: st.paidMonths, overdueMonths: st.overdueMonths }
-  }
-
-  async function pick(student: Student) {
-    setSelected(student)
-    // sequence token — a slow response for a previously picked student must
-    // never overwrite the pending months of the one just selected
-    const seq = ++pickSeq.current
-    try {
-      const all = await fetchFeeStatuses()
-      if (seq !== pickSeq.current) return
-      const st = all.find((s) => s.student.id === student.id)
-      const calc = st ?? computeLocal(student, [])
-      setPending(calc.pendingMonths)
-      setChosen(calc.pendingMonths)
-      setAmount(String(calc.pendingMonths.length * student.monthlyFee))
-    } catch (e) {
-      if (seq !== pickSeq.current) return
-      toast({ title: "Could not load fee status", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
-    }
-  }
-
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase()
-    if (!needle) return students.slice(0, 8)
-    return students
-      .filter((s) => s.fullName.toLowerCase().includes(needle) || s.admissionNo.toLowerCase().includes(needle) || s.mobile.includes(needle))
-      .slice(0, 8)
-  }, [q, students])
-
-  function toggleMonth(m: string) {
-    setChosen((prev) => {
-      const next = prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m].sort()
-      if (selected) setAmount(String(next.length * selected.monthlyFee))
-      return next
-    })
-  }
-
-  async function submit() {
-    if (!selected) return
-    if (chosen.length === 0) {
-      toast({ title: "Select at least one billing month", variant: "destructive" })
-      return
-    }
-    const amt = Number(amount)
-    if (!amt || amt <= 0) {
-      toast({ title: "Enter the collected amount", variant: "destructive" })
-      return
-    }
-    setSaving(true)
-    try {
-      const payment = await collectPayment({
-        studentId: selected.id,
-        months: chosen,
-        amount: amt,
-        paymentMode: mode,
-        paymentDate,
-        notes: notes || undefined,
-      })
-      setReceipt({ ...payment, studentMobile: selected.mobile })
-      setQ("")
-      const next = students.filter((s) => s.id !== selected.id)
-      setStudents(next)
-      setSelected(null)
-      setPending([])
-      setChosen([])
-      setAmount("")
-      setNotes("")
-      refresh()
-    } catch (e) {
-      toast({ title: "Payment failed", description: e instanceof Error ? e.message : "", variant: "destructive" })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const perMonth = selected?.monthlyFee ?? 0
+  const { openCollectFee } = useAppStore()
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]">
-      {/* student picker */}
-      <div className="glass rounded-2xl">
-        <div className="border-b p-3">
-          <div className="text-xs font-semibold">1 · Select Student</div>
-          <p className="text-[15px] text-muted-foreground">Pending months are retrieved automatically</p>
-          <div className="relative mt-2">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input className="h-8 pl-8 text-xs" placeholder="Name / admission no. / mobile…" value={q} onChange={(e) => setQ(e.target.value)} />
-          </div>
+    <div className="glass relative overflow-hidden rounded-2xl p-8">
+      <div className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 rounded-full bg-primary/[0.06] blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-14 right-40 h-44 w-44 rounded-full bg-amber-500/[0.07] blur-3xl" />
+
+      <div className="relative mx-auto max-w-xl text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-[0_0_28px_-8px_rgba(99,102,241,0.55)] dark:shadow-[0_0_28px_-8px_rgba(129,140,248,0.6)]">
+          <BadgeIndianRupee className="h-7 w-7" />
         </div>
-        <div className="max-h-[420px] divide-y overflow-y-auto">
-          {filtered.map((s) => (
-            <button key={s.id} onClick={() => pick(s)} className={cn("flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-accent/50", selected?.id === s.id && "bg-accent")}>
-              <div className="h-8 w-8 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-teal-500/10">
-                {s.photoPath ? (
-                   
-                  <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[15.5px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-xs font-medium">{s.fullName}</div>
-                <div className="text-[14.5px] text-muted-foreground">{s.admissionNo} · {s.mobile}</div>
-              </div>
-              <span className={cn("rounded-full border px-2 py-0.5 text-[15.5px] font-medium", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
-            </button>
+        <h3 className="mt-4 font-display text-lg font-extrabold">Fee Collection Counter</h3>
+        <p className="mx-auto mt-1.5 max-w-md text-[15px] leading-relaxed text-muted-foreground">
+          The POS flow now opens in a focused popup — pick the player, tick the billing months to settle and the amount
+          auto-fills. A printable A5 / thermal receipt is generated the moment the payment is recorded.
+        </p>
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <Button
+            size="lg"
+            className="btn-sheen h-11 gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_14px_30px_-12px_rgba(99,102,241,0.7)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_22px_-4px_rgba(129,140,248,0.6)]"
+            onClick={() => openCollectFee()}
+          >
+            <Receipt className="h-4.5 w-4.5" strokeWidth={2.4} /> Start Fee Collection
+          </Button>
+        </div>
+        <div className="mt-6 grid grid-cols-1 gap-2 text-left sm:grid-cols-3">
+          {[
+            { step: "1", text: "Search & select the player" },
+            { step: "2", text: "Tick months — amount auto-fills" },
+            { step: "3", text: "Confirm → printable receipt" },
+          ].map((s) => (
+            <div key={s.step} className="rounded-xl border border-border bg-card/60 px-3 py-2.5">
+              <span className="font-display text-sm font-extrabold text-primary">{s.step}</span>
+              <span className="ml-2 text-[15px] text-muted-foreground">{s.text}</span>
+            </div>
           ))}
-          {filtered.length === 0 && <div className="p-6 text-center text-xs text-muted-foreground">No active students found.</div>}
         </div>
+        <p className="mt-4 text-[15px] text-muted-foreground">
+          Tip — the same popup opens straight from the <b className="text-foreground">Collect Fee</b> button in the top bar,
+          or from any defaulter row in the monitor tab.
+        </p>
       </div>
-
-      {/* payment entry */}
-      <div className="glass rounded-2xl">
-        <div className="border-b p-3">
-          <div className="text-xs font-semibold">2 · Payment Entry</div>
-          <p className="text-[15px] text-muted-foreground">Multi-month settlement with automatic amount suggestion</p>
-        </div>
-        <AnimatePresence mode="wait">
-          {!selected ? (
-            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex h-[300px] items-center justify-center text-xs text-muted-foreground">
-              Pick a student from the left to load their pending billing months.
-            </motion.div>
-          ) : (
-            <motion.div key={selected.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4 p-4">
-              <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
-                <div>
-                  <div className="text-sm font-semibold">{selected.fullName}</div>
-                  <div className="text-[15px] text-muted-foreground">{selected.admissionNo} · {selected.ageCategory} · fee {formatINR(selected.monthlyFee)}/month</div>
-                </div>
-                <div className="ml-auto text-right">
-                  <div className="text-[15px] text-muted-foreground">Outstanding</div>
-                  <div className="text-sm font-bold text-rose-600 dark:text-rose-300">{formatINR(pending.length * selected.monthlyFee)}</div>
-                </div>
-                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setSelected(null)}><X className="h-3.5 w-3.5" /></Button>
-              </div>
-
-              <div>
-                <div className="mb-1.5 text-xs font-medium">Billing periods to settle <span className="font-normal text-muted-foreground">({pending.length} pending)</span></div>
-                {pending.length === 0 ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-300">
-                    <CheckCircle2 className="h-4 w-4" /> All billing months are settled — no dues.
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {pending.map((m) => {
-                      const isOverdue = m < monthKey(new Date())
-                      const on = chosen.includes(m)
-                      return (
-                        <label
-                          key={m}
-                          className={cn(
-                            "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-all",
-                            on ? "border-primary bg-primary/10 font-medium text-primary shadow-sm" : "bg-muted hover:border-primary/40",
-                            isOverdue && !on && "border-rose-400/40"
-                          )}
-                        >
-                          <Checkbox checked={on} onCheckedChange={() => toggleMonth(m)} />
-                          <span>{monthLabel(m)}</span>
-                          {isOverdue && <span className="rounded bg-rose-400/15 px-1.5 py-0.5 text-[15px] font-semibold text-rose-600 dark:text-rose-300">OVERDUE</span>}
-                          <span className="text-[15.5px] text-muted-foreground">{formatINR(perMonth)}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <div className="space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Payment date</div>
-                  <Input type="date" className="h-8 text-xs" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Payment mode</div>
-                  <Select value={mode} onValueChange={setMode}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>{PAYMENT_MODES.map((m) => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Collected amount (₹)</div>
-                  <Input className="h-8 text-xs font-semibold" type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">Remarks</div>
-                  <Input className="h-8 text-xs" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="optional" />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
-                <div className="text-xs text-muted-foreground">
-                  {chosen.length} month{chosen.length === 1 ? "" : "s"} × {formatINR(perMonth)} = <b className="text-foreground">{formatINR(chosen.length * perMonth)}</b>
-                </div>
-                <Button className="h-9 gap-1.5 text-xs" disabled={saving || chosen.length === 0} onClick={submit}>
-                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Receipt className="h-3.5 w-3.5" />}
-                  Confirm & Generate Receipt
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* receipt dialog */}
-      <ReceiptDialog receipt={receipt} onClose={() => setReceipt(null)} settings={settings} />
     </div>
   )
 }
@@ -397,28 +189,29 @@ function DefaultersTab() {
   const [rows, setRows] = useState<StudentFeeStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<AcademySettings | null>(null)
-  const { setPrint, navigate } = useAppStore()
+  const { setPrint, navigate, openCollectFee, dataVersion } = useAppStore()
   const { toast } = useToast()
 
   useEffect(() => {
     let alive = true
-    Promise.all([fetchFeeStatuses(), fetchSettings()])
-      .then(([d, s]) => {
+    void (async () => {
+      try {
+        const [d, s] = await Promise.all([fetchFeeStatuses(), fetchSettings()])
         if (!alive) return
         setRows(d.filter((r) => r.student.status === "Active" && r.dueAmount > 0).sort((a, b) => Number(b.isDefaulter) - Number(a.isDefaulter) || b.dueAmount - a.dueAmount))
         setSettings(s)
         setLoading(false)
-      })
-      .catch((e) => {
+      } catch (e) {
         if (alive) {
           setLoading(false)
           toast({ title: "Could not load defaulters", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
         }
-      })
+      }
+    })()
     return () => {
       alive = false
     }
-  }, [toast])
+  }, [toast, dataVersion])
 
   const defaulterCount = rows.filter((r) => r.isDefaulter).length
   const totalDue = rows.reduce((sum, r) => sum + r.dueAmount, 0)
@@ -519,7 +312,16 @@ function DefaultersTab() {
                   <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3 text-muted-foreground" />{r.student.parentName} · {r.student.mobile}</span>
                 </td>
                 <td className="px-3 py-2.5 text-right">
-                  <Button size="sm" variant="outline" className="h-7 border-border bg-card text-[15px] hover:bg-muted" onClick={() => navigate("student-detail", r.student.id)}>Open</Button>
+                  <div className="flex justify-end gap-1">
+                    <Button size="sm" variant="outline" className="h-7 border-border bg-card text-[15px] hover:bg-muted" onClick={() => navigate("student-detail", r.student.id)}>Open</Button>
+                    <Button
+                      size="sm"
+                      className="h-7 gap-1 rounded-lg bg-primary text-[15px] font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.97]"
+                      onClick={() => openCollectFee(r.student.id)}
+                    >
+                      <BadgeIndianRupee className="h-3 w-3" /> Collect
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -536,16 +338,27 @@ function HistoryTab() {
   const [rows, setRows] = useState<(FeePayment & { studentName: string; admissionNo: string })[]>([])
   const [settings, setSettings] = useState<AcademySettings | null>(null)
   const [loading, setLoading] = useState(true)
-  const { setPrint } = useAppStore()
+  const { setPrint, dataVersion } = useAppStore()
+  const { toast } = useToast()
 
   useEffect(() => {
-    Promise.all([fetchPayments({ limit: 60 }), fetchSettings()])
-      .then(([p, s]) => {
+    let alive = true
+    void (async () => {
+      try {
+        const [p, s] = await Promise.all([fetchPayments({ limit: 60 }), fetchSettings()])
+        if (!alive) return
         setRows(p)
         setSettings(s)
-      })
-      .finally(() => setLoading(false))
-  }, [])
+      } catch (e) {
+        if (alive) toast({ title: "Could not load receipt history", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [toast, dataVersion])
 
   return (
     <div className="overflow-hidden glass rounded-2xl">

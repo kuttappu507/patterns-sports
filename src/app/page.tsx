@@ -12,10 +12,12 @@
 import { Component, useEffect, useState, type ReactNode } from "react"
 import { AnimatePresence } from "framer-motion"
 import { AlertTriangle, RotateCcw } from "lucide-react"
-import { useAppStore } from "@/lib/psams/store"
+import { useAppStore, initHashRouting } from "@/lib/psams/store"
 import { AppShell } from "@/components/psams/app-shell"
 import { Splash } from "@/components/psams/splash"
 import { PrintRoot } from "@/components/psams/prints/print-root"
+import { StudentFormDialog } from "@/components/psams/student-form-dialog"
+import { CollectFeeDialog } from "@/components/psams/collect-fee-dialog"
 import { DashboardView } from "@/components/psams/views/dashboard-view"
 import { StudentsView } from "@/components/psams/views/students-view"
 import { StudentDetailView } from "@/components/psams/views/student-detail-view"
@@ -78,8 +80,11 @@ export default function Home() {
   const [minSplashDone, setMinSplashDone] = useState(false)
   const [splashGone, setSplashGone] = useState(false)
 
-  // Boot the offline backend (SQLite + media dirs) before any view loads.
+  // Boot the offline backend (SQLite + media dirs) before any view loads,
+  // and wire hash routing (#/students, #/fees, …) so refresh + browser
+  // back/forward keep the current module.
   useEffect(() => {
+    initHashRouting()
     let alive = true
     ;(async () => {
       try {
@@ -132,6 +137,10 @@ export default function Home() {
         </AppShell>
         <PrintRoot />
       </ErrorBoundary>
+
+      {/* app-wide popup forms — reachable from every module via the store */}
+      <StudentFormDialog />
+      <CollectFeeDialog />
 
       {/* branded volleyball splash — rides above the app, exits with a flourish */}
       {!splashGone && (

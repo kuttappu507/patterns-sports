@@ -33,7 +33,7 @@ const NAV: { key: ViewKey; label: string; icon: typeof LayoutDashboard; title: s
 ]
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { view, navigate, bootError } = useAppStore()
+  const { view, navigate, bootError, openStudentForm, openCollectFee } = useAppStore()
   const [collapsed, setCollapsed] = useState(false)
   const [clock, setClock] = useState("")
   const onMouseMove = useRevealMouse()
@@ -226,7 +226,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Button
                 size="sm"
                 className="btn-sheen h-9 gap-2 rounded-xl bg-primary px-3.5 text-[13.5px] font-semibold text-primary-foreground shadow-[0_10px_22px_-10px_rgba(99,102,241,0.65)] transition-all hover:brightness-110 hover:shadow-[0_12px_26px_-10px_rgba(99,102,241,0.75)] active:scale-[0.97] dark:shadow-[0_0_18px_-4px_rgba(129,140,248,0.55)] dark:hover:shadow-[0_0_24px_-4px_rgba(129,140,248,0.75)]"
-                onClick={() => navigate("students")}
+                onClick={() => openStudentForm(null)}
               >
                 <Plus className="h-4 w-4" strokeWidth={2.6} /> Add New Player
               </Button>
@@ -234,7 +234,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 size="sm"
                 variant="outline"
                 className="h-9 gap-2 rounded-xl border-border bg-card px-3.5 text-[13.5px] font-medium text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]"
-                onClick={() => navigate("fees")}
+                onClick={() => openCollectFee()}
               >
                 <BadgeIndianRupee className="h-4 w-4" /> Collect Fee
               </Button>
