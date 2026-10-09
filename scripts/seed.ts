@@ -1,5 +1,6 @@
 // PS-AMS demo data seeder — populates a realistic academy dataset
 import { PrismaClient } from "@prisma/client"
+import { nextAdmissionNo, nextReceiptNo } from "../src/lib/psams/domain"
 
 const db = new PrismaClient()
 
@@ -49,11 +50,17 @@ async function main() {
     { fullName: "Ananya Sasi", dateOfBirth: dob(2011, 8, 16), parentName: "Sasi Kumar", mobile: "9847012013", address: "Maradu", schoolName: "Nirmala Public School", classGrade: "9", division: "C", bloodGroup: "O+", heightCm: 162, weightKg: 47, standingReachCm: 208, spikeReachCm: 240, jumpReachCm: 262, primarySport: "Volleyball", playingPosition: "Blocker", ageCategory: "Junior", trainingBatch: "Morning", monthlyFee: 600, registeredAgo: 1 },
   ]
 
+  // Sequences are tracked locally: the seeder only runs on an empty
+  // database, so max-suffix + 1 reproduces the historical count+1 output.
+  const usedAdmissionNos: string[] = []
+  const usedReceiptNos: string[] = []
+
   for (const s of students) {
     const reg = monthsAgo(s.registeredAgo)
+    const admissionNo = nextAdmissionNo(usedAdmissionNos)
     const student = await db.student.create({
       data: {
-        admissionNo: `PSA-2026-${String(students.indexOf(s) + 1).padStart(4, "0")}`,
+        admissionNo,
         registrationDate: reg,
         fullName: s.fullName,
         dateOfBirth: s.dateOfBirth,
@@ -78,6 +85,7 @@ async function main() {
         status: "Active",
       },
     })
+    usedAdmissionNos.push(admissionNo)
 
     // Payments: pay all months from (reg+1) up to a "paid through" cutoff.
     // Cut-offs create a healthy mix: fully-paid, current-month unpaid, and >1-month defaulters.
@@ -100,10 +108,10 @@ async function main() {
       if (!chunk.length) continue
       const payDate = new Date(cur)
       payDate.setMonth(payDate.getMonth() - Math.floor(i / 3))
-      const count = await db.feePayment.count()
+      const receiptNo = nextReceiptNo(usedReceiptNos, payDate)
       await db.feePayment.create({
         data: {
-          receiptNo: `RC-${payDate.getFullYear()}${String(payDate.getMonth() + 1).padStart(2, "0")}-${String(count + 1).padStart(5, "0")}`,
+          receiptNo,
           studentId: student.id,
           paymentDate: payDate,
           months: JSON.stringify(chunk),
@@ -112,6 +120,7 @@ async function main() {
           collectedBy: "Front Desk",
         },
       })
+      usedReceiptNos.push(receiptNo)
     }
 
     // Achievements for a few

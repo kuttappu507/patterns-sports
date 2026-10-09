@@ -5,7 +5,7 @@
 // Spring-animated, live age + BMI computation, sectioned form.
 // ============================================================
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { X, Loader2, Sparkles } from "lucide-react"
 import { createStudent, updateStudent } from "@/lib/psams/api"
@@ -80,10 +80,15 @@ export function StudentDrawer({
 
   const [form, setForm] = useState<FormState>(blank)
 
-  useEffect(() => {
-    if (!open) return
-    if (editing) {
-      setForm({
+  // Reset the form when the drawer opens (or the edited student changes).
+  // Adjusting state during render (guarded by the previous values) instead
+  // of in an effect: no post-paint flash of the previous form content.
+  const [prevOpenState, setPrevOpenState] = useState({ open, editing })
+  if (prevOpenState.open !== open || prevOpenState.editing !== editing) {
+    setPrevOpenState({ open, editing })
+    if (open) {
+      if (editing) {
+        setForm({
         fullName: editing.fullName,
         dateOfBirth: editing.dateOfBirth.slice(0, 10),
         registrationDate: editing.registrationDate.slice(0, 10),
@@ -110,12 +115,12 @@ export function StudentDrawer({
         birthCertPath: editing.birthCertPath || null,
         idCardPath: editing.idCardPath || null,
         status: editing.status || "Active",
-      })
-    } else {
-      setForm({ ...blank, monthlyFee: String(defaults?.defaultMonthlyFee ?? 500) })
+        })
+      } else {
+        setForm({ ...blank, monthlyFee: String(defaults?.defaultMonthlyFee ?? 500) })
+      }
     }
-     
-  }, [open, editing])
+  }
 
   const set = <K extends keyof FormState>(key: K, val: FormState[K]) => setForm((f) => ({ ...f, [key]: val }))
 

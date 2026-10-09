@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Shimmer, Stagger, StaggerItem, EmptyState } from "@/components/psams/fx"
+import { Shimmer, StaggerItem, EmptyState } from "@/components/psams/fx"
 
 const AGE_CATEGORIES = ["Mini", "Sub-Junior", "Junior", "Youth", "Senior"]
 

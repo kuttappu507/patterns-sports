@@ -190,7 +190,11 @@ function CommitteeDialog({ open, onClose, editing, onSaved }: { open: boolean; o
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ fullName: "", role: "Executive Member", phone: "", responsibilities: "", photoPath: null as string | null })
 
-  useEffect(() => {
+  // Reset the form when the dialog opens (or the edited member changes) by
+  // adjusting state during render — guarded comparison, no effect cascade.
+  const [prevDialog, setPrevDialog] = useState({ open, editing })
+  if (prevDialog.open !== open || prevDialog.editing !== editing) {
+    setPrevDialog({ open, editing })
     if (open) {
       setForm({
         fullName: editing?.fullName || "",
@@ -200,7 +204,7 @@ function CommitteeDialog({ open, onClose, editing, onSaved }: { open: boolean; o
         photoPath: editing?.photoPath || null,
       })
     }
-  }, [open, editing])
+  }
 
   async function save() {
     if (!form.fullName.trim() || !form.phone.trim()) {

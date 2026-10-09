@@ -9,10 +9,11 @@ const nextConfig: NextConfig = {
   ...(tauriStatic
     ? { output: "export" as const, images: { unoptimized: true } }
     : { output: "standalone" as const }),
+  // Type errors fail the build — never skip type checking.
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
-  reactStrictMode: false,
+  reactStrictMode: true,
 };
 
 export default nextConfig;

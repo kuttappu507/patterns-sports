@@ -7,7 +7,7 @@
 // ============================================================
 
 import Database from "@tauri-apps/plugin-sql"
-import { writeFile, writeTextFile, mkdir, readTextFile } from "@tauri-apps/plugin-fs"
+import { writeFile, writeTextFile, mkdir } from "@tauri-apps/plugin-fs"
 import { save as saveDialog } from "@tauri-apps/plugin-dialog"
 import { appDataDir, join } from "@tauri-apps/api/path"
 import { invoke } from "@tauri-apps/api/core"
@@ -17,11 +17,21 @@ import type {
   CommitteeMember,
   DashboardStats,
   FeePayment,
+  FeePaymentWithStudent,
   Student,
   StudentFeeStatus,
+  StudentWithRelations,
   AcademySettings,
 } from "./types"
-import { computeAge, computeFeeStatus, parsePaidMonths, sanitizeFileName, todayKey } from "./domain"
+import {
+  computeAge,
+  computeFeeStatus,
+  parsePaidMonths,
+  sanitizeFileName,
+  todayKey,
+  nextAdmissionNo,
+  nextReceiptNo,
+} from "./domain"
 
 type DB = Database
 
@@ -177,7 +187,7 @@ async function getStudentRow(id: string): Promise<Student> {
   return rows[0]
 }
 
-export async function fetchStudent(id: string): Promise<Student> {
+export async function fetchStudent(id: string): Promise<StudentWithRelations> {
   const db = await getDb()
   const student = await getStudentRow(id)
   const achievements = await db.select<Achievement[]>(
@@ -204,10 +214,11 @@ export async function createStudent(input: Partial<StudentInput>): Promise<Stude
   for (const k of ["fullName", "dateOfBirth", "parentName", "mobile", "ageCategory"]) {
     if (!(input as Record<string, unknown>)[k]) throw new Error(`Missing required field: ${k}`)
   }
-  const countRows = await db.select<{ c: number }[]>("SELECT COUNT(*) AS c FROM Student", [])
+  const existing = await db.select<{ admissionNo: string }[]>("SELECT admissionNo FROM Student", [])
   const year = new Date().getFullYear()
   const admissionNo =
-    (input as Partial<Student>).admissionNo || `PSA-${year}-${String((countRows[0]?.c ?? 0) + 1).padStart(4, "0")}`
+    (input as Partial<Student>).admissionNo ||
+    nextAdmissionNo(existing.map((r) => r.admissionNo), year)
   const id = uuid()
   const nowIso = new Date().toISOString()
   await db.execute(
@@ -383,7 +394,7 @@ export async function collectPayment(input: {
   paymentDate?: string
   notes?: string
   collectedBy?: string
-}): Promise<FeePayment> {
+}): Promise<FeePaymentWithStudent> {
   const db = await getDb()
   if (!input.studentId || !Array.isArray(input.months) || input.months.length === 0) {
     throw new Error("studentId and at least one billing month are required")
@@ -391,11 +402,9 @@ export async function collectPayment(input: {
   if (!input.amount || Number(input.amount) <= 0) {
     throw new Error("Collected amount must be greater than zero")
   }
-  const countRows = await db.select<{ c: number }[]>("SELECT COUNT(*) AS c FROM FeePayment", [])
+  const existing = await db.select<{ receiptNo: string }[]>("SELECT receiptNo FROM FeePayment", [])
   const now = new Date()
-  const receiptNo = `RC-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${String(
-    (countRows[0]?.c ?? 0) + 1
-  ).padStart(5, "0")}`
+  const receiptNo = nextReceiptNo(existing.map((r) => r.receiptNo), now)
   const id = uuid()
   const paymentDate = (input.paymentDate ? new Date(input.paymentDate) : now).toISOString()
   const monthsJson = JSON.stringify(input.months)
@@ -434,9 +443,9 @@ export async function collectPayment(input: {
 
 export async function fetchPayments(
   params: { studentId?: string; month?: string; limit?: number } = {}
-): Promise<(FeePayment & { studentName: string; admissionNo: string })[]> {
+): Promise<FeePaymentWithStudent[]> {
   const db = await getDb()
-  let rows = await db.select<(FeePayment & { studentName: string; admissionNo: string })[]>(
+  let rows = await db.select<FeePaymentWithStudent[]>(
     `SELECT p.*, s.fullName AS studentName, s.admissionNo
      FROM FeePayment p JOIN Student s ON s.id = p.studentId
      ORDER BY p.paymentDate DESC`,

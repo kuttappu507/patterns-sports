@@ -5,8 +5,8 @@
 // batch / age category with rapid toggle controls.
 // ============================================================
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useEffect, useMemo, useState } from "react"
+import { motion } from "framer-motion"
 import { Check, X, CheckCheck, Printer, CalendarDays, Users } from "lucide-react"
 import { fetchStudents, fetchAttendance, markAttendance, fetchSettings, mediaUrl } from "@/lib/psams/api"
 import { computeAge, todayKey, CATEGORY_COLORS } from "@/lib/psams/domain"
@@ -21,8 +21,6 @@ import { Shimmer, Stagger, StaggerItem, EmptyState } from "@/components/psams/fx
 
 const AGE_CATEGORIES = ["Mini", "Sub-Junior", "Junior", "Youth", "Senior"]
 
-type Mode = { kind: "batch"; value: string } | { kind: "category"; value: string }
-
 export function AttendanceView() {
   const [students, setStudents] = useState<Student[]>([])
   const [date, setDate] = useState(todayKey())
@@ -31,19 +29,17 @@ export function AttendanceView() {
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<AcademySettings | null>(null)
-  const { setPrint, refresh } = useAppStore()
-
-  const loadStudents = useCallback(async () => {
-    setLoading(true)
-    const [s, st] = await Promise.all([fetchStudents({ status: "Active" }), fetchSettings()])
-    setStudents(s)
-    setSettings(st)
-    setLoading(false)
-  }, [])
+  const { setPrint } = useAppStore()
 
   useEffect(() => {
-    loadStudents()
-  }, [loadStudents])
+    // Async data fetch: setState only after the await (no cascading renders).
+    void (async () => {
+      const [s, st] = await Promise.all([fetchStudents({ status: "Active" }), fetchSettings()])
+      setStudents(s)
+      setSettings(st)
+      setLoading(false)
+    })()
+  }, [])
 
   // load existing attendance when the session date changes
   useEffect(() => {

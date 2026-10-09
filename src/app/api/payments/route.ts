@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { parsePaidMonths } from "@/lib/psams/domain"
+import { parsePaidMonths, nextReceiptNo } from "@/lib/psams/domain"
+import { toWirePayment, type FeePaymentRow } from "@/lib/psams/serialize"
+
+function isUniqueViolation(e: unknown): boolean {
+  return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002"
+}
+
+/** Prisma row (+included student) → wire FeePaymentWithStudent. */
+function toWirePaymentWithStudent(
+  p: Omit<FeePaymentRow, "student"> & { student: { fullName: string; admissionNo: string } }
+) {
+  const { student, ...rest } = p
+  return {
+    ...toWirePayment(rest),
+    studentName: student.fullName,
+    admissionNo: student.admissionNo,
+  }
+}
 
 // GET /api/payments?studentId=&month=&limit=
 export async function GET(req: NextRequest) {
@@ -15,9 +33,7 @@ export async function GET(req: NextRequest) {
     // payments whose JSON months array contains the given "YYYY-MM"
     const all = await db.feePayment.findMany({ where: studentId ? { studentId } : {}, include: { student: true }, orderBy: { paymentDate: "desc" } })
     const filtered = all.filter((p) => parsePaidMonths(p.months).includes(month))
-    return NextResponse.json(
-      filtered.map((p) => ({ ...p, studentName: p.student.fullName, admissionNo: p.student.admissionNo }))
-    )
+    return NextResponse.json(filtered.map(toWirePaymentWithStudent))
   }
 
   const rows = await db.feePayment.findMany({
@@ -26,9 +42,7 @@ export async function GET(req: NextRequest) {
     orderBy: { paymentDate: "desc" },
     ...(limit ? { take: limit } : {}),
   })
-  return NextResponse.json(
-    rows.map((p) => ({ ...p, studentName: p.student.fullName, admissionNo: p.student.admissionNo }))
-  )
+  return NextResponse.json(rows.map(toWirePaymentWithStudent))
 }
 
 // POST /api/payments — collect a fee payment (multi-month settle)
@@ -43,24 +57,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Collected amount must be greater than zero" }, { status: 400 })
     }
 
-    const count = await db.feePayment.count()
     const now = new Date()
-    const receiptNo = `RC-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${String(count + 1).padStart(5, "0")}`
-
-    const payment = await db.feePayment.create({
-      data: {
-        receiptNo,
-        studentId,
-        paymentDate: body.paymentDate ? new Date(body.paymentDate) : now,
-        months: JSON.stringify(months),
-        amount: Number(amount),
-        paymentMode: paymentMode || "Cash",
-        notes: body.notes || null,
-        collectedBy: body.collectedBy || null,
-      },
-      include: { student: true },
-    })
-    return NextResponse.json({ ...payment, studentName: payment.student.fullName, admissionNo: payment.student.admissionNo }, { status: 201 })
+    // Global running sequence after the highest existing suffix (deletion-safe);
+    // retry on the unique-index race if two concurrent requests tie.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const existing = await db.feePayment.findMany({ select: { receiptNo: true } })
+      const receiptNo = nextReceiptNo(existing.map((r) => r.receiptNo), now)
+      try {
+        const payment = await db.feePayment.create({
+          data: {
+            receiptNo,
+            studentId,
+            paymentDate: body.paymentDate ? new Date(body.paymentDate) : now,
+            months: JSON.stringify(months),
+            amount: Number(amount),
+            paymentMode: paymentMode || "Cash",
+            notes: body.notes || null,
+            collectedBy: body.collectedBy || null,
+          },
+          include: { student: true },
+        })
+        return NextResponse.json(toWirePaymentWithStudent(payment), { status: 201 })
+      } catch (e) {
+        if (!(attempt < 3 && isUniqueViolation(e))) throw e
+      }
+    }
+    return NextResponse.json({ error: "Failed to record payment" }, { status: 500 })
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to record payment"
     return NextResponse.json({ error: msg }, { status: 500 })

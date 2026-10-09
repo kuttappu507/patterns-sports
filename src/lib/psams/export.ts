@@ -163,6 +163,7 @@ export async function exportPDF(opts: {
   academy?: Pick<AcademySettings, "academyName" | "address" | "phone">
   columns: { header: string; key: string; width?: number }[]
   rows: ExportRow[]
+  totalsRow?: ExportRow
   orientation?: "p" | "l"
   footnote?: string
 }) {
@@ -201,8 +202,12 @@ export async function exportPDF(opts: {
     startY: afterTitle + 4,
     head: [opts.columns.map((c) => c.header)],
     body: opts.rows.map((r) => opts.columns.map((c) => String(r[c.key] ?? ""))),
+    ...(opts.totalsRow
+      ? { foot: [opts.columns.map((c) => String(opts.totalsRow?.[c.key] ?? ""))] }
+      : {}),
     styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
     headStyles: { fillColor: [31, 111, 178], textColor: 255, fontStyle: "bold" },
+    footStyles: { fillColor: [240, 244, 248], textColor: [30, 30, 30], fontStyle: "bold" },
     alternateRowStyles: { fillColor: [244, 248, 252] },
     margin: { left: 12, right: 12 },
   })

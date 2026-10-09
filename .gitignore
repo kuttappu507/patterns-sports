@@ -47,7 +47,6 @@ local-*
 *.log
 dev.log
 dev.out.log
-test
 prompt
 
 server.log
@@ -68,7 +67,6 @@ server.log
 /Caddyfile
 /mini-services/
 /examples/
-/tests/
 /.zscripts/
 /worklog.md
 
@@ -87,3 +85,6 @@ server.log
 
 # stray agent tool artifacts
 tool-results/
+
+# npm lockfile (repo uses bun.lock)
+/package-lock.json

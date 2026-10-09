@@ -67,7 +67,7 @@ patterns-sports/
 
 - **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui (Radix), Framer Motion, lucide-react
 - **Domain engine**: `src/lib/psams/domain.ts` — live age (years + months), BMI with health bands, age-category suggestion (Mini U-10, Sub-Junior 10–12, Junior 13–15, Youth 16–18, Senior 19+), billing-month ledger (registration month complimentary), defaulter rule (>1 month overdue), admission/receipt numbering, INR/date formatting, media path sanitisation with traversal guard
-- **Database**: SQLite via Prisma (indexes and FK cascades defined in `prisma/schema.prisma`, mirrored in `tauri/database/schema.sql`)
+- **Database**: SQLite via Prisma (indexes and FK cascades defined in `prisma/schema.prisma`, mirrored in `src-tauri/resources/schema.sql` — `npm run check:parity` fails the build if the two drift apart)
 - **Media policy**: photos, documents and certificates are stored **on disk** under `media/` (photos / documents / certificates); the database keeps sanitised relative paths only — never BLOBs
 - **Exports**: ExcelJS (.xlsx with letterhead sheet), PapaParse (CSV), jsPDF + AutoTable (PDF), CSS `@media print` pipeline for A4/A5/80 mm output
 - **Desktop kit**: Tauri v2 (Rust host with sql/dialog/fs/shell plugins, WebView2 bootstrapper, NSIS + MSI bundle targets)
@@ -87,6 +87,10 @@ npm run dev                # http://localhost:3000
 ```
 
 The seeder populates 12 students across all five age categories, 20 fee payments producing a realistic paid/due/defaulter mix, 8 achievements, 36 attendance records, 5 committee members and academy settings.
+
+Quality gates (also enforced in CI): `npm run verify` runs ESLint, `tsc
+--noEmit`, the Vitest domain-suite (`npm test`) and the backend parity check
+(`npm run check:parity` — Prisma schema ↔ Tauri `schema.sql` ↔ API surface).
 
 ## Windows Desktop Build (Tauri v2)
 
@@ -149,6 +153,26 @@ the database (with WAL sidecars) plus the whole media tree into the backups
 folder — or to a remembered USB drive when its path is written into
 `ps-ams-backup-target.txt` next to the database. See
 [`docs/PORTING_GUIDE.md`](docs/PORTING_GUIDE.md) for the full guide.
+
+## Security (read this before exposing the web app)
+
+> ⚠️ **The web API (`/api/*`) has no authentication by default. It is
+> designed to run on loopback only — same machine, same user.**
+
+- **Desktop (Tauri) build**: no HTTP server exists at all; the UI talks to
+  SQLite/filesystem plugins directly. Nothing to expose.
+- **Web preview/dev (`bun run dev`)**: Next.js binds `0.0.0.0`, so the dev
+  server is reachable from your LAN. On untrusted networks, firewall the port
+  or enable the API token (below).
+- **Web production (`bun start`)**: the start script sets `HOSTNAME=localhost`,
+  so the standalone server only accepts loopback connections. Remove that
+  variable only if you deliberately want LAN access.
+- **Opt-in API token**: set **both** `PSAMS_API_TOKEN` and
+  `NEXT_PUBLIC_PSAMS_API_TOKEN` (see `.env.example`) to require a token on
+  every `/api/*` request. The bundled client sends it automatically
+  (`x-psams-token` header, `?token=` for media URLs); other clients must send
+  the header or query parameter themselves. With no token configured, any
+  process/host that can reach the port has full read-write access to the API.
 
 ## Data & Safety
 

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { parsePaidMonths } from "@/lib/psams/domain"
 
 // GET /api/backup — full JSON snapshot (portable backup of the active database)
 export async function GET() {

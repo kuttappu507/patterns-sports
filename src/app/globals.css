@@ -3,6 +3,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Family names of the self-hosted fontsource variable fonts imported in
+   layout.tsx (replaces the CSS variables next/font/google used to set). */
+:root {
+  --font-inter: "Inter Variable";
+  --font-sora: "Sora Variable";
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

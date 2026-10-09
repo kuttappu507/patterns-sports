@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { computeFeeStatus } from "@/lib/psams/domain"
+import { toWirePayment, toWireStudent } from "@/lib/psams/serialize"
 import type { StudentFeeStatus } from "@/lib/psams/types"
 
 // GET /api/fees/defaulters — students overdue by MORE THAN ONE month
@@ -13,15 +14,16 @@ export async function GET() {
 
   const statuses: StudentFeeStatus[] = students
     .map((s) => {
-      const status = computeFeeStatus(s, s.payments)
+      const { payments, ...raw } = s
+      const status = computeFeeStatus(raw, payments)
       return {
-        student: s,
+        student: toWireStudent(raw),
         paidMonths: status.paidMonths,
         pendingMonths: status.pendingMonths,
         overdueMonths: status.overdueMonths,
         dueAmount: status.dueAmount,
         isDefaulter: status.isDefaulter,
-        lastPayment: s.payments.length ? s.payments[s.payments.length - 1] : null,
+        lastPayment: payments.length ? toWirePayment(payments[payments.length - 1]) : null,
       }
     })
     .filter((st) => st.isDefaulter)

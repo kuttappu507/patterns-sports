@@ -1,20 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Sora } from "next/font/google";
+// Self-hosted variable fonts (no build-time Google Fonts network fetch).
+import "@fontsource-variable/inter";
+import "@fontsource-variable/sora";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const sora = Sora({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-sora",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "PS-AMS — Pattern Sports Academy Management System",
@@ -40,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${sora.variable}`}>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>

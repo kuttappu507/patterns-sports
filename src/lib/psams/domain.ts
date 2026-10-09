@@ -3,8 +3,6 @@
 // numbering, formatting. Pure functions, shared client & server.
 // ============================================================
 
-import { AGE_CATEGORIES } from "./types"
-
 // ---------- Age & category ----------
 
 /** Compute precise age in whole years from a date of birth (live, timezone-safe). */
@@ -163,12 +161,51 @@ export function hasPaidCurrentMonth(paidMonths: string[], now: Date = new Date()
 
 // ---------- Numbering ----------
 
-export async function nextAdmissionNo(existingCount: number, year: number = new Date().getFullYear()): Promise<string> {
-  return `PSA-${year}-${String(existingCount + 1).padStart(4, "0")}`
+/**
+ * Highest numeric suffix across the given id strings (e.g. "PSA-2026-0007" → 7).
+ * Non-numeric suffixes are ignored. Used so sequences never reuse a number
+ * that still exists — unlike `count() + 1`, which breaks after deletions.
+ */
+function maxSuffix(values: string[]): number {
+  let max = 0
+  for (const v of values) {
+    const tail = Number(v.split("-").pop())
+    if (Number.isFinite(tail)) max = Math.max(max, tail)
+  }
+  return max
 }
 
-export function nextReceiptNo(seq: number, date: Date = new Date()): string {
-  return `RC-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}-${String(seq).padStart(5, "0")}`
+/**
+ * Next free admission number: `PSA-<year>-NNNN` continuing the GLOBAL
+ * sequence after the highest suffix among existing numbers (any year),
+ * with a collision guard for exotic mixed-format datasets.
+ */
+export function nextAdmissionNo(existing: string[], year: number = new Date().getFullYear()): string {
+  const used = new Set(existing)
+  let seq = maxSuffix(existing) + 1
+  let candidate = `PSA-${year}-${String(seq).padStart(4, "0")}`
+  while (used.has(candidate)) {
+    seq += 1
+    candidate = `PSA-${year}-${String(seq).padStart(4, "0")}`
+  }
+  return candidate
+}
+
+/**
+ * Next free receipt number: `RC-<YYYYMM>-NNNNN`, a global running sequence
+ * (the month segment is the collection month, the counter never resets).
+ * Deletion-safe for the same reason as nextAdmissionNo.
+ */
+export function nextReceiptNo(existing: string[], date: Date = new Date()): string {
+  const used = new Set(existing)
+  const prefix = `RC-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}`
+  let seq = maxSuffix(existing) + 1
+  let candidate = `${prefix}-${String(seq).padStart(5, "0")}`
+  while (used.has(candidate)) {
+    seq += 1
+    candidate = `${prefix}-${String(seq).padStart(5, "0")}`
+  }
+  return candidate
 }
 
 // ---------- Formatting ----------

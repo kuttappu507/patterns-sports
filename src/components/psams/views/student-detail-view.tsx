@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   ArrowLeft,
@@ -15,19 +15,17 @@ import {
   Trophy,
   Plus,
   Trash2,
-  Medal,
   Receipt,
   Loader2,
   Download,
 } from "lucide-react"
 import {
   fetchStudent,
-  fetchAchievements,
+  updateStudent,
   createAchievement,
   deleteAchievement,
   fetchSettings,
   mediaUrl,
-  type AcademySettings,
 } from "@/lib/psams/api"
 import {
   computeAge,
@@ -42,7 +40,10 @@ import {
   MEDAL_ICONS,
   CATEGORY_COLORS,
 } from "@/lib/psams/domain"
-import type { Student, Achievement, FeePayment } from "@/lib/psams/types"
+import type {
+  AcademySettings,
+  StudentWithRelations,
+} from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { useRevealMouse } from "@/components/psams/fx"
 import { StudentDrawer } from "@/components/psams/student-drawer"
@@ -58,13 +59,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { SELECTION_LEVELS, MEDAL_OPTIONS } from "@/lib/psams/types"
 
-interface FullStudent extends Student {
-  achievements: Achievement[]
-  payments: FeePayment[]
-}
-
 export function StudentDetailView({ studentId }: { studentId: string }) {
-  const [student, setStudent] = useState<FullStudent | null>(null)
+  const [student, setStudent] = useState<StudentWithRelations | null>(null)
   const [settings, setSettings] = useState<AcademySettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [editOpen, setEditOpen] = useState(false)
@@ -73,22 +69,20 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
   const { toast } = useToast()
   const onMouseMove = useRevealMouse()
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [s, st] = await Promise.all([fetchStudent(studentId), fetchSettings()])
-      setStudent(s)
-      setSettings(st)
-    } catch {
-      setStudent(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [studentId])
-
   useEffect(() => {
-    load()
-  }, [load, dataVersion])
+    // Async data fetch: setState only after the await (no cascading renders).
+    void (async () => {
+      try {
+        const [s, st] = await Promise.all([fetchStudent(studentId), fetchSettings()])
+        setStudent(s)
+        setSettings(st)
+      } catch {
+        setStudent(null)
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [studentId, dataVersion])
 
   if (loading && !student) {
     return (
@@ -113,6 +107,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
   const fee = computeFeeStatus(student, student.payments)
 
   function printProfile() {
+    if (!student) return
     setPrint({ kind: "profile-a4", title: "Player Profile Card", data: { student, achievements: student.achievements, settings } })
   }
 
@@ -282,9 +277,13 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
               folder="documents"
               value={student.birthCertPath}
               onChange={async (p) => {
-                await fetch(`/api/students/${student.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ birthCertPath: p || "" }) })
-                toast({ title: p ? "Birth certificate attached" : "Birth certificate removed" })
-                refresh()
+                try {
+                  await updateStudent(student.id, { birthCertPath: p || "" })
+                  toast({ title: p ? "Birth certificate attached" : "Birth certificate removed" })
+                  refresh()
+                } catch (e) {
+                  toast({ title: "Update failed", description: e instanceof Error ? e.message : "", variant: "destructive" })
+                }
               }}
               label="Birth certificate"
               hint="Upload PDF / PNG / JPG"
@@ -294,9 +293,13 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
               folder="documents"
               value={student.idCardPath}
               onChange={async (p) => {
-                await fetch(`/api/students/${student.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idCardPath: p || "" }) })
-                toast({ title: p ? "ID card attached" : "ID card removed" })
-                refresh()
+                try {
+                  await updateStudent(student.id, { idCardPath: p || "" })
+                  toast({ title: p ? "ID card attached" : "ID card removed" })
+                  refresh()
+                } catch (e) {
+                  toast({ title: "Update failed", description: e instanceof Error ? e.message : "", variant: "destructive" })
+                }
               }}
               label="Government / School ID card"
               hint="Upload PDF / PNG / JPG"

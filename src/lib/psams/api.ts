@@ -11,8 +11,9 @@ import type {
   AttendanceRecord,
   CommitteeMember,
   DashboardStats,
-  FeePayment,
+  FeePaymentWithStudent,
   Student,
+  StudentWithRelations,
   StudentFeeStatus,
   AcademySettings,
 } from "./types"
@@ -28,7 +29,7 @@ export function initBackend(): Promise<void> {
   return isTauri() ? native.initBackend() : Promise.resolve()
 }
 
-async function json<T>(res: Response): Promise<T> {
+async function ensureOk(res: Response): Promise<Response> {
   if (!res.ok) {
     let message = `Request failed (${res.status})`
     try {
@@ -39,7 +40,23 @@ async function json<T>(res: Response): Promise<T> {
     }
     throw new Error(message)
   }
-  return res.json() as Promise<T>
+  return res
+}
+
+async function json<T>(res: Response): Promise<T> {
+  return (await ensureOk(res)).json() as Promise<T>
+}
+
+/**
+ * Web-mode fetch wrapper: routes every /api call through one place so the
+ * optional API token (see README “Security”) is attached automatically.
+ * No-op when PSAMS auth is not configured.
+ */
+async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers)
+  const token = process.env.NEXT_PUBLIC_PSAMS_API_TOKEN
+  if (token) headers.set("x-psams-token", token)
+  return fetch(path, { ...init, headers })
 }
 
 function qs(params: Record<string, string | number | undefined | null>): string {
@@ -67,13 +84,13 @@ export interface StudentFilters {
 
 export async function fetchStudents(filters: StudentFilters = {}): Promise<Student[]> {
   if (isTauri()) return native.fetchStudents(filters)
-  const res = await fetch(`/api/students${qs(filters as Record<string, string | number>)}`)
+  const res = await apiFetch(`/api/students${qs(filters as Record<string, string | number>)}`)
   return json(res)
 }
 
-export async function fetchStudent(id: string): Promise<Student> {
+export async function fetchStudent(id: string): Promise<StudentWithRelations> {
   if (isTauri()) return native.fetchStudent(id)
-  return json(await fetch(`/api/students/${id}`))
+  return json(await apiFetch(`/api/students/${id}`))
 }
 
 export type StudentInput = Partial<Omit<Student, "id" | "createdAt" | "updatedAt">> & {
@@ -87,7 +104,7 @@ export type StudentInput = Partial<Omit<Student, "id" | "createdAt" | "updatedAt
 export async function createStudent(input: Partial<StudentInput>): Promise<Student> {
   if (isTauri()) return native.createStudent(input)
   return json(
-    await fetch(`/api/students`, {
+    await apiFetch(`/api/students`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -98,7 +115,7 @@ export async function createStudent(input: Partial<StudentInput>): Promise<Stude
 export async function updateStudent(id: string, input: Partial<StudentInput>): Promise<Student> {
   if (isTauri()) return native.updateStudent(id, input)
   return json(
-    await fetch(`/api/students/${id}`, {
+    await apiFetch(`/api/students/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -108,14 +125,14 @@ export async function updateStudent(id: string, input: Partial<StudentInput>): P
 
 export async function deleteStudent(id: string): Promise<void> {
   if (isTauri()) return native.deleteStudent(id)
-  await fetch(`/api/students/${id}`, { method: "DELETE" })
+  await ensureOk(await apiFetch(`/api/students/${id}`, { method: "DELETE" }))
 }
 
 // ---------- Achievements ----------
 
 export async function fetchAchievements(studentId: string): Promise<Achievement[]> {
   if (isTauri()) return native.fetchAchievements(studentId)
-  return json(await fetch(`/api/students/${studentId}/achievements`))
+  return json(await apiFetch(`/api/students/${studentId}/achievements`))
 }
 
 export async function createAchievement(
@@ -124,7 +141,7 @@ export async function createAchievement(
 ): Promise<Achievement> {
   if (isTauri()) return native.createAchievement(studentId, input)
   return json(
-    await fetch(`/api/students/${studentId}/achievements`, {
+    await apiFetch(`/api/students/${studentId}/achievements`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -134,14 +151,14 @@ export async function createAchievement(
 
 export async function deleteAchievement(id: string): Promise<void> {
   if (isTauri()) return native.deleteAchievement(id)
-  await fetch(`/api/achievements/${id}`, { method: "DELETE" })
+  await ensureOk(await apiFetch(`/api/achievements/${id}`, { method: "DELETE" }))
 }
 
 // ---------- Fees ----------
 
 export async function fetchFeeStatuses(): Promise<StudentFeeStatus[]> {
   if (isTauri()) return native.fetchFeeStatuses()
-  return json(await fetch(`/api/fees/statuses`))
+  return json(await apiFetch(`/api/fees/statuses`))
 }
 
 export async function collectPayment(input: {
@@ -152,10 +169,10 @@ export async function collectPayment(input: {
   paymentDate?: string
   notes?: string
   collectedBy?: string
-}): Promise<FeePayment> {
+}): Promise<FeePaymentWithStudent> {
   if (isTauri()) return native.collectPayment(input)
   return json(
-    await fetch(`/api/payments`, {
+    await apiFetch(`/api/payments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -164,29 +181,29 @@ export async function collectPayment(input: {
 }
 
 export async function fetchPayments(params: { studentId?: string; month?: string; limit?: number } = {}): Promise<
-  (FeePayment & { studentName: string; admissionNo: string })[]
+  FeePaymentWithStudent[]
 > {
   if (isTauri()) return native.fetchPayments(params)
-  return json(await fetch(`/api/payments${qs(params as Record<string, string | number>)}`))
+  return json(await apiFetch(`/api/payments${qs(params as Record<string, string | number>)}`))
 }
 
 export async function fetchDefaulters(): Promise<StudentFeeStatus[]> {
   if (isTauri()) return native.fetchDefaulters()
-  return json(await fetch(`/api/fees/defaulters`))
+  return json(await apiFetch(`/api/fees/defaulters`))
 }
 
 // ---------- Dashboard ----------
 
 export async function fetchDashboard(): Promise<DashboardStats> {
   if (isTauri()) return native.fetchDashboard()
-  return json(await fetch(`/api/dashboard`))
+  return json(await apiFetch(`/api/dashboard`))
 }
 
 // ---------- Committee ----------
 
 export async function fetchCommittee(): Promise<CommitteeMember[]> {
   if (isTauri()) return native.fetchCommittee()
-  return json(await fetch(`/api/committee`))
+  return json(await apiFetch(`/api/committee`))
 }
 
 export async function saveCommitteeMember(
@@ -194,7 +211,7 @@ export async function saveCommitteeMember(
 ): Promise<CommitteeMember> {
   if (isTauri()) return native.saveCommitteeMember(input)
   return json(
-    await fetch(input.id ? `/api/committee/${input.id}` : `/api/committee`, {
+    await apiFetch(input.id ? `/api/committee/${input.id}` : `/api/committee`, {
       method: input.id ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -204,47 +221,51 @@ export async function saveCommitteeMember(
 
 export async function deleteCommitteeMember(id: string): Promise<void> {
   if (isTauri()) return native.deleteCommitteeMember(id)
-  await fetch(`/api/committee/${id}`, { method: "DELETE" })
+  await ensureOk(await apiFetch(`/api/committee/${id}`, { method: "DELETE" }))
 }
 
 export async function reorderCommittee(ids: string[]): Promise<void> {
   if (isTauri()) return native.reorderCommittee(ids)
-  await fetch(`/api/committee/reorder`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids }),
-  })
+  await ensureOk(
+    await apiFetch(`/api/committee/reorder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    })
+  )
 }
 
 // ---------- Attendance ----------
 
 export async function fetchAttendance(date: string, batch?: string): Promise<AttendanceRecord[]> {
   if (isTauri()) return native.fetchAttendance(date, batch)
-  return json(await fetch(`/api/attendance${qs({ date, batch })}`))
+  return json(await apiFetch(`/api/attendance${qs({ date, batch })}`))
 }
 
 export async function markAttendance(
   records: { studentId: string; date: string; batch: string; status: string }[]
 ): Promise<void> {
   if (isTauri()) return native.markAttendance(records)
-  await fetch(`/api/attendance`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ records }),
-  })
+  await ensureOk(
+    await apiFetch(`/api/attendance`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ records }),
+    })
+  )
 }
 
 // ---------- Settings / Backup ----------
 
 export async function fetchSettings(): Promise<AcademySettings> {
   if (isTauri()) return native.fetchSettings()
-  return json(await fetch(`/api/settings`))
+  return json(await apiFetch(`/api/settings`))
 }
 
 export async function saveSettings(settings: AcademySettings): Promise<AcademySettings> {
   if (isTauri()) return native.saveSettings(settings)
   return json(
-    await fetch(`/api/settings`, {
+    await apiFetch(`/api/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
@@ -254,7 +275,8 @@ export async function saveSettings(settings: AcademySettings): Promise<AcademySe
 
 export async function exportBackup(): Promise<Blob> {
   if (isTauri()) return native.exportBackup()
-  return fetch(`/api/backup`).then((r) => r.blob())
+  const res = await apiFetch(`/api/backup`)
+  return (await ensureOk(res)).blob()
 }
 
 // ---------- Media upload ----------
@@ -266,7 +288,7 @@ export async function uploadMedia(file: File, folder: UploadFolder): Promise<{ p
   const fd = new FormData()
   fd.append("file", file)
   fd.append("folder", folder)
-  return json(await fetch(`/api/upload`, { method: "POST", body: fd }))
+  return json(await apiFetch(`/api/upload`, { method: "POST", body: fd }))
 }
 
 export function mediaUrl(path?: string | null): string {
@@ -276,5 +298,7 @@ export function mediaUrl(path?: string | null): string {
     if (!base) return ""
     return convertFileSrc(`${base}/${path}`)
   }
-  return `/api/media?path=${encodeURIComponent(path)}`
+  const token = process.env.NEXT_PUBLIC_PSAMS_API_TOKEN
+  const tokenQs = token ? `&token=${encodeURIComponent(token)}` : ""
+  return `/api/media?path=${encodeURIComponent(path)}${tokenQs}`
 }

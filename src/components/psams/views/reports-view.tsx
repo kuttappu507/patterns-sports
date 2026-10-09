@@ -5,9 +5,9 @@
 // ============================================================
 
 import { useEffect, useMemo, useState } from "react"
-import { Search, Filter, Printer, FileSpreadsheet, FileText, Loader2, X, RotateCcw } from "lucide-react"
+import { Search, Filter, Printer, FileSpreadsheet, FileText, Loader2, RotateCcw } from "lucide-react"
 import { fetchStudents, fetchSettings, mediaUrl } from "@/lib/psams/api"
-import { computeAge, computeBMI, CATEGORY_COLORS, categoryBracket, formatINR } from "@/lib/psams/domain"
+import { computeAge, computeBMI, CATEGORY_COLORS, formatINR } from "@/lib/psams/domain"
 import { SPORTS, SPORT_POSITIONS, type Student, type AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { exportExcel, exportPDF } from "@/lib/psams/export"

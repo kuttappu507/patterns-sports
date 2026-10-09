@@ -5,7 +5,7 @@
 // defaulters monitoring & export pipelines.
 // ============================================================
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Search,
@@ -73,7 +73,6 @@ function CollectTab() {
   const { refresh } = useAppStore()
   const { toast } = useToast()
   const [students, setStudents] = useState<Student[]>([])
-  const [statuses, setStatuses] = useState<StudentFeeStatus[]>([])
   const [settings, setSettings] = useState<AcademySettings | null>(null)
   const [q, setQ] = useState("")
   const [selected, setSelected] = useState<Student | null>(null)
@@ -91,43 +90,20 @@ function CollectTab() {
     fetchSettings().then(setSettings)
   }, [])
 
-  // when the selected student changes, compute pending months live
-  useEffect(() => {
-    if (!selected) return
-    const st = statuses.find((s) => s.student.id === selected.id)
-    if (st) {
-      setPending(st.pendingMonths)
-      setChosen(st.pendingMonths)
-      setAmount(String(st.pendingMonths.length * selected.monthlyFee))
-    } else {
-      // statuses not loaded yet — compute locally from payments
-      fetchStudents({ q: selected.admissionNo }).then(async (rows) => {
-        const s = rows.find((r) => r.id === selected.id) ?? selected
-        const st2 = statuses.find((x) => x.student.id === s.id)
-        const calc = st2 ?? computeLocal(s, [])
-        setPending(calc.pendingMonths)
-        setChosen(calc.pendingMonths)
-        setAmount(String(calc.pendingMonths.length * s.monthlyFee))
-      })
-    }
-     
-  }, [selected])
+  function computeLocal(s: Student, payments: { months: string; paymentDate: string | Date }[]) {
+    const st = computeFeeStatus(s, payments)
+    return { pendingMonths: st.pendingMonths, paidMonths: st.paidMonths, overdueMonths: st.overdueMonths }
+  }
 
   async function pick(student: Student) {
     setSelected(student)
-    // ensure statuses carry latest payments
+    // fetch fresh statuses (latest payments) and compute pending months inline
     const all = await fetchFeeStatuses()
-    setStatuses(all)
     const st = all.find((s) => s.student.id === student.id)
     const calc = st ?? computeLocal(student, [])
     setPending(calc.pendingMonths)
     setChosen(calc.pendingMonths)
     setAmount(String(calc.pendingMonths.length * student.monthlyFee))
-  }
-
-  function computeLocal(s: Student, payments: { months: string; paymentDate: string | Date }[]) {
-    const st = computeFeeStatus(s, payments)
-    return { pendingMonths: st.pendingMonths, paidMonths: st.paidMonths, overdueMonths: st.overdueMonths }
   }
 
   const filtered = useMemo(() => {
@@ -402,13 +378,6 @@ function DefaultersTab() {
   const [settings, setSettings] = useState<AcademySettings | null>(null)
   const { setPrint, navigate } = useAppStore()
 
-  const load = useCallback(async () => {
-    const [d, s] = await Promise.all([fetchFeeStatuses(), fetchSettings()])
-    setRows(d.filter((r) => r.student.status === "Active" && r.dueAmount > 0).sort((a, b) => Number(b.isDefaulter) - Number(a.isDefaulter) || b.dueAmount - a.dueAmount))
-    setSettings(s)
-    setLoading(false)
-  }, [])
-
   useEffect(() => {
     let alive = true
     Promise.all([fetchFeeStatuses(), fetchSettings()]).then(([d, s]) => {
@@ -465,7 +434,7 @@ function DefaultersTab() {
           <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => exportExcel({ sheetName: "Defaulters", fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster — overdue by more than one month", academy: settings ?? undefined, columns: cols, rows: exportRows, totalsRow: { name: "TOTAL", due: totalDue } })}>
             <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
           </Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => exportPDF({ fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster", subtitle: "Overdue by more than one billing month", academy: settings ?? undefined, columns: cols, rows: exportRows, orientation: "l", totals: undefined })}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => exportPDF({ fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster", subtitle: "Overdue by more than one billing month", academy: settings ?? undefined, columns: cols, rows: exportRows, orientation: "l", totalsRow: { name: "TOTAL", due: totalDue } })}>
             <FileText className="h-3.5 w-3.5" /> PDF
           </Button>
         </div>

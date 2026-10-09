@@ -95,6 +95,18 @@ export interface FeePayment {
   createdAt: string
 }
 
+/** A payment enriched with the payer's identity — what collection APIs return. */
+export interface FeePaymentWithStudent extends FeePayment {
+  studentName: string
+  admissionNo: string
+}
+
+/** Full player profile: base record + relations loaded by fetchStudent. */
+export interface StudentWithRelations extends Student {
+  achievements: Achievement[]
+  payments: FeePayment[]
+}
+
 export interface CommitteeMember {
   id: string
   fullName: string

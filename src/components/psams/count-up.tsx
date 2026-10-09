@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useSpring, useTransform, motion } from "framer-motion"
 
 /** Count-up numeric transition used on dashboard summary cards. */
@@ -16,8 +16,7 @@ export function CountUp({
   className?: string
 }) {
   const [display, setDisplay] = useState(format(value))
-  const prevRef = useRef(value)
-  const spring = useSpring(prevRef.current, { duration: duration * 1000, bounce: 0 })
+  const spring = useSpring(value, { duration: duration * 1000, bounce: 0 })
   const text = useTransform(spring, (v) => format(v))
 
   useEffect(() => {

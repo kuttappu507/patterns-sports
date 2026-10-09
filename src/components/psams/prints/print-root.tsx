@@ -8,8 +8,8 @@
 
 import { Printer } from "lucide-react"
 import { useAppStore } from "@/lib/psams/store"
-import type { AcademySettings, Achievement, CommitteeMember, FeePayment, PrintPayload, Student } from "@/lib/psams/types"
-import { computeAge, ageDetailed, computeBMI, formatDate, formatINR, monthLabel, parsePaidMonths, categoryBracket } from "@/lib/psams/domain"
+import type { AcademySettings, Achievement, FeePayment, PrintPayload, Student } from "@/lib/psams/types"
+import { computeAge, ageDetailed, computeBMI, formatDate, formatINR, monthLabel, categoryBracket } from "@/lib/psams/domain"
 import { mediaUrl } from "@/lib/psams/api"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -95,7 +95,6 @@ interface ProfileData {
 
 function ProfileA4({ data, preview }: { data: ProfileData; preview?: boolean }) {
   const { student: s, achievements, settings } = data
-  const age = computeAge(s.dateOfBirth)
   const bmi = computeBMI(s.weightKg, s.heightCm)
 
   return (
