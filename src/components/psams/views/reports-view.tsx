@@ -10,6 +10,7 @@ import { fetchStudents, fetchSettings, mediaUrl } from "@/lib/psams/api"
 import { computeAge, computeBMI, CATEGORY_COLORS, formatINR } from "@/lib/psams/domain"
 import { SPORTS, SPORT_POSITIONS, type Student, type AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
+import { useToast } from "@/hooks/use-toast"
 import { exportExcel, exportPDF } from "@/lib/psams/export"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,16 +40,35 @@ export function ReportsView() {
   const [filters, setFilters] = useState<FilterState>(EMPTY)
   const [settings, setSettings] = useState<AcademySettings | null>(null)
   const { setPrint, navigate } = useAppStore()
+  const { toast } = useToast()
 
   useEffect(() => {
+    let alive = true
     Promise.all([fetchStudents({ status: "Active" }), fetchSettings()])
       .then(([s, st]) => {
+        if (!alive) return
         setAll(s)
         setSettings(st)
         setLoading(false)
       })
-      .catch(() => setLoading(false))
-  }, [])
+      .catch((e) => {
+        if (!alive) return
+        setLoading(false)
+        toast({ title: "Could not load students", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+      })
+    return () => {
+      alive = false
+    }
+  }, [toast])
+
+  // Excel/PDF generation can throw — surface it instead of failing silently
+  async function runExport(fn: () => Promise<unknown>) {
+    try {
+      await fn()
+    } catch (e) {
+      toast({ title: "Export failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    }
+  }
 
   // client-side multi-parameter engine (instant, offline)
   const rows = useMemo(() => {
@@ -180,10 +200,10 @@ export function ReportsView() {
         </span>
         <div className="ml-auto flex gap-2">
           <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={printReport}><Printer className="h-3.5 w-3.5" /> A4 Print</Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => exportPDF({ fileName: "PS-AMS-report", title: "Student Registry Report", subtitle: `${rows.length} records · generated ${new Date().toLocaleDateString("en-IN")}`, academy: settings ?? undefined, columns: cols.slice(1), rows: exportRows, orientation: "l" })}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => runExport(() => exportPDF({ fileName: "PS-AMS-report", title: "Student Registry Report", subtitle: `${rows.length} records · generated ${new Date().toLocaleDateString("en-IN")}`, academy: settings ?? undefined, columns: cols.slice(1), rows: exportRows, orientation: "l" }))}>
             <FileText className="h-3.5 w-3.5" /> PDF
           </Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => exportExcel({ sheetName: "Student Report", fileName: "PS-AMS-report", title: "Student Registry Report", subtitle: `${rows.length} records`, academy: settings ?? undefined, columns: cols, rows: exportRows })}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => runExport(() => exportExcel({ sheetName: "Student Report", fileName: "PS-AMS-report", title: "Student Registry Report", subtitle: `${rows.length} records`, academy: settings ?? undefined, columns: cols, rows: exportRows }))}>
             <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
           </Button>
         </div>

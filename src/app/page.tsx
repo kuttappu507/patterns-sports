@@ -86,7 +86,12 @@ export default function Home() {
         if (isTauri()) await initBackend()
       } catch (e) {
         console.error("Backend boot failed", e)
-        if (alive) setBootError(e instanceof Error ? e.message : String(e))
+        if (alive) {
+          const msg = e instanceof Error ? e.message : String(e)
+          setBootError(msg)
+          // also surface it in the shell footer — the splash disappears, the error must not
+          useAppStore.getState().setBootError(msg)
+        }
       } finally {
         if (alive) setBooted(true)
       }

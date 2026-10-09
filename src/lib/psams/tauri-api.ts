@@ -641,6 +641,13 @@ export async function markAttendance(
   records: { studentId: string; date: string; batch: string; status: string }[]
 ): Promise<void> {
   const db = await getDb()
+  // validate the whole batch before writing — mirrors the web route
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+  for (const r of records) {
+    if (!r?.studentId) throw new Error("Each attendance record needs a student")
+    if (!r?.date || !DATE_RE.test(r.date)) throw new Error("Attendance date must be in YYYY-MM-DD format")
+    if (r?.status !== "Present" && r?.status !== "Absent") throw new Error("Attendance status must be Present or Absent")
+  }
   for (const r of records) {
     await db.execute(
       `INSERT INTO Attendance (id, studentId, date, batch, status)
@@ -736,10 +743,18 @@ export async function exportBackup(): Promise<Blob> {
 
 export type UploadFolder = "photos" | "documents" | "certificates"
 
+// Same allowlist as the web /api/upload route — images + PDF only.
+const ALLOWED_UPLOAD_EXT = new Set([".png", ".jpg", ".jpeg", ".webp", ".pdf"])
+
 export async function uploadMedia(file: File, folder: UploadFolder): Promise<{ path: string }> {
   if (!_mediaBase) await initBackend()
+  const safeName = sanitizeFileName(file.name)
+  const ext = safeName.slice(safeName.lastIndexOf(".")).toLowerCase()
+  if (!ALLOWED_UPLOAD_EXT.has(ext)) {
+    throw new Error("Unsupported file type — allowed: PNG, JPG, WEBP or PDF")
+  }
   const bytes = new Uint8Array(await file.arrayBuffer())
-  const rel = `${folder}/${Date.now()}-${sanitizeFileName(file.name)}`
+  const rel = `${folder}/${Date.now()}-${safeName}`
   const abs = await join(_mediaBase!, rel)
   try {
     await mkdir(await join(_mediaBase!, folder), { recursive: true })

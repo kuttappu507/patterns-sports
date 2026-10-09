@@ -12,6 +12,7 @@ import { fetchStudents, fetchAttendance, markAttendance, fetchSettings, mediaUrl
 import { computeAge, todayKey, CATEGORY_COLORS } from "@/lib/psams/domain"
 import type { Student, AttendanceRecord, AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
+import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -29,26 +30,46 @@ export function AttendanceView() {
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<AcademySettings | null>(null)
+  const [loadError, setLoadError] = useState(false)
   const { setPrint } = useAppStore()
+  const { toast } = useToast()
 
   useEffect(() => {
     // Async data fetch: setState only after the await (no cascading renders).
     void (async () => {
-      const [s, st] = await Promise.all([fetchStudents({ status: "Active" }), fetchSettings()])
-      setStudents(s)
-      setSettings(st)
-      setLoading(false)
+      try {
+        const [s, st] = await Promise.all([fetchStudents({ status: "Active" }), fetchSettings()])
+        setStudents(s)
+        setSettings(st)
+        setLoadError(false)
+      } catch (e) {
+        console.error(e)
+        setLoadError(true)
+        toast({ title: "Could not load attendance", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+      } finally {
+        setLoading(false)
+      }
     })()
   }, [])
 
   // load existing attendance when the session date changes
+  // (sequence token guards against out-of-order responses on rapid date changes)
   useEffect(() => {
-    fetchAttendance(date).then((rows: AttendanceRecord[]) => {
-      const map: Record<string, string> = {}
-      rows.forEach((r) => (map[r.studentId] = r.status))
-      setRecords(map)
-    })
-  }, [date])
+    let alive = true
+    fetchAttendance(date)
+      .then((rows: AttendanceRecord[]) => {
+        if (!alive) return
+        const map: Record<string, string> = {}
+        rows.forEach((r) => (map[r.studentId] = r.status))
+        setRecords(map)
+      })
+      .catch((e) => {
+        if (alive) toast({ title: "Could not load register", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+      })
+    return () => {
+      alive = false
+    }
+  }, [date, toast])
 
   const roster = useMemo(() => {
     if (segment === "all") return students
@@ -62,9 +83,19 @@ export function AttendanceView() {
 
   async function toggle(s: Student, status: "Present" | "Absent") {
     setSavingIds((prev) => new Set(prev).add(s.id))
+    const previous = records[s.id]
     setRecords((prev) => ({ ...prev, [s.id]: status }))
     try {
       await markAttendance([{ studentId: s.id, date, batch: s.trainingBatch || s.ageCategory, status }])
+    } catch (e) {
+      // roll the optimistic toggle back so the UI never lies about saved state
+      setRecords((prev) => {
+        const n = { ...prev }
+        if (previous === undefined) delete n[s.id]
+        else n[s.id] = previous
+        return n
+      })
+      toast({ title: "Attendance not saved", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     } finally {
       setSavingIds((prev) => {
         const n = new Set(prev)
@@ -74,14 +105,27 @@ export function AttendanceView() {
     }
   }
 
+  const [markAllBusy, setMarkAllBusy] = useState(false)
+
   async function markAll(status: "Present" | "Absent") {
+    if (markAllBusy) return
+    const snapshot = { ...records }
     const batch = roster.map((s) => ({ studentId: s.id, date, batch: s.trainingBatch || s.ageCategory, status }))
     setRecords((prev) => {
       const n = { ...prev }
       roster.forEach((s) => (n[s.id] = status))
       return n
     })
-    if (batch.length) await markAttendance(batch)
+    if (!batch.length) return
+    setMarkAllBusy(true)
+    try {
+      await markAttendance(batch)
+    } catch (e) {
+      setRecords(snapshot) // restore pre-bulk state
+      toast({ title: "Bulk mark failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setMarkAllBusy(false)
+    }
   }
 
   function printSheet() {
@@ -122,7 +166,7 @@ export function AttendanceView() {
             {marked < roster.length && <Badge variant="secondary" className="rounded-full text-[14.5px]">{roster.length - marked} unmarked</Badge>}
           </div>
           <div className="ml-auto flex gap-2">
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-emerald-500/30 bg-emerald-500/10 text-xs font-medium text-emerald-700 transition-all hover:bg-emerald-500/20 active:scale-[0.97] dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300" onClick={() => markAll("Present")}>
+            <Button size="sm" variant="outline" disabled={markAllBusy} className="h-8 gap-1.5 rounded-lg border-emerald-500/30 bg-emerald-500/10 text-xs font-medium text-emerald-700 transition-all hover:bg-emerald-500/20 active:scale-[0.97] disabled:opacity-50 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300" onClick={() => markAll("Present")}>
               <CheckCheck className="h-3.5 w-3.5" /> All present
             </Button>
             <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-xs hover:bg-muted active:scale-[0.97]" onClick={printSheet}>
@@ -139,7 +183,14 @@ export function AttendanceView() {
             {Array.from({ length: 9 }).map((_, i) => <Shimmer key={i} className="h-14 rounded-xl" />)}
           </div>
         )}
-        {!loading && roster.length === 0 && (
+        {!loading && loadError && (
+          <EmptyState
+            icon={<Users className="h-6 w-6" />}
+            title="Attendance data unavailable"
+            hint="The backend could not be reached. Check the connection and reopen this module."
+          />
+        )}
+        {!loading && !loadError && roster.length === 0 && (
           <EmptyState
             icon={<Users className="h-6 w-6" />}
             title="No active students in this segment"

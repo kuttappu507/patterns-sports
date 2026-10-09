@@ -9,7 +9,7 @@
 import { Printer } from "lucide-react"
 import { useAppStore } from "@/lib/psams/store"
 import type { AcademySettings, Achievement, FeePayment, PrintPayload, Student } from "@/lib/psams/types"
-import { computeAge, ageDetailed, computeBMI, formatDate, formatINR, monthLabel, categoryBracket } from "@/lib/psams/domain"
+import { computeAge, ageDetailed, computeBMI, formatDate, formatINR, monthLabel, parsePaidMonths, categoryBracket } from "@/lib/psams/domain"
 import { mediaUrl } from "@/lib/psams/api"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -228,7 +228,7 @@ interface ReceiptData {
 
 function ReceiptA5({ data, preview }: { data: ReceiptData; preview?: boolean }) {
   const { receipt: r, settings } = data
-  const months: string[] = JSON.parse(r.months || "[]")
+  const months = parsePaidMonths(r.months || "[]")
   return (
     <div className={`print-a5-preview ${preview ? "" : "print-page"} p-[9mm] text-[12px] text-black`} style={preview ? { zoom: 0.95 } : undefined}>
       <Letterhead settings={settings} docTitle="Fee Payment Receipt" />
@@ -263,7 +263,7 @@ function ReceiptA5({ data, preview }: { data: ReceiptData; preview?: boolean }) 
 
 function ReceiptThermal({ data, preview }: { data: ReceiptData; preview?: boolean }) {
   const { receipt: r, settings } = data
-  const months: string[] = JSON.parse(r.months || "[]")
+  const months = parsePaidMonths(r.months || "[]")
   const dash = "--------------------------------"
 
   return (

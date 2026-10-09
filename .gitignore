@@ -88,3 +88,4 @@ tool-results/
 
 # npm lockfile (repo uses bun.lock)
 /package-lock.json
+scripts/pr2.diff

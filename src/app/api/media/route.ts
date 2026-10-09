@@ -24,12 +24,13 @@ export async function GET(req: NextRequest) {
     if (!abs.startsWith(MEDIA_ROOT)) throw new Error("Traversal blocked")
     const data = await readFile(abs)
     const ext = path.extname(rel).toLowerCase()
-    return new NextResponse(new Uint8Array(data), {
-      headers: {
-        "Content-Type": MIME[ext] || "application/octet-stream",
-        "Cache-Control": "private, max-age=60",
-      },
-    })
+    const headers: Record<string, string> = {
+      "Content-Type": MIME[ext] || "application/octet-stream",
+      "Cache-Control": "private, max-age=60",
+      "X-Content-Type-Options": "nosniff",
+    }
+    if (ext === ".pdf") headers["Content-Disposition"] = "inline"
+    return new NextResponse(new Uint8Array(data), { headers })
   } catch {
     return NextResponse.json({ error: "File not found" }, { status: 404 })
   }

@@ -69,30 +69,47 @@ function CommitteeManager() {
   const { toast } = useToast()
 
   const load = useCallback(async () => {
-    setMembers(await fetchCommittee())
-    setLoading(false)
-  }, [])
+    try {
+      setMembers(await fetchCommittee())
+      setLoading(false)
+    } catch (e) {
+      setLoading(false)
+      toast({ title: "Could not load committee", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    }
+  }, [toast])
 
   useEffect(() => {
     let alive = true
-    fetchCommittee().then((rows) => {
-      if (!alive) return
-      setMembers(rows)
-      setLoading(false)
-    })
+    fetchCommittee()
+      .then((rows) => {
+        if (!alive) return
+        setMembers(rows)
+        setLoading(false)
+      })
+      .catch((e) => {
+        if (!alive) return
+        setLoading(false)
+        toast({ title: "Could not load committee", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+      })
     return () => {
       alive = false
     }
-  }, [])
+  }, [toast])
 
   async function move(index: number, dir: -1 | 1) {
     const next = [...members]
     const target = index + dir
     if (target < 0 || target >= next.length) return
+    const snapshot = members
     ;[next[index], next[target]] = [next[target], next[index]]
     setMembers(next)
-    await reorderCommittee(next.map((m) => m.id))
-    refresh()
+    try {
+      await reorderCommittee(next.map((m) => m.id))
+      refresh()
+    } catch (e) {
+      setMembers(snapshot) // restore the on-screen order if the save failed
+      toast({ title: "Reorder failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    }
   }
 
   return (
@@ -169,11 +186,15 @@ function CommitteeManager() {
             <AlertDialogAction
               className="bg-destructive text-xs text-white hover:bg-destructive/90"
               onClick={async () => {
-                await deleteCommitteeMember(deleting!.id)
-                toast({ title: "Member removed" })
-                setDeleting(null)
-                load()
-                refresh()
+                try {
+                  await deleteCommitteeMember(deleting!.id)
+                  toast({ title: "Member removed" })
+                  setDeleting(null)
+                  load()
+                  refresh()
+                } catch (e) {
+                  toast({ title: "Remove failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+                }
               }}
             >
               Remove
@@ -224,6 +245,8 @@ function CommitteeDialog({ open, onClose, editing, onSaved }: { open: boolean; o
       toast({ title: editing ? "Member updated" : "Member added", description: "Dashboard showcase is synced in real time." })
       onSaved()
       onClose()
+    } catch (e) {
+      toast({ title: "Save failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -280,8 +303,18 @@ function AcademyProfile() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetchSettings().then(setSettings)
-  }, [])
+    let alive = true
+    fetchSettings()
+      .then((s) => {
+        if (alive) setSettings(s)
+      })
+      .catch((e) => {
+        if (alive) toast({ title: "Could not load academy profile", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+      })
+    return () => {
+      alive = false
+    }
+  }, [toast])
 
   if (!settings) return <div className="shimmer h-40 rounded-2xl" />
 
@@ -295,6 +328,8 @@ function AcademyProfile() {
     try {
       await saveSettings(settings)
       toast({ title: "Academy profile saved", description: "Receipts and reports now use the new details." })
+    } catch (e) {
+      toast({ title: "Save failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -330,7 +365,10 @@ function AcademyProfile() {
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Default monthly fee (₹)</Label>
-          <Input className="h-8 text-xs" type="number" min="0" value={settings.defaultMonthlyFee} onChange={(e) => upd("defaultMonthlyFee", Number(e.target.value))} />
+          <Input className="h-8 text-xs" type="number" min="0" value={settings.defaultMonthlyFee} onChange={(e) => {
+            const n = Number(e.target.value)
+            upd("defaultMonthlyFee", Number.isFinite(n) && n >= 0 ? n : 0) // never persist NaN
+          }} />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Receipt signatory</Label>
@@ -361,6 +399,8 @@ function DataSafety() {
       a.click()
       URL.revokeObjectURL(url)
       toast({ title: "Backup downloaded", description: "Store it on a USB drive or cloud folder for redundancy." })
+    } catch (e) {
+      toast({ title: "Backup failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     } finally {
       setBusy(false)
     }

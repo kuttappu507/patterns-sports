@@ -5,7 +5,7 @@
 // defaulters monitoring & export pipelines.
 // ============================================================
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Search,
@@ -35,6 +35,7 @@ import {
   monthLabel,
   formatINR,
   formatDate,
+  parsePaidMonths,
   CATEGORY_COLORS,
 } from "@/lib/psams/domain"
 import { PAYMENT_MODES, type FeePayment, type Student, type StudentFeeStatus, type AcademySettings } from "@/lib/psams/types"
@@ -83,12 +84,24 @@ function CollectTab() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10))
   const [notes, setNotes] = useState("")
   const [saving, setSaving] = useState(false)
+  const pickSeq = useRef(0)
   const [receipt, setReceipt] = useState<(FeePayment & { studentName: string; admissionNo: string; studentMobile?: string }) | null>(null)
 
   useEffect(() => {
-    fetchStudents({ status: "Active" }).then(setStudents)
-    fetchSettings().then(setSettings)
-  }, [])
+    let alive = true
+    Promise.all([fetchStudents({ status: "Active" }), fetchSettings()])
+      .then(([s, st]) => {
+        if (!alive) return
+        setStudents(s)
+        setSettings(st)
+      })
+      .catch((e) => {
+        if (alive) toast({ title: "Could not load fee data", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+      })
+    return () => {
+      alive = false
+    }
+  }, [toast])
 
   function computeLocal(s: Student, payments: { months: string; paymentDate: string | Date }[]) {
     const st = computeFeeStatus(s, payments)
@@ -97,13 +110,21 @@ function CollectTab() {
 
   async function pick(student: Student) {
     setSelected(student)
-    // fetch fresh statuses (latest payments) and compute pending months inline
-    const all = await fetchFeeStatuses()
-    const st = all.find((s) => s.student.id === student.id)
-    const calc = st ?? computeLocal(student, [])
-    setPending(calc.pendingMonths)
-    setChosen(calc.pendingMonths)
-    setAmount(String(calc.pendingMonths.length * student.monthlyFee))
+    // sequence token — a slow response for a previously picked student must
+    // never overwrite the pending months of the one just selected
+    const seq = ++pickSeq.current
+    try {
+      const all = await fetchFeeStatuses()
+      if (seq !== pickSeq.current) return
+      const st = all.find((s) => s.student.id === student.id)
+      const calc = st ?? computeLocal(student, [])
+      setPending(calc.pendingMonths)
+      setChosen(calc.pendingMonths)
+      setAmount(String(calc.pendingMonths.length * student.monthlyFee))
+    } catch (e) {
+      if (seq !== pickSeq.current) return
+      toast({ title: "Could not load fee status", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    }
   }
 
   const filtered = useMemo(() => {
@@ -310,7 +331,7 @@ export function ReceiptDialog({
 
   function waDispatch() {
     if (!receipt) return
-    const months = JSON.parse(receipt.months) as string[]
+    const months = parsePaidMonths(receipt.months)
     const lines = [
       `*${settings?.academyName || "Pattern Sports Academy"}*`,
       `Fee Receipt`,
@@ -335,7 +356,7 @@ export function ReceiptDialog({
   }
 
   if (!receipt) return null
-  const months = JSON.parse(receipt.months) as string[]
+  const months = parsePaidMonths(receipt.months)
 
   return (
     <Dialog open={!!receipt} onOpenChange={(o) => !o && onClose()}>
@@ -377,22 +398,39 @@ function DefaultersTab() {
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<AcademySettings | null>(null)
   const { setPrint, navigate } = useAppStore()
+  const { toast } = useToast()
 
   useEffect(() => {
     let alive = true
-    Promise.all([fetchFeeStatuses(), fetchSettings()]).then(([d, s]) => {
-      if (!alive) return
-      setRows(d.filter((r) => r.student.status === "Active" && r.dueAmount > 0).sort((a, b) => Number(b.isDefaulter) - Number(a.isDefaulter) || b.dueAmount - a.dueAmount))
-      setSettings(s)
-      setLoading(false)
-    })
+    Promise.all([fetchFeeStatuses(), fetchSettings()])
+      .then(([d, s]) => {
+        if (!alive) return
+        setRows(d.filter((r) => r.student.status === "Active" && r.dueAmount > 0).sort((a, b) => Number(b.isDefaulter) - Number(a.isDefaulter) || b.dueAmount - a.dueAmount))
+        setSettings(s)
+        setLoading(false)
+      })
+      .catch((e) => {
+        if (alive) {
+          setLoading(false)
+          toast({ title: "Could not load defaulters", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+        }
+      })
     return () => {
       alive = false
     }
-  }, [])
+  }, [toast])
 
   const defaulterCount = rows.filter((r) => r.isDefaulter).length
   const totalDue = rows.reduce((sum, r) => sum + r.dueAmount, 0)
+
+  // Excel/PDF generation can throw (encoding, layout edge cases) — never leave the user without feedback
+  async function runExport(fn: () => Promise<unknown>) {
+    try {
+      await fn()
+    } catch (e) {
+      toast({ title: "Export failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    }
+  }
 
   const exportRows = rows.map((r) => ({
     name: r.student.fullName,
@@ -431,10 +469,10 @@ function DefaultersTab() {
         </div>
         <div className="ml-auto flex gap-2">
           <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={printRoster}><Printer className="h-3.5 w-3.5" /> Print</Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => exportExcel({ sheetName: "Defaulters", fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster — overdue by more than one month", academy: settings ?? undefined, columns: cols, rows: exportRows, totalsRow: { name: "TOTAL", due: totalDue } })}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => runExport(() => exportExcel({ sheetName: "Defaulters", fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster — overdue by more than one month", academy: settings ?? undefined, columns: cols, rows: exportRows, totalsRow: { name: "TOTAL", due: totalDue } }))}>
             <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
           </Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => exportPDF({ fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster", subtitle: "Overdue by more than one billing month", academy: settings ?? undefined, columns: cols, rows: exportRows, orientation: "l", totalsRow: { name: "TOTAL", due: totalDue } })}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => runExport(() => exportPDF({ fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster", subtitle: "Overdue by more than one billing month", academy: settings ?? undefined, columns: cols, rows: exportRows, orientation: "l", totalsRow: { name: "TOTAL", due: totalDue } }))}>
             <FileText className="h-3.5 w-3.5" /> PDF
           </Button>
         </div>
@@ -532,7 +570,7 @@ function HistoryTab() {
               <td className="px-4 py-2 font-mono text-[15px]">{p.receiptNo}</td>
               <td className="px-3 py-2">{formatDate(p.paymentDate)}</td>
               <td className="px-3 py-2 font-medium">{p.studentName} <span className="text-[15.5px] text-muted-foreground">{p.admissionNo}</span></td>
-              <td className="px-3 py-2">{(JSON.parse(p.months) as string[]).map(monthLabel).join(", ")}</td>
+              <td className="px-3 py-2">{parsePaidMonths(p.months).map(monthLabel).join(", ")}</td>
               <td className="px-3 py-2">{p.paymentMode}</td>
               <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatINR(p.amount)}</td>
               <td className="px-3 py-2">

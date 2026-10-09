@@ -46,6 +46,8 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/payments — collect a fee payment (multi-month settle)
+const MONTH_KEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -53,7 +55,12 @@ export async function POST(req: NextRequest) {
     if (!studentId || !Array.isArray(months) || months.length === 0) {
       return NextResponse.json({ error: "studentId and at least one billing month are required" }, { status: 400 })
     }
-    if (!amount || Number(amount) <= 0) {
+    // every month key must be a well-formed "YYYY-MM" — never persist arbitrary payloads
+    if (!months.every((m: unknown) => typeof m === "string" && MONTH_KEY_RE.test(m))) {
+      return NextResponse.json({ error: "Billing months must be in YYYY-MM format" }, { status: 400 })
+    }
+    const amountNum = Number(amount)
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
       return NextResponse.json({ error: "Collected amount must be greater than zero" }, { status: 400 })
     }
 
@@ -70,7 +77,7 @@ export async function POST(req: NextRequest) {
             studentId,
             paymentDate: body.paymentDate ? new Date(body.paymentDate) : now,
             months: JSON.stringify(months),
-            amount: Number(amount),
+            amount: amountNum,
             paymentMode: paymentMode || "Cash",
             notes: body.notes || null,
             collectedBy: body.collectedBy || null,

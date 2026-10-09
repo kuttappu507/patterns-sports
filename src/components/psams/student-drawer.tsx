@@ -146,6 +146,23 @@ export function StudentDrawer({
       toast({ title: "Missing information", description: "Name, date of birth, parent, mobile and age category are required.", variant: "destructive" })
       return
     }
+    // — field-level sanity guards (mirror the server rules) —
+    const dob = new Date(form.dateOfBirth)
+    if (Number.isNaN(dob.getTime()) || dob > new Date()) {
+      toast({ title: "Invalid date of birth", description: "The date of birth cannot be in the future.", variant: "destructive" })
+      return
+    }
+    const digits = form.mobile.replace(/\D/g, "")
+    const mobileOk = digits.length === 10 || (digits.length === 12 && digits.startsWith("91")) || (digits.length === 11 && digits.startsWith("0"))
+    if (!mobileOk) {
+      toast({ title: "Invalid mobile number", description: "Enter a 10-digit mobile number (with country code or leading 0 also accepted).", variant: "destructive" })
+      return
+    }
+    const fee = Number(form.monthlyFee)
+    if (!Number.isFinite(fee) || fee < 0) {
+      toast({ title: "Invalid monthly fee", description: "The monthly fee cannot be negative.", variant: "destructive" })
+      return
+    }
     setSaving(true)
     try {
       const payload = {

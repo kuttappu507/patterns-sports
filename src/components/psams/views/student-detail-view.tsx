@@ -218,9 +218,13 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
                       variant="ghost"
                       className="h-7 w-7 text-destructive hover:text-destructive"
                       onClick={async () => {
-                        await deleteAchievement(a.id)
-                        toast({ title: "Achievement removed" })
-                        refresh()
+                        try {
+                          await deleteAchievement(a.id)
+                          toast({ title: "Achievement removed" })
+                          refresh()
+                        } catch (e) {
+                          toast({ title: "Delete failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+                        }
                       }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -371,6 +375,8 @@ function AchievementDialog({ open, onClose, studentId, onSaved }: { open: boolea
       toast({ title: "Achievement logged" })
       setForm({ tournamentName: "", eventDate: "", level: "School", medal: "None", notes: "", certificatePath: null })
       onSaved()
+    } catch (e) {
+      toast({ title: "Save failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     } finally {
       setSaving(false)
     }

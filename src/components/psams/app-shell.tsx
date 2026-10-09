@@ -33,7 +33,7 @@ const NAV: { key: ViewKey; label: string; icon: typeof LayoutDashboard; title: s
 ]
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { view, navigate } = useAppStore()
+  const { view, navigate, bootError } = useAppStore()
   const [collapsed, setCollapsed] = useState(false)
   const [clock, setClock] = useState("")
   const onMouseMove = useRevealMouse()
@@ -166,13 +166,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="relative z-10 space-y-1.5 px-3 pb-5">
             {!collapsed && (
               <div className="sidebar-card mx-1 mb-2 rounded-2xl p-3">
-                <div className="flex items-center gap-2 text-[12.5px] font-semibold text-indigo-100">
-                  <span className="pulse-dot inline-block h-2 w-2 rounded-full bg-emerald-400" />
-                  Local SQLite · Connected
-                </div>
-                <div className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-indigo-200/55">
-                  <WifiOff className="h-3.5 w-3.5" /> Offline-first · data stays on this PC
-                </div>
+                {bootError ? (
+                  <>
+                    <div className="flex items-center gap-2 text-[12.5px] font-semibold text-amber-300" title={bootError}>
+                      <span className="pulse-dot inline-block h-2 w-2 rounded-full bg-amber-400" />
+                      Local SQLite · Degraded
+                    </div>
+                    <div className="mt-1.5 text-[11px] leading-relaxed text-amber-200/70" title={bootError}>
+                      Backend failed to start — data ops unavailable. Restart the app; if it persists, check the boot log.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 text-[12.5px] font-semibold text-indigo-100">
+                      <span className="pulse-dot inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                      Local SQLite · Connected
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-indigo-200/55">
+                      <WifiOff className="h-3.5 w-3.5" /> Offline-first · data stays on this PC
+                    </div>
+                  </>
+                )}
               </div>
             )}
             <button

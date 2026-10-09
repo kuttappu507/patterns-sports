@@ -30,6 +30,7 @@ export function StudentsView() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Student | null>(null)
   const [deleting, setDeleting] = useState<Student | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
   const { navigate, refresh, dataVersion } = useAppStore()
   const { toast } = useToast()
 
@@ -43,10 +44,12 @@ export function StudentsView() {
         batch: batch === "all" ? undefined : batch,
       })
       setStudents(rows)
+    } catch (e) {
+      toast({ title: "Could not load students", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     } finally {
       setLoading(false)
     }
-  }, [q, category, status, batch])
+  }, [q, category, status, batch, toast])
 
   useEffect(() => {
     const t = setTimeout(load, 180) // debounced live search
@@ -54,11 +57,18 @@ export function StudentsView() {
   }, [load, dataVersion])
 
   async function confirmDelete() {
-    if (!deleting) return
-    await deleteStudent(deleting.id)
-    toast({ title: "Student removed", description: `${deleting.fullName} and all linked records were deleted.` })
-    setDeleting(null)
-    refresh()
+    if (!deleting || deleteBusy) return
+    setDeleteBusy(true)
+    try {
+      await deleteStudent(deleting.id)
+      toast({ title: "Student removed", description: `${deleting.fullName} and all linked records were deleted.` })
+      setDeleting(null)
+      refresh()
+    } catch (e) {
+      toast({ title: "Delete failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setDeleteBusy(false)
+    }
   }
 
   return (

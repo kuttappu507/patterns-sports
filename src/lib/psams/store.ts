@@ -16,10 +16,13 @@ interface AppState {
   /** force-refresh token bumped after mutations */
   dataVersion: number
   printPayload: PrintPayload | null
+  /** set when the offline backend failed to boot — surfaced in the shell footer */
+  bootError: string | null
 
   navigate: (view: ViewKey, studentId?: string | null) => void
   refresh: () => void
   setPrint: (p: PrintPayload | null) => void
+  setBootError: (e: string | null) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -27,6 +30,7 @@ export const useAppStore = create<AppState>((set) => ({
   activeStudentId: null,
   dataVersion: 0,
   printPayload: null,
+  bootError: null,
 
   navigate: (view, studentId = null) =>
     set((s) => ({
@@ -36,4 +40,5 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   refresh: () => set((s) => ({ dataVersion: s.dataVersion + 1 })),
   setPrint: (printPayload) => set({ printPayload }),
+  setBootError: (bootError) => set({ bootError }),
 }))
