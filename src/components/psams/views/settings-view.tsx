@@ -100,7 +100,7 @@ function CommitteeManager() {
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
           <div className="text-sm font-semibold">Executive Committee</div>
-          <div className="text-[11px] text-muted-foreground">Shown live on the dashboard — reorder, edit or remove members</div>
+          <div className="text-[15px] text-muted-foreground">Shown live on the dashboard — reorder, edit or remove members</div>
         </div>
         <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setEditing(null); setDlgOpen(true) }}>
           <Plus className="h-3.5 w-3.5" /> Add member
@@ -141,9 +141,9 @@ function CommitteeManager() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-xs font-semibold">{m.fullName}</span>
-                    <Badge variant="outline" className="rounded-full text-[10px]">{m.role}</Badge>
+                    <Badge variant="outline" className="rounded-full text-[15.5px]">{m.role}</Badge>
                   </div>
-                  <div className="truncate text-[11px] text-muted-foreground">{m.phone}{m.responsibilities ? ` · ${m.responsibilities}` : ""}</div>
+                  <div className="truncate text-[15px] text-muted-foreground">{m.phone}{m.responsibilities ? ` · ${m.responsibilities}` : ""}</div>
                 </div>
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(m); setDlgOpen(true) }}>
                   <Pencil className="h-3.5 w-3.5" />
@@ -305,7 +305,7 @@ function AcademyProfile() {
       <div className="mb-3 flex items-center gap-2">
         <Building2 className="h-4 w-4 text-primary" />
         <span className="text-sm font-semibold">Academy Profile</span>
-        <span className="text-[11px] text-muted-foreground">— used on letterheads & receipts</span>
+        <span className="text-[15px] text-muted-foreground">— used on letterheads & receipts</span>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
@@ -372,7 +372,7 @@ function DataSafety() {
         <DatabaseBackup className="h-4 w-4 text-primary" />
         <span className="text-sm font-semibold">Data Safety</span>
       </div>
-      <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+      <p className="text-[15.5px] leading-relaxed text-muted-foreground">
         The active SQLite database and the media directory are backed up automatically when the desktop app exits (USB target configurable in the Tauri shell). You can also snapshot a portable JSON backup right now:
       </p>
       <div className="mt-3 flex gap-2">
@@ -383,7 +383,7 @@ function DataSafety() {
           <Upload className="h-3.5 w-3.5" /> Restore guide
         </Button>
       </div>
-      <div className="mt-3 rounded-lg border bg-muted/40 p-2.5 text-[10.5px] text-muted-foreground">
+      <div className="mt-3 rounded-lg border bg-muted/40 p-2.5 text-[14.5px] text-muted-foreground">
         Windows data location: <span className="font-mono">%APPDATA%\PS-AMS\</span> — database <span className="font-mono">ps-ams.db</span>, media in <span className="font-mono">media\</span>.
       </div>
     </div>

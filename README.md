@@ -6,7 +6,7 @@ No cloud. No accounts. All data stays in a local SQLite database with media on d
 
 ## Themes & UI
 
-The UI ships with a **light "Clean Court" theme by default** (paper-white surfaces, emerald accent, airy modern web-app look) and an optional **"Dark Court" mode** (deep-navy arena + volt-lime). Switch anytime with the sun/moon toggle in the header — the choice is remembered across sessions and even recolours the native window title bar. Every surface keeps the modern interaction language: hover lift + glow on cards, animated page transitions, springy micro-interactions, shimmer skeletons and accent-rail row hovers.
+The UI ships with a **light "Volt Arena" theme by default** (porcelain surfaces, electric-indigo primary, volt-amber spike accent, court-teal highlights on an always-dark patterned sidebar) and an optional **"Night Arena" dark mode** (floodlit ink-violet court with neon indigo & amber). Switch anytime with the sun/moon toggle in the header — the choice is remembered across sessions and even recolours the native window title bar. A branded volleyball splash screen opens the app: bouncing match ball, perspective court floor and glowing net. Every surface keeps the modern interaction language: hover lift + glow on cards, animated page transitions, springy micro-interactions, shimmer skeletons and accent-rail row hovers — on an upsized typographic scale (17.5px base).
 
 ## Feature Map
 
@@ -91,6 +91,15 @@ The seeder populates 12 students across all five age categories, 20 fee payments
 Quality gates (also enforced in CI): `npm run verify` runs ESLint, `tsc
 --noEmit`, the Vitest domain-suite (`npm test`) and the backend parity check
 (`npm run check:parity` — Prisma schema ↔ Tauri `schema.sql` ↔ API surface).
+
+### Engine-free Prisma (driver adapter)
+
+The web backend runs Prisma through the **libsql driver adapter** with the WASM
+query compiler (`engineType = "client"` in `prisma/schema.prisma`), so **no Rust
+engine binaries are ever downloaded** — everything needed ships in npm packages.
+`prisma.config.ts` wires the CLI (`generate`, `db push`) to the same adapter.
+The SQLite schema can always be recreated from the mirrored DDL at
+`src-tauri/resources/schema.sql` if you prefer to skip `prisma db push`.
 
 ## Windows Desktop Build (Tauri v2)
 

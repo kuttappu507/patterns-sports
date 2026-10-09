@@ -168,7 +168,7 @@ function CollectTab() {
       <div className="glass rounded-2xl">
         <div className="border-b p-3">
           <div className="text-xs font-semibold">1 · Select Student</div>
-          <p className="text-[11px] text-muted-foreground">Pending months are retrieved automatically</p>
+          <p className="text-[15px] text-muted-foreground">Pending months are retrieved automatically</p>
           <div className="relative mt-2">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input className="h-8 pl-8 text-xs" placeholder="Name / admission no. / mobile…" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -177,19 +177,19 @@ function CollectTab() {
         <div className="max-h-[420px] divide-y overflow-y-auto">
           {filtered.map((s) => (
             <button key={s.id} onClick={() => pick(s)} className={cn("flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-accent/50", selected?.id === s.id && "bg-accent")}>
-              <div className="h-8 w-8 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-cyan-500/10">
+              <div className="h-8 w-8 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-teal-500/10">
                 {s.photoPath ? (
                    
                   <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
+                  <div className="flex h-full w-full items-center justify-center text-[15.5px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-medium">{s.fullName}</div>
-                <div className="text-[10.5px] text-muted-foreground">{s.admissionNo} · {s.mobile}</div>
+                <div className="text-[14.5px] text-muted-foreground">{s.admissionNo} · {s.mobile}</div>
               </div>
-              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
+              <span className={cn("rounded-full border px-2 py-0.5 text-[15.5px] font-medium", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
             </button>
           ))}
           {filtered.length === 0 && <div className="p-6 text-center text-xs text-muted-foreground">No active students found.</div>}
@@ -200,7 +200,7 @@ function CollectTab() {
       <div className="glass rounded-2xl">
         <div className="border-b p-3">
           <div className="text-xs font-semibold">2 · Payment Entry</div>
-          <p className="text-[11px] text-muted-foreground">Multi-month settlement with automatic amount suggestion</p>
+          <p className="text-[15px] text-muted-foreground">Multi-month settlement with automatic amount suggestion</p>
         </div>
         <AnimatePresence mode="wait">
           {!selected ? (
@@ -212,10 +212,10 @@ function CollectTab() {
               <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
                 <div>
                   <div className="text-sm font-semibold">{selected.fullName}</div>
-                  <div className="text-[11px] text-muted-foreground">{selected.admissionNo} · {selected.ageCategory} · fee {formatINR(selected.monthlyFee)}/month</div>
+                  <div className="text-[15px] text-muted-foreground">{selected.admissionNo} · {selected.ageCategory} · fee {formatINR(selected.monthlyFee)}/month</div>
                 </div>
                 <div className="ml-auto text-right">
-                  <div className="text-[11px] text-muted-foreground">Outstanding</div>
+                  <div className="text-[15px] text-muted-foreground">Outstanding</div>
                   <div className="text-sm font-bold text-rose-600 dark:text-rose-300">{formatINR(pending.length * selected.monthlyFee)}</div>
                 </div>
                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setSelected(null)}><X className="h-3.5 w-3.5" /></Button>
@@ -243,8 +243,8 @@ function CollectTab() {
                         >
                           <Checkbox checked={on} onCheckedChange={() => toggleMonth(m)} />
                           <span>{monthLabel(m)}</span>
-                          {isOverdue && <span className="rounded bg-rose-400/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-rose-600 dark:text-rose-300">OVERDUE</span>}
-                          <span className="text-[10px] text-muted-foreground">{formatINR(perMonth)}</span>
+                          {isOverdue && <span className="rounded bg-rose-400/15 px-1.5 py-0.5 text-[15px] font-semibold text-rose-600 dark:text-rose-300">OVERDUE</span>}
+                          <span className="text-[15.5px] text-muted-foreground">{formatINR(perMonth)}</span>
                         </label>
                       )
                     })}
@@ -362,7 +362,7 @@ export function ReceiptDialog({
             <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
           </Button>
         </div>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-[15px] text-muted-foreground">
           A5 renders for standard printers; the 80 mm slip is sized for thermal POS rolls. WhatsApp opens the itemized receipt via WhatsApp Web when connectivity is present.
         </p>
       </DialogContent>
@@ -425,7 +425,7 @@ function DefaultersTab() {
       <div className="glass flex flex-wrap items-center gap-3 rounded-2xl p-3">
         <div>
           <div className="text-xs font-semibold">Defaulters — overdue by more than one month</div>
-          <div className="text-[11px] text-muted-foreground">
+          <div className="text-[15px] text-muted-foreground">
             <span className="font-semibold text-rose-600 dark:text-rose-300">{defaulterCount}</span> defaulter(s) of {rows.length} with any dues · total outstanding <b>{formatINR(totalDue)}</b>
           </div>
         </div>
@@ -442,7 +442,7 @@ function DefaultersTab() {
 
       <div className="overflow-hidden glass rounded-2xl">
         <table className="w-full text-left text-xs">
-          <thead className="border-b border-border bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
+          <thead className="border-b border-border bg-muted/30 text-[15px] uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-2.5 font-medium">Student</th>
               <th className="px-3 py-2.5 font-medium">Category</th>
@@ -463,25 +463,25 @@ function DefaultersTab() {
                   <button className="text-left font-medium hover:text-primary hover:underline" onClick={() => navigate("student-detail", r.student.id)}>
                     {r.student.fullName}
                   </button>
-                  <div className="text-[10.5px] text-muted-foreground">{r.student.admissionNo}</div>
+                  <div className="text-[14.5px] text-muted-foreground">{r.student.admissionNo}</div>
                 </td>
                 <td className="px-3 py-2.5">
-                  <span className={cn("rounded-full border px-2 py-0.5 text-[10.5px] font-medium", CATEGORY_COLORS[r.student.ageCategory] || "")}>{r.student.ageCategory}</span>
+                  <span className={cn("rounded-full border px-2 py-0.5 text-[14.5px] font-medium", CATEGORY_COLORS[r.student.ageCategory] || "")}>{r.student.ageCategory}</span>
                 </td>
                 <td className="px-3 py-2.5">
                   {r.isDefaulter ? (
-                    <Badge className="rounded-full border border-rose-500/30 bg-rose-500/10 text-[10.5px] font-semibold text-rose-700 hover:bg-rose-500/20 dark:border-rose-400/25 dark:bg-rose-400/10 dark:text-rose-300">{r.overdueMonths.length} months overdue</Badge>
+                    <Badge className="rounded-full border border-rose-500/30 bg-rose-500/10 text-[14.5px] font-semibold text-rose-700 hover:bg-rose-500/20 dark:border-rose-400/25 dark:bg-rose-400/10 dark:text-rose-300">{r.overdueMonths.length} months overdue</Badge>
                   ) : (
-                    <Badge variant="secondary" className="rounded-full text-[10.5px]">Current month only</Badge>
+                    <Badge variant="secondary" className="rounded-full text-[14.5px]">Current month only</Badge>
                   )}
-                  <div className="mt-0.5 text-[10.5px] text-muted-foreground">{r.pendingMonths.map(monthLabel).join(", ")}</div>
+                  <div className="mt-0.5 text-[14.5px] text-muted-foreground">{r.pendingMonths.map(monthLabel).join(", ")}</div>
                 </td>
                 <td className="px-3 py-2.5 font-semibold tabular-nums text-rose-600 dark:text-rose-300">{formatINR(r.dueAmount)}</td>
                 <td className="hidden px-3 py-2.5 md:table-cell">
                   <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3 text-muted-foreground" />{r.student.parentName} · {r.student.mobile}</span>
                 </td>
                 <td className="px-3 py-2.5 text-right">
-                  <Button size="sm" variant="outline" className="h-7 border-border bg-card text-[11px] hover:bg-muted" onClick={() => navigate("student-detail", r.student.id)}>Open</Button>
+                  <Button size="sm" variant="outline" className="h-7 border-border bg-card text-[15px] hover:bg-muted" onClick={() => navigate("student-detail", r.student.id)}>Open</Button>
                 </td>
               </tr>
             ))}
@@ -513,7 +513,7 @@ function HistoryTab() {
     <div className="overflow-hidden glass rounded-2xl">
       <div className="border-b px-4 py-2.5 text-xs font-semibold">Recent receipts (latest 60)</div>
       <table className="w-full text-left text-xs">
-        <thead className="border-b border-border bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
+        <thead className="border-b border-border bg-muted/30 text-[15px] uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-4 py-2 font-medium">Receipt No</th>
             <th className="px-3 py-2 font-medium">Date</th>
@@ -529,16 +529,16 @@ function HistoryTab() {
           {!loading && rows.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-muted-foreground">No receipts yet.</td></tr>}
           {rows.map((p) => (
             <tr key={p.id} className="border-b border-border/40 hover:bg-accent/30">
-              <td className="px-4 py-2 font-mono text-[11px]">{p.receiptNo}</td>
+              <td className="px-4 py-2 font-mono text-[15px]">{p.receiptNo}</td>
               <td className="px-3 py-2">{formatDate(p.paymentDate)}</td>
-              <td className="px-3 py-2 font-medium">{p.studentName} <span className="text-[10px] text-muted-foreground">{p.admissionNo}</span></td>
+              <td className="px-3 py-2 font-medium">{p.studentName} <span className="text-[15.5px] text-muted-foreground">{p.admissionNo}</span></td>
               <td className="px-3 py-2">{(JSON.parse(p.months) as string[]).map(monthLabel).join(", ")}</td>
               <td className="px-3 py-2">{p.paymentMode}</td>
               <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatINR(p.amount)}</td>
               <td className="px-3 py-2">
                 <div className="flex justify-end gap-1">
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-[10.5px]" onClick={() => setPrint({ kind: "receipt-a5", title: "Fee Receipt (A5)", data: { receipt: p, settings } })}>A5</Button>
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-[10.5px]" onClick={() => setPrint({ kind: "receipt-thermal", title: "POS Slip (80mm)", data: { receipt: p, settings } })}>Thermal</Button>
+                  <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" onClick={() => setPrint({ kind: "receipt-a5", title: "Fee Receipt (A5)", data: { receipt: p, settings } })}>A5</Button>
+                  <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" onClick={() => setPrint({ kind: "receipt-thermal", title: "POS Slip (80mm)", data: { receipt: p, settings } })}>Thermal</Button>
                 </div>
               </td>
             </tr>

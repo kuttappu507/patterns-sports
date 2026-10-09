@@ -99,12 +99,12 @@ export function StudentsView() {
             </SelectContent>
           </Select>
           <div className="ml-auto flex items-center gap-2">
-            <span className="tnum rounded-full border border-border bg-card/60 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+            <span className="tnum rounded-full border border-border bg-card/60 px-2.5 py-1 text-[15px] font-semibold text-muted-foreground">
               {students.length} record{students.length === 1 ? "" : "s"}
             </span>
             <Button
               size="sm"
-              className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-xs font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(36,86,230,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(109,155,255,0.55)]"
+              className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-xs font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(99, 102, 241,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(129, 140, 248,0.55)]"
               onClick={() => {
                 setEditing(null)
                 setDrawerOpen(true)
@@ -121,7 +121,7 @@ export function StudentsView() {
         <div className="glass h-full overflow-hidden rounded-2xl">
           <div className="h-full overflow-y-auto">
             <table className="w-full text-left text-xs">
-              <thead className="sticky top-0 z-10 border-b border-border bg-background/95 text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground backdrop-blur">
+              <thead className="sticky top-0 z-10 border-b border-border bg-background/95 text-[14.5px] uppercase tracking-[0.14em] text-muted-foreground backdrop-blur">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Student</th>
                   <th className="px-3 py-3 font-semibold">Category</th>
@@ -166,28 +166,28 @@ export function StudentsView() {
                     >
                       <td className="row-hover px-4 py-2.5">
                         <button className="flex items-center gap-2.5 text-left" onClick={() => navigate("student-detail", s.id)}>
-                          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-orange-500/10 transition-all duration-200 group-hover:border-primary/40 group-hover:shadow-[0_0_12px_-2px_rgba(36,86,230,0.45)] dark:group-hover:shadow-[0_0_12px_-2px_rgba(109,155,255,0.55)]">
+                          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-amber-500/10 transition-all duration-200 group-hover:border-primary/40 group-hover:shadow-[0_0_12px_-2px_rgba(99, 102, 241,0.45)] dark:group-hover:shadow-[0_0_12px_-2px_rgba(129, 140, 248,0.55)]">
                             {s.photoPath ? (
                               <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-primary/70">
+                              <div className="flex h-full w-full items-center justify-center text-[15.5px] font-bold text-primary/70">
                                 {s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
                               </div>
                             )}
                           </div>
                           <div className="min-w-0">
                             <div className="truncate font-semibold text-foreground transition-colors group-hover:text-primary">{s.fullName}</div>
-                            <div className="tnum text-[10.5px] text-muted-foreground">{s.admissionNo} · {s.mobile}</div>
+                            <div className="tnum text-[14.5px] text-muted-foreground">{s.admissionNo} · {s.mobile}</div>
                           </div>
                         </button>
                       </td>
                       <td className="px-3 py-2.5">
-                        <span className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${CATEGORY_COLORS[s.ageCategory] || ""}`}>{s.ageCategory}</span>
+                        <span className={`rounded-full border px-2 py-0.5 text-[14.5px] font-semibold ${CATEGORY_COLORS[s.ageCategory] || ""}`}>{s.ageCategory}</span>
                       </td>
                       <td className="tnum px-3 py-2.5">{computeAge(s.dateOfBirth)} yrs</td>
                       <td className="px-3 py-2.5">
                         <div className="font-medium">{s.primarySport}</div>
-                        <div className="text-[10.5px] text-muted-foreground">{s.playingPosition || "—"}</div>
+                        <div className="text-[14.5px] text-muted-foreground">{s.playingPosition || "—"}</div>
                       </td>
                       <td className="tnum hidden px-3 py-2.5 lg:table-cell">{s.heightCm ? `${s.heightCm} cm` : "—"}</td>
                       <td className="hidden max-w-[160px] truncate px-3 py-2.5 xl:table-cell">
@@ -198,7 +198,7 @@ export function StudentsView() {
                       <td className="tnum hidden px-3 py-2.5 xl:table-cell">{formatINR(s.monthlyFee)}</td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center justify-end gap-1 opacity-60 transition-opacity duration-200 group-hover:opacity-100">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300" title="Open profile" onClick={() => navigate("student-detail", s.id)}>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-teal-500/10 hover:text-teal-600 dark:hover:text-teal-300" title="Open profile" onClick={() => navigate("student-detail", s.id)}>
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Edit" onClick={() => { setEditing(s); setDrawerOpen(true) }}>

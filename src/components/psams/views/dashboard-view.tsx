@@ -13,7 +13,7 @@ import {
   Cake,
   Phone,
   ClipboardCheck,
-  Sparkles,
+  Volleyball,
 } from "lucide-react"
 import { fetchDashboard, mediaUrl } from "@/lib/psams/api"
 import { formatINR, formatDate, CATEGORY_COLORS, CATEGORY_GRADIENTS } from "@/lib/psams/domain"
@@ -88,45 +88,46 @@ export function DashboardView() {
 
   return (
     <Stagger className="space-y-5 p-5">
-      {/* -------- Hero band -------- */}
+      {/* -------- Hero band — court graphic wash -------- */}
       <StaggerItem>
         <div
           onMouseMove={onMouseMove}
-          className="hero-band reveal-item relative overflow-hidden rounded-2xl p-5"
+          className="hero-band hero-court reveal-item relative overflow-hidden rounded-2xl p-6"
         >
-          <Sparkles className="float-slow absolute -right-4 -top-5 h-36 w-36 text-primary/10" strokeWidth={1} />
+          <Volleyball className="float-slow absolute right-[290px] top-4 hidden h-24 w-24 text-primary/[0.07] dark:text-primary/10 lg:block" strokeWidth={1} />
           <div className="relative flex flex-wrap items-center gap-x-8 gap-y-4">
             <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary/80">This cycle · live</p>
-              <div className="mt-1 flex items-baseline gap-3">
-                <span className="font-display text-4xl font-extrabold tracking-tight text-gradient tnum">
+              <p className="text-[13px] font-extrabold uppercase tracking-[0.22em] text-primary/80">This cycle · live</p>
+              <div className="mt-1.5 flex items-baseline gap-3">
+                <span className="font-display text-[52px] font-extrabold leading-none tracking-tight text-gradient tnum">
                   {stats.feeCycle.collectionRate}%
                 </span>
-                <span className="text-sm font-medium text-foreground/70">collection rate</span>
+                <span className="text-[15px] font-semibold text-foreground/70">collection rate</span>
               </div>
-              <p className="mt-1 text-[12px] text-muted-foreground">
+              <p className="mt-1.5 text-[14px] text-muted-foreground">
                 {stats.feeCycle.paidCount} settled · {stats.feeCycle.dueSoonCount} due · {stats.feeCycle.defaulterCount} overdue
               </p>
             </div>
+
 
             <div className="h-14 w-px bg-border" />
 
             <div className="flex items-center gap-6">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Month revenue</p>
-                <p className="mt-0.5 font-display text-2xl font-bold tnum text-orange-600 dark:text-orange-300">
+                <p className="text-[15px] font-medium uppercase tracking-wide text-muted-foreground">Month revenue</p>
+                <p className="mt-0.5 font-display text-[30px] font-extrabold tnum text-amber-600 dark:text-amber-300">
                   <CountUp value={stats.monthRevenue} format={(n) => formatINR(Math.round(n))} />
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Roster</p>
-                <p className="mt-0.5 font-display text-2xl font-bold tnum text-cyan-600 dark:text-cyan-300">
+                <p className="text-[15px] font-medium uppercase tracking-wide text-muted-foreground">Roster</p>
+                <p className="mt-0.5 font-display text-[30px] font-extrabold tnum text-teal-600 dark:text-teal-300">
                   <CountUp value={stats.totalActive} />
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Present today</p>
-                <p className="mt-0.5 font-display text-2xl font-bold tnum text-violet-600 dark:text-violet-300">
+                <p className="text-[15px] font-medium uppercase tracking-wide text-muted-foreground">Present today</p>
+                <p className="mt-0.5 font-display text-[30px] font-extrabold tnum text-violet-600 dark:text-violet-300">
                   <CountUp value={stats.attendanceToday.present} />
                   <span className="text-base font-semibold text-muted-foreground">/{stats.attendanceToday.totalActive}</span>
                 </p>
@@ -134,16 +135,16 @@ export function DashboardView() {
             </div>
 
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              <Button size="sm" className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-[12px] font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(36,86,230,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(109,155,255,0.55)]" onClick={() => navigate("students")}>
+              <Button size="sm" className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-[14px] font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(99, 102, 241,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(129, 140, 248,0.55)]" onClick={() => navigate("students")}>
                 <UserPlus className="h-3.5 w-3.5" strokeWidth={2.6} /> Add New Student
               </Button>
-              <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-[12px] text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]" onClick={() => navigate("fees")}>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-[14px] text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]" onClick={() => navigate("fees")}>
                 <Receipt className="h-3.5 w-3.5" /> Collect Fee
               </Button>
-              <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-[12px] text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]" onClick={() => navigate("reports")}>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-[14px] text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]" onClick={() => navigate("reports")}>
                 <FileSearch className="h-3.5 w-3.5" /> Reports
               </Button>
-              <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-[12px] text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]" onClick={() => navigate("attendance")}>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-[14px] text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]" onClick={() => navigate("attendance")}>
                 <ClipboardCheck className="h-3.5 w-3.5" /> Attendance
               </Button>
             </div>
@@ -156,7 +157,7 @@ export function DashboardView() {
         <MetricCard
           index={0}
           icon={<Users className="h-4 w-4" />}
-          tint="bg-cyan-500/10 text-cyan-600 shadow-[0_0_14px_-4px_rgba(8,145,178,0.4)] dark:bg-cyan-400/10 dark:text-cyan-300 dark:shadow-[0_0_14px_-4px_rgba(34,211,238,0.5)]"
+          tint="bg-teal-500/10 text-teal-600 shadow-[0_0_14px_-4px_rgba(20, 184, 166,0.4)] dark:bg-teal-400/10 dark:text-teal-300 dark:shadow-[0_0_14px_-4px_rgba(45, 212, 191,0.5)]"
           label="Active Enrolled Students"
           value={stats.totalActive}
           format={(n) => String(Math.round(n))}
@@ -166,7 +167,7 @@ export function DashboardView() {
         <MetricCard
           index={1}
           icon={<BadgeIndianRupee className="h-4 w-4" />}
-          tint="bg-blue-500/10 text-blue-600 shadow-[0_0_14px_-4px_rgba(36,86,230,0.45)] dark:bg-blue-400/10 dark:text-blue-300 dark:shadow-[0_0_14px_-4px_rgba(109,155,255,0.5)]"
+          tint="bg-indigo-500/10 text-indigo-600 shadow-[0_0_14px_-4px_rgba(99, 102, 241,0.45)] dark:bg-indigo-400/10 dark:text-indigo-300 dark:shadow-[0_0_14px_-4px_rgba(129, 140, 248,0.5)]"
           label="Revenue — Current Month"
           value={stats.monthRevenue}
           format={(n) => formatINR(Math.round(n))}
@@ -204,22 +205,22 @@ export function DashboardView() {
               <h3 className="text-sm font-bold">Category Distribution</h3>
               <TrendingUp className="h-3.5 w-3.5 text-primary/70" />
             </div>
-            <p className="mt-0.5 text-[11.5px] text-muted-foreground">Active roster across five age brackets</p>
+            <p className="mt-0.5 text-[15.5px] text-muted-foreground">Active roster across five age brackets</p>
             <div className="mt-4 space-y-3.5">
               {stats.categoryBreakdown.map((c) => (
                 <div key={c.category} className="group">
                   <div className="flex items-center justify-between text-xs">
-                    <span className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold transition-transform duration-200 group-hover:scale-105 ${CATEGORY_COLORS[c.category]}`}>
+                    <span className={`rounded-full border px-2 py-0.5 text-[14.5px] font-semibold transition-transform duration-200 group-hover:scale-105 ${CATEGORY_COLORS[c.category]}`}>
                       {c.category}
                     </span>
-                    <span className="tnum text-[12px] font-bold">{c.count}</span>
+                    <span className="tnum text-[14px] font-bold">{c.count}</span>
                   </div>
                   <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-foreground/[0.07]">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${(c.count / maxCat) * 100}%` }}
                       transition={{ duration: 0.8, ease: [0.22, 0.68, 0.31, 1], delay: 0.15 }}
-                      className={`h-full rounded-full bg-gradient-to-r ${CATEGORY_GRADIENTS[c.category] ?? "from-primary to-orange-400"} shadow-[0_0_10px_-2px_rgba(36,86,230,0.5)] dark:shadow-[0_0_10px_-2px_rgba(109,155,255,0.65)]`}
+                      className={`h-full rounded-full bg-gradient-to-r ${CATEGORY_GRADIENTS[c.category] ?? "from-primary to-amber-400"} shadow-[0_0_10px_-2px_rgba(99, 102, 241,0.5)] dark:shadow-[0_0_10px_-2px_rgba(129, 140, 248,0.65)]`}
                     />
                   </div>
                 </div>
@@ -234,9 +235,9 @@ export function DashboardView() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold">Executive Committee</h3>
-                <p className="mt-0.5 text-[11.5px] text-muted-foreground">Academy leadership & administration</p>
+                <p className="mt-0.5 text-[15.5px] text-muted-foreground">Academy leadership & administration</p>
               </div>
-              <Button size="sm" variant="ghost" className="h-7 rounded-lg text-[11.5px] text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => navigate("settings")}>
+              <Button size="sm" variant="ghost" className="h-7 rounded-lg text-[15.5px] text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => navigate("settings")}>
                 Manage →
               </Button>
             </div>
@@ -257,9 +258,9 @@ export function DashboardView() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.2 + i * 0.05 }}
                       whileHover={{ y: -4 }}
-                      className="group rounded-xl border border-border bg-card/60 p-3 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/60 hover:shadow-[0_10px_24px_-12px_rgba(36,86,230,0.45)] dark:hover:shadow-[0_0_20px_-8px_rgba(109,155,255,0.45)]"
+                      className="group rounded-xl border border-border bg-card/60 p-3 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/60 hover:shadow-[0_10px_24px_-12px_rgba(99, 102, 241,0.45)] dark:hover:shadow-[0_0_20px_-8px_rgba(129, 140, 248,0.45)]"
                     >
-                      <div className="mx-auto h-14 w-14 overflow-hidden rounded-full border-2 border-border bg-gradient-to-br from-primary/15 to-orange-500/10 shadow-inner transition-all duration-200 group-hover:border-primary/40">
+                      <div className="mx-auto h-14 w-14 overflow-hidden rounded-full border-2 border-border bg-gradient-to-br from-primary/15 to-amber-500/10 shadow-inner transition-all duration-200 group-hover:border-primary/40">
                         {m.photoPath ? (
                           <img src={mediaUrl(m.photoPath)} alt={m.fullName} className="h-full w-full object-cover" />
                         ) : (
@@ -269,9 +270,9 @@ export function DashboardView() {
                         )}
                       </div>
                       <div className="mt-2 truncate text-xs font-semibold" title={m.fullName}>{m.fullName}</div>
-                      <div className="truncate text-[10.5px] font-medium text-primary/80">{m.role}</div>
+                      <div className="truncate text-[14.5px] font-medium text-primary/80">{m.role}</div>
                       {m.phone && (
-                        <div className="mt-0.5 flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
+                        <div className="mt-0.5 flex items-center justify-center gap-1 text-[15.5px] text-muted-foreground">
                           <Phone className="h-2.5 w-2.5" /> {m.phone}
                         </div>
                       )}
@@ -290,7 +291,7 @@ export function DashboardView() {
           <div onMouseMove={onMouseMove} className="reveal-item hover-lift glass flex h-full flex-col rounded-2xl p-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold">Recent Fee Collections</h3>
-              <Button size="sm" variant="ghost" className="h-7 rounded-lg text-[11.5px] text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => navigate("fees")}>
+              <Button size="sm" variant="ghost" className="h-7 rounded-lg text-[15.5px] text-muted-foreground hover:bg-muted hover:text-primary" onClick={() => navigate("fees")}>
                 View all →
               </Button>
             </div>
@@ -311,16 +312,16 @@ export function DashboardView() {
                     transition={{ delay: 0.25 + i * 0.05 }}
                     className="row-hover flex items-center gap-3 rounded-xl border border-border bg-card/50 pl-4 pr-3 py-2"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500/10 text-orange-600 shadow-[0_0_12px_-4px_rgba(249,115,22,0.5)] dark:bg-orange-400/10 dark:text-orange-300 dark:shadow-[0_0_12px_-4px_rgba(251,146,60,0.6)]">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 shadow-[0_0_12px_-4px_rgba(245, 158, 11,0.5)] dark:bg-amber-400/10 dark:text-amber-300 dark:shadow-[0_0_12px_-4px_rgba(251, 191, 36,0.6)]">
                       <Receipt className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-semibold">{p.studentName}</div>
-                      <div className="tnum text-[10.5px] text-muted-foreground">
+                      <div className="tnum text-[14.5px] text-muted-foreground">
                         {p.receiptNo} · {p.paymentMode} · {formatDate(p.paymentDate)}
                       </div>
                     </div>
-                    <span className="tnum text-xs font-bold text-orange-600 dark:text-orange-300">{formatINR(p.amount)}</span>
+                    <span className="tnum text-xs font-bold text-amber-600 dark:text-amber-300">{formatINR(p.amount)}</span>
                   </motion.div>
                 ))
               )}
@@ -335,7 +336,7 @@ export function DashboardView() {
               <h3 className="text-sm font-bold">Upcoming Birthdays</h3>
               <Cake className="h-3.5 w-3.5 text-amber-500/80 dark:text-amber-300/70" />
             </div>
-            <p className="mt-0.5 text-[11.5px] text-muted-foreground">Next 30 days across the active roster</p>
+            <p className="mt-0.5 text-[15.5px] text-muted-foreground">Next 30 days across the active roster</p>
             <div className="mt-3 flex-1 space-y-2">
               {stats.upcomingBirthdays.length === 0 ? (
                 <EmptyState
@@ -359,9 +360,9 @@ export function DashboardView() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-semibold">{b.fullName}</div>
-                      <div className="tnum text-[10.5px] text-muted-foreground">{formatDate(b.dateOfBirth)}</div>
+                      <div className="tnum text-[14.5px] text-muted-foreground">{formatDate(b.dateOfBirth)}</div>
                     </div>
-                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-300">
+                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[14.5px] font-semibold text-amber-700 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-300">
                       {b.daysAway === 0 ? "Today 🎉" : `in ${b.daysAway} day${b.daysAway === 1 ? "" : "s"}`}
                     </span>
                   </motion.button>
@@ -411,12 +412,12 @@ function MetricCard({
     >
       <div className="flex items-center gap-2.5">
         <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${tint}`}>{icon}</span>
-        <span className="text-[11.5px] font-semibold leading-snug text-muted-foreground">{label}</span>
+        <span className="text-[15.5px] font-semibold leading-snug text-muted-foreground">{label}</span>
       </div>
       <div className={`mt-3 font-display text-[28px] font-extrabold leading-none tracking-tight tnum ${danger ? "text-rose-600 dark:text-rose-300" : ""}`}>
         <CountUp value={value} format={format} />
       </div>
-      <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+      <div className="mt-2 flex items-center gap-1 text-[15px] text-muted-foreground">
         {danger && <AlertTriangle className="h-3 w-3 text-rose-500 dark:text-rose-400" />}
         {footer}
       </div>

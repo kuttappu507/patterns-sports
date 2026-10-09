@@ -111,10 +111,10 @@ export function PageHeader({
   return (
     <div className={cn("flex flex-wrap items-end justify-between gap-3", className)}>
       <div className="flex items-start gap-3">
-        <span className="mt-1 h-8 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-primary via-primary to-orange-500 shadow-[0_0_14px_rgba(36,86,230,0.45)] dark:shadow-[0_0_14px_rgba(109,155,255,0.5)]" />
+        <span className="mt-1 h-8 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-primary via-primary to-amber-500 shadow-[0_0_14px_rgba(99, 102, 241,0.45)] dark:shadow-[0_0_14px_rgba(129, 140, 248,0.5)]" />
         <div>
           <h2 className="font-display text-xl font-bold tracking-tight text-foreground">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-[12.5px] text-muted-foreground">{subtitle}</p>}
+          {subtitle && <p className="mt-0.5 text-[14.5px] text-muted-foreground">{subtitle}</p>}
         </div>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -125,8 +125,8 @@ export function PageHeader({
 /* ---------------- status chip ---------------- */
 
 const CHIP_TONES = {
-  blue: "bg-blue-500/10 text-blue-700 border-blue-500/30 dark:bg-blue-400/10 dark:text-blue-300 dark:border-blue-400/25",
-  cyan: "bg-cyan-600/10 text-cyan-700 border-cyan-600/25 dark:bg-cyan-400/10 dark:text-cyan-300 dark:border-cyan-400/25",
+  blue: "bg-indigo-500/10 text-indigo-700 border-indigo-500/30 dark:bg-indigo-400/10 dark:text-indigo-300 dark:border-indigo-400/25",
+  cyan: "bg-teal-600/10 text-teal-700 border-teal-600/25 dark:bg-teal-400/10 dark:text-teal-300 dark:border-teal-400/25",
   rose: "bg-rose-500/10 text-rose-700 border-rose-500/25 dark:bg-rose-400/10 dark:text-rose-300 dark:border-rose-400/25",
   amber: "bg-amber-500/10 text-amber-700 border-amber-500/25 dark:bg-amber-400/10 dark:text-amber-300 dark:border-amber-400/25",
   violet: "bg-violet-500/10 text-violet-700 border-violet-500/25 dark:bg-violet-400/10 dark:text-violet-300 dark:border-violet-400/25",
@@ -148,7 +148,7 @@ export function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-semibold tracking-wide",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[14.5px] font-semibold tracking-wide",
         CHIP_TONES[tone],
         className
       )}

@@ -205,7 +205,7 @@ export function StudentDrawer({
         <div className="flex items-center gap-3 border-b px-5 py-3.5">
           <div>
             <h2 className="text-sm font-semibold">{editing ? `Edit — ${editing.fullName}` : "Register New Student"}</h2>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[15px] text-muted-foreground">
               {editing ? editing.admissionNo : "Admission number will be generated automatically on save"}
             </p>
           </div>
@@ -309,7 +309,7 @@ export function StudentDrawer({
               <Label className="text-xs">BMI — auto</Label>
               <div className="flex h-8 items-center justify-between rounded-md border bg-muted px-2.5 text-xs">
                 <span className={`font-bold tabular-nums ${band.color}`}>{bmi !== null ? bmi.toFixed(1) : "—"}</span>
-                <span className="text-[10px] text-muted-foreground">{band.label}</span>
+                <span className="text-[15.5px] text-muted-foreground">{band.label}</span>
               </div>
             </div>
             <div className="space-y-1">
@@ -325,7 +325,7 @@ export function StudentDrawer({
               <Input className="h-8 text-xs" type="number" min="0" value={form.jumpReachCm} onChange={(e) => set("jumpReachCm", e.target.value)} />
             </div>
             {jumpGain !== null && jumpGain > 0 && (
-              <div className="col-span-3 rounded-md bg-emerald-500/10 px-3 py-1.5 text-[11px] text-emerald-700 dark:text-emerald-300">
+              <div className="col-span-3 rounded-md bg-emerald-500/10 px-3 py-1.5 text-[15px] text-emerald-700 dark:text-emerald-300">
                 Vertical gain (standing → spike): <b>+{jumpGain} cm</b>
               </div>
             )}
@@ -397,7 +397,7 @@ export function StudentDrawer({
             <MediaUpload folder="documents" value={form.idCardPath} onChange={(p) => set("idCardPath", p)} label="Govt / School ID card (PDF / PNG / JPG)" hint="Upload ID card" previewShape="wide" />
           </div>
           <Separator />
-          <p className="pb-2 text-[11px] text-muted-foreground">
+          <p className="pb-2 text-[15px] text-muted-foreground">
             Files are stored on the local application data disk — the database keeps only sanitized relative paths.
           </p>
         </div>
@@ -409,7 +409,7 @@ export function StudentDrawer({
             {editing ? "Save changes" : "Register student"}
           </Button>
           <Button variant="ghost" className="h-9 text-xs" onClick={onClose}>Cancel</Button>
-          <span className="ml-auto text-[11px] text-muted-foreground">* required fields</span>
+          <span className="ml-auto text-[15px] text-muted-foreground">* required fields</span>
         </div>
       </motion.aside>
     </motion.div>
@@ -419,7 +419,7 @@ export function StudentDrawer({
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{children}</h3>
+      <h3 className="text-[15px] font-semibold uppercase tracking-wider text-muted-foreground">{children}</h3>
       <div className="h-px flex-1 bg-border" />
     </div>
   )
