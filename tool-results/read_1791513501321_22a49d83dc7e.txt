@@ -1,0 +1,582 @@
+     1→"use client"
+     2→
+     3→// ============================================================
+     4→// PS-AMS :: Fee Management — collection workflow, receipt dispatch,
+     5→// defaulters monitoring & export pipelines.
+     6→// ============================================================
+     7→
+     8→import { useCallback, useEffect, useMemo, useState } from "react"
+     9→import { motion, AnimatePresence } from "framer-motion"
+    10→import {
+    11→  Search,
+    12→  Receipt,
+    13→  AlertTriangle,
+    14→  Printer,
+    15→  FileSpreadsheet,
+    16→  FileText,
+    17→  MessageCircle,
+    18→  Loader2,
+    19→  CheckCircle2,
+    20→  X,
+    21→  Phone,
+    22→  History,
+    23→} from "lucide-react"
+    24→import {
+    25→  fetchStudents,
+    26→  fetchFeeStatuses,
+    27→  fetchPayments,
+    28→  collectPayment,
+    29→  fetchSettings,
+    30→  mediaUrl,
+    31→} from "@/lib/psams/api"
+    32→import {
+    33→  computeFeeStatus,
+    34→  monthKey,
+    35→  monthLabel,
+    36→  formatINR,
+    37→  formatDate,
+    38→  CATEGORY_COLORS,
+    39→} from "@/lib/psams/domain"
+    40→import { PAYMENT_MODES, type FeePayment, type Student, type StudentFeeStatus, type AcademySettings } from "@/lib/psams/types"
+    41→import { useAppStore } from "@/lib/psams/store"
+    42→import { exportExcel, exportPDF } from "@/lib/psams/export"
+    43→import { Button } from "@/components/ui/button"
+    44→import { Input } from "@/components/ui/input"
+    45→import { Badge } from "@/components/ui/badge"
+    46→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+    47→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+    48→import { Checkbox } from "@/components/ui/checkbox"
+    49→import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+    50→import { useToast } from "@/hooks/use-toast"
+    51→import { cn } from "@/lib/utils"
+    52→
+    53→export function FeesView() {
+    54→  return (
+    55→    <div className="h-full p-5">
+    56→      <Tabs defaultValue="collect" className="space-y-4">
+    57→        <TabsList className="h-9 bg-white/70 backdrop-blur">
+    58→          <TabsTrigger value="collect" className="h-7 gap-1.5 text-xs"><Receipt className="h-3.5 w-3.5" /> Collect Fee</TabsTrigger>
+    59→          <TabsTrigger value="defaulters" className="h-7 gap-1.5 text-xs"><AlertTriangle className="h-3.5 w-3.5" /> Defaulters Monitor</TabsTrigger>
+    60→          <TabsTrigger value="history" className="h-7 gap-1.5 text-xs"><History className="h-3.5 w-3.5" /> Receipt History</TabsTrigger>
+    61→        </TabsList>
+    62→        <TabsContent value="collect"><CollectTab /></TabsContent>
+    63→        <TabsContent value="defaulters"><DefaultersTab /></TabsContent>
+    64→        <TabsContent value="history"><HistoryTab /></TabsContent>
+    65→      </Tabs>
+    66→    </div>
+    67→  )
+    68→}
+    69→
+    70→/* ============================ COLLECT ============================ */
+    71→
+    72→function CollectTab() {
+    73→  const { refresh } = useAppStore()
+    74→  const { toast } = useToast()
+    75→  const [students, setStudents] = useState<Student[]>([])
+    76→  const [statuses, setStatuses] = useState<StudentFeeStatus[]>([])
+    77→  const [settings, setSettings] = useState<AcademySettings | null>(null)
+    78→  const [q, setQ] = useState("")
+    79→  const [selected, setSelected] = useState<Student | null>(null)
+    80→  const [pending, setPending] = useState<string[]>([])
+    81→  const [chosen, setChosen] = useState<string[]>([])
+    82→  const [amount, setAmount] = useState("")
+    83→  const [mode, setMode] = useState<string>("Cash")
+    84→  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10))
+    85→  const [notes, setNotes] = useState("")
+    86→  const [saving, setSaving] = useState(false)
+    87→  const [receipt, setReceipt] = useState<(FeePayment & { studentName: string; admissionNo: string; studentMobile?: string }) | null>(null)
+    88→
+    89→  useEffect(() => {
+    90→    fetchStudents({ status: "Active" }).then(setStudents)
+    91→    fetchSettings().then(setSettings)
+    92→  }, [])
+    93→
+    94→  // when the selected student changes, compute pending months live
+    95→  useEffect(() => {
+    96→    if (!selected) return
+    97→    const st = statuses.find((s) => s.student.id === selected.id)
+    98→    if (st) {
+    99→      setPending(st.pendingMonths)
+   100→      setChosen(st.pendingMonths)
+   101→      setAmount(String(st.pendingMonths.length * selected.monthlyFee))
+   102→    } else {
+   103→      // statuses not loaded yet — compute locally from payments
+   104→      fetchStudents({ q: selected.admissionNo }).then(async (rows) => {
+   105→        const s = rows.find((r) => r.id === selected.id) ?? selected
+   106→        const st2 = statuses.find((x) => x.student.id === s.id)
+   107→        const calc = st2 ?? computeLocal(s, [])
+   108→        setPending(calc.pendingMonths)
+   109→        setChosen(calc.pendingMonths)
+   110→        setAmount(String(calc.pendingMonths.length * s.monthlyFee))
+   111→      })
+   112→    }
+   113→     
+   114→  }, [selected])
+   115→
+   116→  async function pick(student: Student) {
+   117→    setSelected(student)
+   118→    // ensure statuses carry latest payments
+   119→    const all = await fetchFeeStatuses()
+   120→    setStatuses(all)
+   121→    const st = all.find((s) => s.student.id === student.id)
+   122→    const calc = st ?? computeLocal(student, [])
+   123→    setPending(calc.pendingMonths)
+   124→    setChosen(calc.pendingMonths)
+   125→    setAmount(String(calc.pendingMonths.length * student.monthlyFee))
+   126→  }
+   127→
+   128→  function computeLocal(s: Student, payments: { months: string; paymentDate: string | Date }[]) {
+   129→    const st = computeFeeStatus(s, payments)
+   130→    return { pendingMonths: st.pendingMonths, paidMonths: st.paidMonths, overdueMonths: st.overdueMonths }
+   131→  }
+   132→
+   133→  const filtered = useMemo(() => {
+   134→    const needle = q.trim().toLowerCase()
+   135→    if (!needle) return students.slice(0, 8)
+   136→    return students
+   137→      .filter((s) => s.fullName.toLowerCase().includes(needle) || s.admissionNo.toLowerCase().includes(needle) || s.mobile.includes(needle))
+   138→      .slice(0, 8)
+   139→  }, [q, students])
+   140→
+   141→  function toggleMonth(m: string) {
+   142→    setChosen((prev) => {
+   143→      const next = prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m].sort()
+   144→      if (selected) setAmount(String(next.length * selected.monthlyFee))
+   145→      return next
+   146→    })
+   147→  }
+   148→
+   149→  async function submit() {
+   150→    if (!selected) return
+   151→    if (chosen.length === 0) {
+   152→      toast({ title: "Select at least one billing month", variant: "destructive" })
+   153→      return
+   154→    }
+   155→    const amt = Number(amount)
+   156→    if (!amt || amt <= 0) {
+   157→      toast({ title: "Enter the collected amount", variant: "destructive" })
+   158→      return
+   159→    }
+   160→    setSaving(true)
+   161→    try {
+   162→      const payment = await collectPayment({
+   163→        studentId: selected.id,
+   164→        months: chosen,
+   165→        amount: amt,
+   166→        paymentMode: mode,
+   167→        paymentDate,
+   168→        notes: notes || undefined,
+   169→      })
+   170→      setReceipt({ ...payment, studentMobile: selected.mobile })
+   171→      setQ("")
+   172→      const next = students.filter((s) => s.id !== selected.id)
+   173→      setStudents(next)
+   174→      setSelected(null)
+   175→      setPending([])
+   176→      setChosen([])
+   177→      setAmount("")
+   178→      setNotes("")
+   179→      refresh()
+   180→    } catch (e) {
+   181→      toast({ title: "Payment failed", description: e instanceof Error ? e.message : "", variant: "destructive" })
+   182→    } finally {
+   183→      setSaving(false)
+   184→    }
+   185→  }
+   186→
+   187→  const perMonth = selected?.monthlyFee ?? 0
+   188→
+   189→  return (
+   190→    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]">
+   191→      {/* student picker */}
+   192→      <div className="rounded-xl border bg-white/70 backdrop-blur">
+   193→        <div className="border-b p-3">
+   194→          <div className="text-xs font-semibold">1 · Select Student</div>
+   195→          <p className="text-[11px] text-muted-foreground">Pending months are retrieved automatically</p>
+   196→          <div className="relative mt-2">
+   197→            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+   198→            <Input className="h-8 pl-8 text-xs" placeholder="Name / admission no. / mobile…" value={q} onChange={(e) => setQ(e.target.value)} />
+   199→          </div>
+   200→        </div>
+   201→        <div className="max-h-[420px] divide-y overflow-y-auto">
+   202→          {filtered.map((s) => (
+   203→            <button key={s.id} onClick={() => pick(s)} className={cn("flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-accent/50", selected?.id === s.id && "bg-accent")}>
+   204→              <div className="h-8 w-8 overflow-hidden rounded-full border bg-secondary">
+   205→                {s.photoPath ? (
+   206→                   
+   207→                  <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
+   208→                ) : (
+   209→                  <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
+   210→                )}
+   211→              </div>
+   212→              <div className="min-w-0 flex-1">
+   213→                <div className="truncate text-xs font-medium">{s.fullName}</div>
+   214→                <div className="text-[10.5px] text-muted-foreground">{s.admissionNo} · {s.mobile}</div>
+   215→              </div>
+   216→              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
+   217→            </button>
+   218→          ))}
+   219→          {filtered.length === 0 && <div className="p-6 text-center text-xs text-muted-foreground">No active students found.</div>}
+   220→        </div>
+   221→      </div>
+   222→
+   223→      {/* payment entry */}
+   224→      <div className="rounded-xl border bg-white/70 backdrop-blur">
+   225→        <div className="border-b p-3">
+   226→          <div className="text-xs font-semibold">2 · Payment Entry</div>
+   227→          <p className="text-[11px] text-muted-foreground">Multi-month settlement with automatic amount suggestion</p>
+   228→        </div>
+   229→        <AnimatePresence mode="wait">
+   230→          {!selected ? (
+   231→            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex h-[300px] items-center justify-center text-xs text-muted-foreground">
+   232→              Pick a student from the left to load their pending billing months.
+   233→            </motion.div>
+   234→          ) : (
+   235→            <motion.div key={selected.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4 p-4">
+   236→              <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-secondary/40 p-3">
+   237→                <div>
+   238→                  <div className="text-sm font-semibold">{selected.fullName}</div>
+   239→                  <div className="text-[11px] text-muted-foreground">{selected.admissionNo} · {selected.ageCategory} · fee {formatINR(selected.monthlyFee)}/month</div>
+   240→                </div>
+   241→                <div className="ml-auto text-right">
+   242→                  <div className="text-[11px] text-muted-foreground">Outstanding</div>
+   243→                  <div className="text-sm font-bold text-rose-600">{formatINR(pending.length * selected.monthlyFee)}</div>
+   244→                </div>
+   245→                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setSelected(null)}><X className="h-3.5 w-3.5" /></Button>
+   246→              </div>
+   247→
+   248→              <div>
+   249→                <div className="mb-1.5 text-xs font-medium">Billing periods to settle <span className="font-normal text-muted-foreground">({pending.length} pending)</span></div>
+   250→                {pending.length === 0 ? (
+   251→                  <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700">
+   252→                    <CheckCircle2 className="h-4 w-4" /> All billing months are settled — no dues.
+   253→                  </div>
+   254→                ) : (
+   255→                  <div className="flex flex-wrap gap-2">
+   256→                    {pending.map((m) => {
+   257→                      const isOverdue = m < monthKey(new Date())
+   258→                      const on = chosen.includes(m)
+   259→                      return (
+   260→                        <label
+   261→                          key={m}
+   262→                          className={cn(
+   263→                            "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-all",
+   264→                            on ? "border-primary bg-primary/10 font-medium text-primary shadow-sm" : "bg-white hover:border-primary/40",
+   265→                            isOverdue && !on && "border-rose-200"
+   266→                          )}
+   267→                        >
+   268→                          <Checkbox checked={on} onCheckedChange={() => toggleMonth(m)} />
+   269→                          <span>{monthLabel(m)}</span>
+   270→                          {isOverdue && <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[9.5px] font-semibold text-rose-700">OVERDUE</span>}
+   271→                          <span className="text-[10px] text-muted-foreground">{formatINR(perMonth)}</span>
+   272→                        </label>
+   273→                      )
+   274→                    })}
+   275→                  </div>
+   276→                )}
+   277→              </div>
+   278→
+   279→              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+   280→                <div className="space-y-1">
+   281→                  <div className="text-xs font-medium text-muted-foreground">Payment date</div>
+   282→                  <Input type="date" className="h-8 text-xs" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+   283→                </div>
+   284→                <div className="space-y-1">
+   285→                  <div className="text-xs font-medium text-muted-foreground">Payment mode</div>
+   286→                  <Select value={mode} onValueChange={setMode}>
+   287→                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+   288→                    <SelectContent>{PAYMENT_MODES.map((m) => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}</SelectContent>
+   289→                  </Select>
+   290→                </div>
+   291→                <div className="space-y-1">
+   292→                  <div className="text-xs font-medium text-muted-foreground">Collected amount (₹)</div>
+   293→                  <Input className="h-8 text-xs font-semibold" type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
+   294→                </div>
+   295→                <div className="space-y-1">
+   296→                  <div className="text-xs font-medium text-muted-foreground">Remarks</div>
+   297→                  <Input className="h-8 text-xs" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="optional" />
+   298→                </div>
+   299→              </div>
+   300→
+   301→              <div className="flex items-center justify-between rounded-lg border bg-secondary/40 p-3">
+   302→                <div className="text-xs text-muted-foreground">
+   303→                  {chosen.length} month{chosen.length === 1 ? "" : "s"} × {formatINR(perMonth)} = <b className="text-foreground">{formatINR(chosen.length * perMonth)}</b>
+   304→                </div>
+   305→                <Button className="h-9 gap-1.5 text-xs" disabled={saving || chosen.length === 0} onClick={submit}>
+   306→                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Receipt className="h-3.5 w-3.5" />}
+   307→                  Confirm & Generate Receipt
+   308→                </Button>
+   309→              </div>
+   310→            </motion.div>
+   311→          )}
+   312→        </AnimatePresence>
+   313→      </div>
+   314→
+   315→      {/* receipt dialog */}
+   316→      <ReceiptDialog receipt={receipt} onClose={() => setReceipt(null)} settings={settings} />
+   317→    </div>
+   318→  )
+   319→}
+   320→
+   321→/* ==================== RECEIPT DIALOG (dual format + WhatsApp) ==================== */
+   322→
+   323→export function ReceiptDialog({
+   324→  receipt,
+   325→  onClose,
+   326→  settings,
+   327→}: {
+   328→  receipt: (FeePayment & { studentName: string; admissionNo: string; studentMobile?: string }) | null
+   329→  onClose: () => void
+   330→  settings: AcademySettings | null
+   331→}) {
+   332→  const { setPrint } = useAppStore()
+   333→  const { toast } = useToast()
+   334→
+   335→  function waDispatch() {
+   336→    if (!receipt) return
+   337→    const months = JSON.parse(receipt.months) as string[]
+   338→    const lines = [
+   339→      `*${settings?.academyName || "Pattern Sports Academy"}*`,
+   340→      `Fee Receipt`,
+   341→      ``,
+   342→      `Receipt No: ${receipt.receiptNo}`,
+   343→      `Date: ${formatDate(receipt.paymentDate)}`,
+   344→      `Student: ${receipt.studentName} (${receipt.admissionNo})`,
+   345→      `Period${months.length > 1 ? "s" : ""}: ${months.map(monthLabel).join(", ")}`,
+   346→      `Amount Paid: ${formatINR(receipt.amount)}`,
+   347→      `Mode: ${receipt.paymentMode}`,
+   348→      ``,
+   349→      `Thank you! Keep supporting our champions. 🏐`,
+   350→    ]
+   351→    const phone = (receipt.studentMobile || "").replace(/\D/g, "")
+   352→    const intl = phone.length === 10 ? `91${phone}` : phone
+   353→    const url = `https://web.whatsapp.com/send?phone=${intl}&text=${encodeURIComponent(lines.join("\n"))}`
+   354→    if (typeof navigator !== "undefined" && !navigator.onLine) {
+   355→      toast({ title: "You appear to be offline", description: "WhatsApp Web dispatch needs connectivity. The receipt is still saved and printable.", variant: "destructive" })
+   356→      return
+   357→    }
+   358→    window.open(url, "_blank", "noopener")
+   359→  }
+   360→
+   361→  if (!receipt) return null
+   362→  const months = JSON.parse(receipt.months) as string[]
+   363→
+   364→  return (
+   365→    <Dialog open={!!receipt} onOpenChange={(o) => !o && onClose()}>
+   366→      <DialogContent className="sm:max-w-lg">
+   367→        <DialogHeader>
+   368→          <DialogTitle className="flex items-center gap-2 text-sm">
+   369→            <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Payment recorded — {receipt.receiptNo}
+   370→          </DialogTitle>
+   371→        </DialogHeader>
+   372→        <div className="rounded-lg border bg-secondary/40 p-3 text-xs">
+   373→          <div className="flex justify-between"><span className="text-muted-foreground">Student</span><span className="font-semibold">{receipt.studentName} · {receipt.admissionNo}</span></div>
+   374→          <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Period{months.length > 1 ? "s" : ""}</span><span className="font-medium">{months.map(monthLabel).join(", ")}</span></div>
+   375→          <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Amount</span><span className="font-bold text-emerald-700">{formatINR(receipt.amount)}</span></div>
+   376→          <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-medium">{receipt.paymentMode}</span></div>
+   377→        </div>
+   378→        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+   379→          <Button size="sm" className="h-9 gap-1.5 text-xs" onClick={() => setPrint({ kind: "receipt-a5", title: "Fee Receipt (A5)", data: { receipt, settings } })}>
+   380→            <Printer className="h-3.5 w-3.5" /> Print A5
+   381→          </Button>
+   382→          <Button size="sm" variant="outline" className="h-9 gap-1.5 bg-white/70 text-xs" onClick={() => setPrint({ kind: "receipt-thermal", title: "POS Slip (80mm)", data: { receipt, settings } })}>
+   383→            <Printer className="h-3.5 w-3.5" /> 80mm Slip
+   384→          </Button>
+   385→          <Button size="sm" variant="outline" className="h-9 gap-1.5 bg-emerald-50 text-xs text-emerald-700 hover:bg-emerald-100" onClick={waDispatch}>
+   386→            <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+   387→          </Button>
+   388→        </div>
+   389→        <p className="text-[11px] text-muted-foreground">
+   390→          A5 renders for standard printers; the 80 mm slip is sized for thermal POS rolls. WhatsApp opens the itemized receipt via WhatsApp Web when connectivity is present.
+   391→        </p>
+   392→      </DialogContent>
+   393→    </Dialog>
+   394→  )
+   395→}
+   396→
+   397→/* ============================ DEFAULTERS ============================ */
+   398→
+   399→function DefaultersTab() {
+   400→  const [rows, setRows] = useState<StudentFeeStatus[]>([])
+   401→  const [loading, setLoading] = useState(true)
+   402→  const [settings, setSettings] = useState<AcademySettings | null>(null)
+   403→  const { setPrint, navigate } = useAppStore()
+   404→
+   405→  const load = useCallback(async () => {
+   406→    const [d, s] = await Promise.all([fetchFeeStatuses(), fetchSettings()])
+   407→    setRows(d.filter((r) => r.student.status === "Active" && r.dueAmount > 0).sort((a, b) => Number(b.isDefaulter) - Number(a.isDefaulter) || b.dueAmount - a.dueAmount))
+   408→    setSettings(s)
+   409→    setLoading(false)
+   410→  }, [])
+   411→
+   412→  useEffect(() => {
+   413→    let alive = true
+   414→    Promise.all([fetchFeeStatuses(), fetchSettings()]).then(([d, s]) => {
+   415→      if (!alive) return
+   416→      setRows(d.filter((r) => r.student.status === "Active" && r.dueAmount > 0).sort((a, b) => Number(b.isDefaulter) - Number(a.isDefaulter) || b.dueAmount - a.dueAmount))
+   417→      setSettings(s)
+   418→      setLoading(false)
+   419→    })
+   420→    return () => {
+   421→      alive = false
+   422→    }
+   423→  }, [])
+   424→
+   425→  const defaulterCount = rows.filter((r) => r.isDefaulter).length
+   426→  const totalDue = rows.reduce((sum, r) => sum + r.dueAmount, 0)
+   427→
+   428→  const exportRows = rows.map((r) => ({
+   429→    name: r.student.fullName,
+   430→    admission: r.student.admissionNo,
+   431→    category: r.student.ageCategory,
+   432→    parent: r.student.parentName,
+   433→    phone: r.student.mobile,
+   434→    overdueMonths: r.overdueMonths.map(monthLabel).join(", ") || "—",
+   435→    pendingCount: String(r.pendingMonths.length),
+   436→    due: r.dueAmount,
+   437→  }))
+   438→
+   439→  const cols = [
+   440→    { header: "Student", key: "name", width: 24 },
+   441→    { header: "Admission No", key: "admission", width: 16 },
+   442→    { header: "Category", key: "category", width: 12 },
+   443→    { header: "Unpaid Months (>1 mo)", key: "overdueMonths", width: 30 },
+   444→    { header: "Total Pending", key: "pendingCount", width: 12 },
+   445→    { header: "Outstanding (₹)", key: "due", width: 15 },
+   446→    { header: "Parent", key: "parent", width: 20 },
+   447→    { header: "Contact", key: "phone", width: 14 },
+   448→  ]
+   449→
+   450→  function printRoster() {
+   451→    setPrint({ kind: "defaulters", title: "Fee Defaulters Roster", data: { rows: rows.filter((r) => r.isDefaulter), settings, totalDue: rows.filter((r) => r.isDefaulter).reduce((s, r) => s + r.dueAmount, 0) } })
+   452→  }
+   453→
+   454→  return (
+   455→    <div className="space-y-3">
+   456→      <div className="flex flex-wrap items-center gap-3 rounded-xl border acrylic p-3">
+   457→        <div>
+   458→          <div className="text-xs font-semibold">Defaulters — overdue by more than one month</div>
+   459→          <div className="text-[11px] text-muted-foreground">
+   460→            <span className="font-semibold text-rose-600">{defaulterCount}</span> defaulter(s) of {rows.length} with any dues · total outstanding <b>{formatINR(totalDue)}</b>
+   461→          </div>
+   462→        </div>
+   463→        <div className="ml-auto flex gap-2">
+   464→          <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/70 text-xs" onClick={printRoster}><Printer className="h-3.5 w-3.5" /> Print</Button>
+   465→          <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/70 text-xs" onClick={() => exportExcel({ sheetName: "Defaulters", fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster — overdue by more than one month", academy: settings ?? undefined, columns: cols, rows: exportRows, totalsRow: { name: "TOTAL", due: totalDue } })}>
+   466→            <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
+   467→          </Button>
+   468→          <Button size="sm" variant="outline" className="h-8 gap-1.5 bg-white/70 text-xs" onClick={() => exportPDF({ fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster", subtitle: "Overdue by more than one billing month", academy: settings ?? undefined, columns: cols, rows: exportRows, orientation: "l", totals: undefined })}>
+   469→            <FileText className="h-3.5 w-3.5" /> PDF
+   470→          </Button>
+   471→        </div>
+   472→      </div>
+   473→
+   474→      <div className="overflow-hidden rounded-xl border bg-white/70 backdrop-blur">
+   475→        <table className="w-full text-left text-xs">
+   476→          <thead className="border-b bg-secondary/70 text-[11px] uppercase tracking-wide text-muted-foreground">
+   477→            <tr>
+   478→              <th className="px-4 py-2.5 font-medium">Student</th>
+   479→              <th className="px-3 py-2.5 font-medium">Category</th>
+   480→              <th className="px-3 py-2.5 font-medium">Unpaid months</th>
+   481→              <th className="px-3 py-2.5 font-medium">Outstanding</th>
+   482→              <th className="hidden px-3 py-2.5 font-medium md:table-cell">Parent contact</th>
+   483→              <th className="px-3 py-2.5 text-right font-medium">Action</th>
+   484→            </tr>
+   485→          </thead>
+   486→          <tbody>
+   487→            {loading && <tr><td colSpan={6} className="py-10 text-center"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Computing ledger…</td></tr>}
+   488→            {!loading && rows.length === 0 && (
+   489→              <tr><td colSpan={6} className="py-10 text-center text-emerald-600">Excellent — no pending dues across the academy.</td></tr>
+   490→            )}
+   491→            {rows.map((r) => (
+   492→              <tr key={r.student.id} className={cn("border-b border-border/40", r.isDefaulter && "bg-rose-50/50")}>
+   493→                <td className="px-4 py-2.5">
+   494→                  <button className="text-left font-medium hover:text-primary hover:underline" onClick={() => navigate("student-detail", r.student.id)}>
+   495→                    {r.student.fullName}
+   496→                  </button>
+   497→                  <div className="text-[10.5px] text-muted-foreground">{r.student.admissionNo}</div>
+   498→                </td>
+   499→                <td className="px-3 py-2.5">
+   500→                  <span className={cn("rounded-full border px-2 py-0.5 text-[10.5px] font-medium", CATEGORY_COLORS[r.student.ageCategory] || "")}>{r.student.ageCategory}</span>
+   501→                </td>
+   502→                <td className="px-3 py-2.5">
+   503→                  {r.isDefaulter ? (
+   504→                    <Badge className="rounded-full bg-rose-100 text-[10.5px] text-rose-700 hover:bg-rose-100">{r.overdueMonths.length} months overdue</Badge>
+   505→                  ) : (
+   506→                    <Badge variant="secondary" className="rounded-full text-[10.5px]">Current month only</Badge>
+   507→                  )}
+   508→                  <div className="mt-0.5 text-[10.5px] text-muted-foreground">{r.pendingMonths.map(monthLabel).join(", ")}</div>
+   509→                </td>
+   510→                <td className="px-3 py-2.5 font-semibold tabular-nums text-rose-600">{formatINR(r.dueAmount)}</td>
+   511→                <td className="hidden px-3 py-2.5 md:table-cell">
+   512→                  <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3 text-muted-foreground" />{r.student.parentName} · {r.student.mobile}</span>
+   513→                </td>
+   514→                <td className="px-3 py-2.5 text-right">
+   515→                  <Button size="sm" variant="outline" className="h-7 bg-white/80 text-[11px]" onClick={() => navigate("student-detail", r.student.id)}>Open</Button>
+   516→                </td>
+   517→              </tr>
+   518→            ))}
+   519→          </tbody>
+   520→        </table>
+   521→      </div>
+   522→    </div>
+   523→  )
+   524→}
+   525→
+   526→/* ============================ HISTORY ============================ */
+   527→
+   528→function HistoryTab() {
+   529→  const [rows, setRows] = useState<(FeePayment & { studentName: string; admissionNo: string })[]>([])
+   530→  const [settings, setSettings] = useState<AcademySettings | null>(null)
+   531→  const [loading, setLoading] = useState(true)
+   532→  const { setPrint } = useAppStore()
+   533→
+   534→  useEffect(() => {
+   535→    Promise.all([fetchPayments({ limit: 60 }), fetchSettings()])
+   536→      .then(([p, s]) => {
+   537→        setRows(p)
+   538→        setSettings(s)
+   539→      })
+   540→      .finally(() => setLoading(false))
+   541→  }, [])
+   542→
+   543→  return (
+   544→    <div className="overflow-hidden rounded-xl border bg-white/70 backdrop-blur">
+   545→      <div className="border-b px-4 py-2.5 text-xs font-semibold">Recent receipts (latest 60)</div>
+   546→      <table className="w-full text-left text-xs">
+   547→        <thead className="border-b bg-secondary/60 text-[11px] text-muted-foreground">
+   548→          <tr>
+   549→            <th className="px-4 py-2 font-medium">Receipt No</th>
+   550→            <th className="px-3 py-2 font-medium">Date</th>
+   551→            <th className="px-3 py-2 font-medium">Student</th>
+   552→            <th className="px-3 py-2 font-medium">Periods</th>
+   553→            <th className="px-3 py-2 font-medium">Mode</th>
+   554→            <th className="px-3 py-2 text-right font-medium">Amount</th>
+   555→            <th className="px-3 py-2 text-right font-medium">Reprint</th>
+   556→          </tr>
+   557→        </thead>
+   558→        <tbody>
+   559→          {loading && <tr><td colSpan={7} className="py-8 text-center"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading…</td></tr>}
+   560→          {!loading && rows.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-muted-foreground">No receipts yet.</td></tr>}
+   561→          {rows.map((p) => (
+   562→            <tr key={p.id} className="border-b border-border/40 hover:bg-accent/30">
+   563→              <td className="px-4 py-2 font-mono text-[11px]">{p.receiptNo}</td>
+   564→              <td className="px-3 py-2">{formatDate(p.paymentDate)}</td>
+   565→              <td className="px-3 py-2 font-medium">{p.studentName} <span className="text-[10px] text-muted-foreground">{p.admissionNo}</span></td>
+   566→              <td className="px-3 py-2">{(JSON.parse(p.months) as string[]).map(monthLabel).join(", ")}</td>
+   567→              <td className="px-3 py-2">{p.paymentMode}</td>
+   568→              <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatINR(p.amount)}</td>
+   569→              <td className="px-3 py-2">
+   570→                <div className="flex justify-end gap-1">
+   571→                  <Button size="sm" variant="outline" className="h-6 px-2 text-[10.5px]" onClick={() => setPrint({ kind: "receipt-a5", title: "Fee Receipt (A5)", data: { receipt: p, settings } })}>A5</Button>
+   572→                  <Button size="sm" variant="outline" className="h-6 px-2 text-[10.5px]" onClick={() => setPrint({ kind: "receipt-thermal", title: "POS Slip (80mm)", data: { receipt: p, settings } })}>Thermal</Button>
+   573→                </div>
+   574→              </td>
+   575→            </tr>
+   576→          ))}
+   577→        </tbody>
+   578→      </table>
+   579→    </div>
+   580→  )
+   581→}
+   582→
