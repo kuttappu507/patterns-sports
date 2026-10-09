@@ -222,6 +222,20 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![data_paths, backup_now, schema_sql])
+        .setup(|app| {
+            // Create the data layout NOW — before the webview loads — and
+            // extend the FS plugin scope to cover it. Portable builds keep
+            // data next to the exe (outside the default $APPDATA scope), so
+            // media upload/display would be denied without this.
+            use tauri_plugin_fs::FsExt;
+            let handle = app.handle();
+            let paths = resolve_data_paths(handle);
+            if let Err(e) = handle.fs_scope().allow_directory(&paths.app_data, true) {
+                log_line(&format!("fs scope extension failed: {e}"));
+            }
+            log_line(&format!("data root ready: {}", paths.app_data));
+            Ok(())
+        })
         .build(tauri::generate_context!())
     {
         Ok(app) => {

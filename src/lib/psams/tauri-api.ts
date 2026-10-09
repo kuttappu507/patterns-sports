@@ -31,7 +31,21 @@ let _mediaBase: string | null = null
 /** Open (once) the SQLite database and guarantee the schema exists. */
 export async function getDb(): Promise<DB> {
   if (!_db) {
-    _db = await Database.load("sqlite:ps-ams.db")
+    // Resolve the authoritative absolute DB path from the Rust data layout:
+    //  - installed: %APPDATA%/<identifier>/ps-ams.db (identical to the
+    //    plugin's app-config-dir default, so existing installs keep data)
+    //  - portable:  <exe dir>/PS-AMS-Data/ps-ams.db — keeps the DB beside
+    //    the media tree so the exit-backup routine mirrors the real file.
+    // The plugin's path_mapper honors absolute paths (PathBuf::push replaces
+    // the base); the relative string stays the fallback for older builds.
+    let conn = "sqlite:ps-ams.db"
+    try {
+      const paths = await invoke<{ database: string }>("data_paths")
+      if (paths?.database) conn = `sqlite:${paths.database}`
+    } catch {
+      /* data_paths unavailable — plugin default location applies */
+    }
+    _db = await Database.load(conn)
     try {
       await _db.execute("PRAGMA foreign_keys = ON")
     } catch {

@@ -106,7 +106,7 @@ on every push to `main`:
 3. To publish all deliverables as a GitHub Release, push a version tag:
 
    ```bash
-   git tag v1.2.0 && git push origin v1.2.0
+   git tag v1.2.1 && git push origin v1.2.1
    ```
 
 ### Portable edition (no installation)
