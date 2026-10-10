@@ -4,4 +4,4 @@
  * src-tauri/tauri.conf.json / src-tauri/Cargo.toml; the in-app updater
  * compares this against the latest GitHub release tag.
  */
-export const APP_VERSION = "1.6.2"
+export const APP_VERSION = "1.6.3"

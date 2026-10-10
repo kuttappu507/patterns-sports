@@ -1,6 +1,6 @@
 [package]
 name = "whatsapp-bot"
-version = "1.6.0"
+version = "1.6.3"
 description = "PS-AMS native WhatsApp linked-device sidecar (whatsapp-rust engine, NDJSON over stdio)"
 edition = "2021"
 

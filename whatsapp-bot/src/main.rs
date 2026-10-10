@@ -30,6 +30,7 @@ use whatsapp_rust::media;
 use whatsapp_rust::store::SqliteStore;
 use whatsapp_rust::transport::TokioWebSocketTransportFactory;
 use whatsapp_rust::wacore::download::MediaType;
+use whatsapp_rust::wacore::store::DevicePropsOverride;
 use whatsapp_rust::wacore::types::events::Event;
 use whatsapp_rust::{Jid, TokioRuntime};
 
@@ -88,6 +89,10 @@ async fn main() {
         .with_transport_factory(TokioWebSocketTransportFactory::new())
         .with_http_client(UreqHttpClient::new())
         .with_runtime(TokioRuntime)
+        // Brand the linked device — the academy phone's "Linked devices"
+        // screen shows the OS string we send in the handshake. The crate
+        // default is the anonymous "rust"; pair as Pattern Sports AMS.
+        .with_device_props(DevicePropsOverride::new().with_os("Pattern Sports AMS"))
         .on_event(|event, client| async move {
             match &*event {
                 Event::PairingQrCode(qr) => {

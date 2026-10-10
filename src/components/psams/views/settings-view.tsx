@@ -170,7 +170,7 @@ function WhatsAppCard() {
       ) : status === "waiting_scan" && qrImg ? (
         <>
           <p className="text-[15.5px] leading-relaxed text-muted-foreground">
-            On the academy phone open <b>WhatsApp → Settings → Linked devices → Link a device</b> and scan this code. One-time setup — afterwards the app reconnects silently on every launch.
+            On the academy phone open <b>WhatsApp → Settings → Linked devices → Link a device</b> and scan this code. One-time setup — afterwards the app reconnects silently on every launch. The app appears as <b>Pattern Sports AMS</b> in the Linked devices list — if an older pairing shows a different name, unlink it once and scan again to refresh.
           </p>
           <div className="mt-3 flex items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
