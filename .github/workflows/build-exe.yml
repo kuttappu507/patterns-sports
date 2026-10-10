@@ -52,6 +52,7 @@ jobs:
         run: |
           cd src-tauri/sidecar/whatsapp-bot
           bun install
+          mkdir -p ../../binaries
           bun build --compile --minify \
             --external jimp --external sharp --external qrcode-terminal \
             index.ts --outfile ../../binaries/whatsapp-bot-x86_64-pc-windows-msvc.exe
