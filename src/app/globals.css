@@ -55,66 +55,68 @@
 }
 
 /* ============================================================
-   PS-AMS :: "Volt Arena" light design system (default)
-   A modern volleyball identity: electric indigo as the primary,
-   volt amber as the spike accent, court teal as the third color,
-   on a crisp porcelain arena floor. A drifting aurora glows
-   behind the UI. Dark mode (.dark) is the "Night Arena" — a
-   floodlit ink-violet court with neon indigo & amber accents.
+   PS-AMS :: "Sorbet Arena" light design system (default)
+   Built on the WATERMELON SORBET palette — watermelon #EF476F
+   as the primary, sun yellow #FFD166 as the spike accent, mint
+   #06D6A0 as the fresh third color and ocean #118AB2 for info,
+   all grounded on deep navy ink #073B4C. A drifting sorbet
+   aurora glows behind the UI. Dark mode (.dark) is the "Sorbet
+   Night" — a floodlit deep-navy court with glowing watermelon
+   & yellow accents.
    ============================================================ */
 
 :root {
   --radius: 1.05rem;
 
-  --background: #f3f5fc;
-  --foreground: #161430;
+  --background: #fdf4f0;
+  --foreground: #073b4c;
 
   --card: #ffffff;
-  --card-foreground: #161430;
+  --card-foreground: #073b4c;
   --popover: #ffffff;
-  --popover-foreground: #161430;
+  --popover-foreground: #073b4c;
 
-  --primary: #4f46e5;                       /* electric indigo */
+  --primary: #ef476f;                       /* watermelon */
   --primary-foreground: #ffffff;
 
-  --secondary: rgba(22, 20, 48, 0.05);
-  --secondary-foreground: #3d3a63;
+  --secondary: rgba(7, 59, 76, 0.05);
+  --secondary-foreground: #1d5468;
 
-  --muted: rgba(22, 20, 48, 0.05);
-  --muted-foreground: #5d5b7e;
+  --muted: rgba(7, 59, 76, 0.05);
+  --muted-foreground: #52707e;
 
-  --accent: rgba(99, 102, 241, 0.09);
-  --accent-foreground: #4338ca;
+  --accent: rgba(239, 71, 111, 0.08);
+  --accent-foreground: #d02c58;
 
-  --destructive: #e11d48;
-  --success: #059669;
-  --warning: #d97706;
+  --destructive: #dc2626;
+  --success: #05a377;
+  --warning: #c78a04;
 
-  --border: rgba(22, 20, 48, 0.10);
-  --border-strong: rgba(22, 20, 48, 0.16);
-  --input: rgba(22, 20, 48, 0.12);
-  --ring: #6366f1;
+  --border: rgba(7, 59, 76, 0.10);
+  --border-strong: rgba(7, 59, 76, 0.16);
+  --input: rgba(7, 59, 76, 0.12);
+  --ring: #ef476f;
 
-  --chart-1: #6366f1;
-  --chart-2: #f59e0b;
-  --chart-3: #14b8a6;
-  --chart-4: #a855f7;
-  --chart-5: #f43f5e;
+  --chart-1: #ef476f;
+  --chart-2: #ffd166;
+  --chart-3: #118ab2;
+  --chart-4: #06d6a0;
+  --chart-5: #073b4c;
 
   /* Sidebar is the always-dark "club room" — same tokens in both modes */
-  --sidebar: #0e1029;
-  --sidebar-foreground: #b6bce2;
-  --sidebar-primary: #818cf8;
-  --sidebar-primary-foreground: #0b0a1f;
-  --sidebar-accent: rgba(129, 140, 248, 0.14);
-  --sidebar-accent-foreground: #c7d2fe;
+  --sidebar: #073b4c;
+  --sidebar-foreground: #b9d5df;
+  --sidebar-primary: #ffd166;
+  --sidebar-primary-foreground: #073b4c;
+  --sidebar-accent: rgba(255, 143, 168, 0.14);
+  --sidebar-accent-foreground: #ffdbe2;
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #818cf8;
+  --sidebar-ring: #ff8fa8;
 
-  --net-line: rgba(22, 20, 48, 0.07);
-  --glow: 99, 102, 241;                     /* rgb triplet — indigo glow */
-  --spike: 245, 158, 11;                    /* rgb triplet — volt amber */
-  --court: 20, 184, 166;                    /* rgb triplet — court teal */
+  --net-line: rgba(7, 59, 76, 0.07);
+  --glow: 239, 71, 111;                     /* rgb triplet — watermelon glow */
+  --spike: 255, 209, 102;                   /* rgb triplet — sun yellow */
+  --court: 6, 214, 160;                     /* rgb triplet — mint court */
 }
 
 /* ============================================================
@@ -122,45 +124,45 @@
    ============================================================ */
 
 .dark {
-  --background: #080919;
-  --foreground: #edeafd;
+  --background: #04222d;
+  --foreground: #e8f3f7;
 
   --card: rgba(255, 255, 255, 0.045);
-  --card-foreground: #edeafd;
-  --popover: #101129;
-  --popover-foreground: #edeafd;
+  --card-foreground: #e8f3f7;
+  --popover: #0a3341;
+  --popover-foreground: #e8f3f7;
 
-  --primary: #818cf8;                       /* neon indigo */
-  --primary-foreground: #0b0a1f;
+  --primary: #ff6b8d;                       /* glowing watermelon */
+  --primary-foreground: #073b4c;
 
   --secondary: rgba(255, 255, 255, 0.06);
-  --secondary-foreground: #cdd0f0;
+  --secondary-foreground: #c4dde6;
 
   --muted: rgba(255, 255, 255, 0.06);
-  --muted-foreground: #9298c3;
+  --muted-foreground: #8fb3c0;
 
-  --accent: rgba(251, 191, 36, 0.12);
-  --accent-foreground: #fcd34d;
+  --accent: rgba(255, 209, 102, 0.12);
+  --accent-foreground: #ffd166;
 
   --destructive: #fb7185;
-  --success: #34d399;
-  --warning: #fbbf24;
+  --success: #2ee6ac;
+  --warning: #ffd166;
 
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.15);
   --input: rgba(255, 255, 255, 0.11);
-  --ring: #818cf8;
+  --ring: #ff6b8d;
 
-  --chart-1: #818cf8;
-  --chart-2: #fbbf24;
-  --chart-3: #2dd4bf;
-  --chart-4: #c084fc;
-  --chart-5: #fb7185;
+  --chart-1: #ff6b8d;
+  --chart-2: #ffd166;
+  --chart-3: #3fc1e0;
+  --chart-4: #3ddba8;
+  --chart-5: #a9c9d4;
 
   --net-line: rgba(255, 255, 255, 0.06);
-  --glow: 129, 140, 248;
-  --spike: 251, 191, 36;
-  --court: 45, 212, 191;
+  --glow: 255, 107, 141;
+  --spike: 255, 209, 102;
+  --court: 61, 219, 168;
 }
 
 @layer base {
@@ -269,7 +271,7 @@
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(22, 20, 48, 0.16);
+  background: rgba(7, 59, 76, 0.18);
   border-radius: 8px;
   border: 3px solid transparent;
   background-clip: content-box;
@@ -298,10 +300,10 @@
    (blur kept light — heavy backdrop-filters made every repaint janky) */
 .glass {
   background: linear-gradient(165deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.82));
-  border: 1px solid rgba(22, 20, 48, 0.08);
+  border: 1px solid rgba(7, 59, 76, 0.08);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 1px 2px rgba(22, 20, 48, 0.04), 0 12px 32px -18px rgba(22, 20, 48, 0.16);
+  box-shadow: 0 1px 2px rgba(7, 59, 76, 0.04), 0 12px 32px -18px rgba(7, 59, 76, 0.16);
 }
 .dark .glass {
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
@@ -309,7 +311,7 @@
   box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.05) inset, 0 12px 32px -18px rgba(0, 0, 0, 0.60);
 }
 
-/* hover: lift + indigo glow + warm amber under-glow — the signature card interaction */
+/* hover: lift + watermelon glow + warm yellow under-glow — the signature card interaction */
 .hover-lift {
   transition: transform 0.25s cubic-bezier(0.22, 0.68, 0.31, 1), border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
@@ -317,7 +319,7 @@
   transform: translateY(-3px);
   border-color: rgba(var(--glow), 0.38);
   box-shadow:
-    0 18px 38px -18px rgba(22, 20, 48, 0.24),
+    0 18px 38px -18px rgba(7, 59, 76, 0.24),
     0 6px 22px -12px rgba(var(--spike), 0.20),
     0 0 0 1px rgba(var(--glow), 0.08),
     0 0 30px -6px rgba(var(--glow), 0.16);
@@ -350,7 +352,7 @@
   opacity: 1;
 }
 
-/* table / list row hover with indigo→amber accent rail */
+/* table / list row hover with watermelon→yellow accent rail */
 .row-hover {
   position: relative;
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
@@ -369,8 +371,8 @@
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 .row-hover:hover {
-  background: rgba(22, 20, 48, 0.035);
-  border-color: rgba(22, 20, 48, 0.14);
+  background: rgba(7, 59, 76, 0.035);
+  border-color: rgba(7, 59, 76, 0.14);
 }
 .dark .row-hover:hover {
   background: rgba(255, 255, 255, 0.045);
@@ -381,15 +383,15 @@
   transform: scaleY(1);
 }
 
-/* gradient headline text — ink into indigo into volt amber */
+/* gradient headline text — navy ink into watermelon into sun yellow */
 .text-gradient {
-  background: linear-gradient(92deg, #16142e 8%, #4f46e5 52%, #f59e0b 96%);
+  background: linear-gradient(92deg, #073b4c 8%, #ef476f 52%, #dfa11c 96%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 .dark .text-gradient {
-  background: linear-gradient(92deg, #f0efff 8%, #a5b4fc 50%, #fcd34d 96%);
+  background: linear-gradient(92deg, #eaf6fa 8%, #ff9fb3 50%, #ffd166 96%);
   -webkit-background-clip: text;
   background-clip: text;
 }
@@ -398,7 +400,7 @@
 .shimmer {
   position: relative;
   overflow: hidden;
-  background: rgba(22, 20, 48, 0.06);
+  background: rgba(7, 59, 76, 0.06);
 }
 .shimmer::after {
   content: "";
@@ -491,7 +493,7 @@
   border-color: rgba(var(--glow), 0.22);
 }
 
-/* hero band on the dashboard — indigo/amber court wash */
+/* hero band on the dashboard — watermelon/yellow/mint court wash */
 .hero-band {
   border: 1px solid rgba(var(--glow), 0.15);
   background:
@@ -548,13 +550,20 @@
    emblem in the corner.
    ============================================================ */
 
+/* ============================================================
+   SIDEBAR COURT — the always-dark "club room" navigation rail.
+   Layered pattern background: floodlight glows, volleyball net
+   mesh, diagonal court stripes and a giant faded volleyball
+   emblem in the corner — all on the deep navy #073B4C rink.
+   ============================================================ */
+
 .sidebar-court {
   color: var(--sidebar-foreground);
   background:
     radial-gradient(620px 340px at 88% -8%, rgba(var(--glow), 0.20), transparent 62%),
     radial-gradient(460px 320px at -25% 106%, rgba(var(--spike), 0.13), transparent 58%),
     radial-gradient(300px 260px at 50% 118%, rgba(var(--court), 0.10), transparent 60%),
-    linear-gradient(180deg, #161840 0%, #0e1029 48%, #0a0b1e 100%);
+    linear-gradient(180deg, #0b4a5f 0%, #073b4c 48%, #052734 100%);
 }
 /* volleyball net mesh + diagonal court stripes */
 .sidebar-court::before {
@@ -564,7 +573,7 @@
   background-image:
     repeating-linear-gradient(0deg, transparent 0 11px, rgba(255, 255, 255, 0.05) 11px 12px),
     repeating-linear-gradient(90deg, transparent 0 11px, rgba(255, 255, 255, 0.05) 11px 12px),
-    repeating-linear-gradient(45deg, transparent 0 26px, rgba(129, 140, 248, 0.05) 26px 27px);
+    repeating-linear-gradient(45deg, transparent 0 26px, rgba(63, 193, 224, 0.07) 26px 27px);
   -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.30) 42%, rgba(0, 0, 0, 0.80) 100%);
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.30) 42%, rgba(0, 0, 0, 0.80) 100%);
   pointer-events: none;
@@ -577,27 +586,27 @@
   bottom: -40px;
   width: 210px;
   height: 210px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23a5b4fc' stroke-width='2.6'%3E%3Ccircle cx='50' cy='50' r='38'/%3E%3Cpath d='M50 12c-21 11-29 35-18 57'/%3E%3Cpath d='M50 12c21 11 29 35 18 57'/%3E%3Cpath d='M14 40c16 13 56 13 72-2'/%3E%3Cpath d='M18 70c12-9 24-12 32-9'/%3E%3Cpath d='M82 70c-12-9-24-12-32-9'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23ffd166' stroke-width='2.6'%3E%3Ccircle cx='50' cy='50' r='38'/%3E%3Cpath d='M50 12c-21 11-29 35-18 57'/%3E%3Cpath d='M50 12c21 11 29 35 18 57'/%3E%3Cpath d='M14 40c16 13 56 13 72-2'/%3E%3Cpath d='M18 70c12-9 24-12 32-9'/%3E%3Cpath d='M82 70c-12-9-24-12-32-9'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
   opacity: 0.14;
   transform: rotate(-14deg);
   pointer-events: none;
 }
 
-/* brand tile gradient on the sidebar */
+/* brand tile gradient on the sidebar — watermelon into sun yellow */
 .brand-tile {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 45%, #f59e0b 130%);
-  box-shadow: 0 0 24px rgba(99, 102, 241, 0.45), 0 6px 16px -6px rgba(245, 158, 11, 0.35);
+  background: linear-gradient(135deg, #ff6b8b 0%, #ef476f 45%, #ffd166 130%);
+  box-shadow: 0 0 24px rgba(239, 71, 111, 0.45), 0 6px 16px -6px rgba(255, 209, 102, 0.35);
 }
 
 /* active nav pill on the dark rail */
 .nav-pill {
-  background: linear-gradient(120deg, rgba(99, 102, 241, 0.32), rgba(79, 70, 229, 0.16) 60%, rgba(245, 158, 11, 0.12));
-  border: 1px solid rgba(165, 180, 252, 0.28);
-  box-shadow: 0 10px 24px -12px rgba(99, 102, 241, 0.55), 0 0 0 1px rgba(99, 102, 241, 0.06) inset;
+  background: linear-gradient(120deg, rgba(239, 71, 111, 0.34), rgba(214, 44, 88, 0.16) 60%, rgba(255, 209, 102, 0.14));
+  border: 1px solid rgba(255, 159, 179, 0.30);
+  box-shadow: 0 10px 24px -12px rgba(239, 71, 111, 0.55), 0 0 0 1px rgba(239, 71, 111, 0.06) inset;
 }
 .nav-rail {
-  background: linear-gradient(180deg, #a5b4fc, #f59e0b);
-  box-shadow: 0 0 12px rgba(165, 180, 252, 0.75);
+  background: linear-gradient(180deg, #ff9fb3, #ffd166);
+  box-shadow: 0 0 12px rgba(255, 159, 179, 0.75);
 }
 
 /* status card at the sidebar foot (kept for reuse) */
@@ -607,7 +616,7 @@
 }
 
 /* ============================================================
-   SPLASH SCREEN — compact borderless "match night" boot card.
+   SPLASH SCREEN — compact borderless "sorbet night" boot card.
    The backdrop is fully TRANSPARENT — the boot card floats dead-center
    over the app itself (which is already mounted and painted behind it),
    showing the bouncing ball, brand and boot progress. Pure CSS ambience,
@@ -640,12 +649,12 @@
   text-align: center;
   padding: 30px 26px 20px;
   border-radius: 24px;
-  color: #eef0ff;
-  background: linear-gradient(180deg, #12143a 0%, #0b0c24 55%, #060713 100%);
+  color: #eef7fa;
+  background: linear-gradient(180deg, #0b4356 0%, #073b4c 55%, #04222d 100%);
   box-shadow:
-    0 0 0 1px rgba(165, 180, 252, 0.16),
-    0 34px 90px -20px rgba(2, 3, 12, 0.85),
-    0 0 60px -12px rgba(99, 102, 241, 0.45);
+    0 0 0 1px rgba(255, 209, 102, 0.16),
+    0 34px 90px -20px rgba(1, 15, 20, 0.85),
+    0 0 60px -12px rgba(239, 71, 111, 0.45);
 }
 /* perspective court floor grid (scaled down for the card) */
 .splash::before {
@@ -656,8 +665,8 @@
   bottom: -12%;
   height: 56%;
   background:
-    repeating-linear-gradient(90deg, rgba(165, 180, 252, 0.17) 0 2px, transparent 2px 92px),
-    repeating-linear-gradient(0deg, rgba(165, 180, 252, 0.13) 0 2px, transparent 2px 58px);
+    repeating-linear-gradient(90deg, rgba(96, 190, 220, 0.17) 0 2px, transparent 2px 92px),
+    repeating-linear-gradient(0deg, rgba(96, 190, 220, 0.13) 0 2px, transparent 2px 58px);
   transform: perspective(420px) rotateX(58deg);
   -webkit-mask-image: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.85) 34%, #000 78%);
   mask-image: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.85) 34%, #000 78%);
@@ -676,8 +685,8 @@
   background-image:
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.09) 0 1.6px, transparent 1.6px 10px),
     repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.09) 0 1.6px, transparent 1.6px 10px);
-  border-top: 2px solid rgba(199, 210, 254, 0.30);
-  border-bottom: 2px solid rgba(199, 210, 254, 0.30);
+  border-top: 2px solid rgba(255, 209, 102, 0.32);
+  border-bottom: 2px solid rgba(255, 209, 102, 0.32);
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
   opacity: 0.30;
@@ -688,16 +697,16 @@
   font-family: var(--font-display), system-ui, sans-serif;
   font-weight: 800;
   letter-spacing: -0.03em;
-  background: linear-gradient(100deg, #f4f2ff 10%, #a5b4fc 48%, #fcd34d 92%);
+  background: linear-gradient(100deg, #fff5f7 10%, #ff9fb3 48%, #ffd166 92%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .splash-chip {
-  border: 1px solid rgba(165, 180, 252, 0.30);
-  background: rgba(99, 102, 241, 0.12);
-  color: #c7d2fe;
+  border: 1px solid rgba(255, 209, 102, 0.32);
+  background: rgba(239, 71, 111, 0.16);
+  color: #ffccd6;
 }
 
 .splash-progress {
@@ -705,8 +714,8 @@
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
 }
 .splash-progress > span {
-  background: linear-gradient(90deg, #818cf8, #a5b4fc 55%, #f59e0b);
-  box-shadow: 0 0 18px rgba(129, 140, 248, 0.8);
+  background: linear-gradient(90deg, #ff6b8d, #ff9fb3 55%, #ffd166);
+  box-shadow: 0 0 18px rgba(255, 107, 141, 0.8);
 }
 
 /* ball court-side shadow (scales with the bounce, driven from JS) */

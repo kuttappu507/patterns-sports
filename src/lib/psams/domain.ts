@@ -109,7 +109,7 @@ export function verticalJumpRating(gain: number | null): { label: string; color:
   if (gain < 50) return { label: "Average", color: "text-sky-600 dark:text-sky-300" }
   if (gain < 60) return { label: "Good", color: "text-emerald-600 dark:text-emerald-300" }
   if (gain < 70) return { label: "Excellent", color: "text-emerald-600 dark:text-emerald-300" }
-  return { label: "Elite", color: "text-violet-600 dark:text-violet-300" }
+  return { label: "Elite", color: "text-cyan-600 dark:text-cyan-300" }
 }
 
 /** Standing-reach-to-height ratio — typically 1.28–1.33 for court athletes. */
@@ -310,19 +310,19 @@ export function isSafeMediaPath(p: string): boolean {
 
 export const CATEGORY_COLORS: Record<string, string> = {
   Mini: "bg-sky-500/10 text-sky-700 border-sky-500/30 dark:bg-sky-400/10 dark:text-sky-300 dark:border-sky-400/25",
-  "Sub-Junior": "bg-violet-500/10 text-violet-700 border-violet-500/30 dark:bg-violet-400/10 dark:text-violet-300 dark:border-violet-400/25",
+  "Sub-Junior": "bg-rose-500/10 text-rose-700 border-rose-500/30 dark:bg-rose-400/10 dark:text-rose-300 dark:border-rose-400/25",
   Junior: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:bg-emerald-400/10 dark:text-emerald-300 dark:border-emerald-400/25",
-  Youth: "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-300 dark:border-amber-400/25",
-  Senior: "bg-rose-500/10 text-rose-700 border-rose-500/30 dark:bg-rose-400/10 dark:text-rose-300 dark:border-rose-400/25",
+  Youth: "bg-yellow-500/15 text-yellow-700 border-yellow-500/30 dark:bg-yellow-300/10 dark:text-yellow-300 dark:border-yellow-400/25",
+  Senior: "bg-slate-500/10 text-slate-700 border-slate-500/30 dark:bg-slate-400/10 dark:text-slate-300 dark:border-slate-400/25",
 }
 
-/** Bar gradient per age category (dashboard distribution chart). */
+/** Bar gradient per age category (dashboard distribution chart) — mapped to the Watermelon Sorbet palette. */
 export const CATEGORY_GRADIENTS: Record<string, string> = {
   Mini: "from-sky-400 to-sky-300",
-  "Sub-Junior": "from-violet-400 to-violet-300",
+  "Sub-Junior": "from-rose-400 to-rose-300",
   Junior: "from-emerald-400 to-emerald-300",
-  Youth: "from-amber-400 to-amber-300",
-  Senior: "from-rose-400 to-rose-300",
+  Youth: "from-yellow-400 to-yellow-300",
+  Senior: "from-slate-500 to-slate-400",
 }
 
 export const MEDAL_ICONS: Record<string, string> = {

@@ -73,7 +73,7 @@ const wa = readFileSync("src/lib/psams/whatsapp.ts", "utf8")
 ok(wa.includes("https://wa.me/"), "wa.me deep-link builder present")
 ok(wa.includes("plugin:shell|open"), "Tauri shell open used for external URLs")
 for (const [, src] of all) {
-  for (const m of src.matchAll(/window\.open\(/g)) {
+  for (const _m of src.matchAll(/window\.open\(/g)) {
     // window.open must only appear as fallback next to openExternal
     ok(src.includes("openExternal"), "window.open guarded by openExternal fallback")
     break

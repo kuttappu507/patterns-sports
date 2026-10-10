@@ -111,7 +111,7 @@ export function StudentsView() {
             </span>
             <Button
               size="sm"
-              className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-xs font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(99, 102, 241,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(129, 140, 248,0.55)]"
+              className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-xs font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(239, 71, 111,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(255, 107, 141,0.55)]"
               onClick={() => openStudentForm(null)}
             >
               <UserPlus className="h-3.5 w-3.5" strokeWidth={2.6} /> Register Student
@@ -171,7 +171,7 @@ export function StudentsView() {
                     >
                       <td className="row-hover px-4 py-2.5">
                         <button className="flex items-center gap-2.5 text-left" onClick={() => navigate("student-detail", s.id)}>
-                          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-amber-500/10 transition-all duration-200 group-hover:border-primary/40 group-hover:shadow-[0_0_12px_-2px_rgba(99, 102, 241,0.45)] dark:group-hover:shadow-[0_0_12px_-2px_rgba(129, 140, 248,0.55)]">
+                          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-yellow-400/15 transition-all duration-200 group-hover:border-primary/40 group-hover:shadow-[0_0_12px_-2px_rgba(239, 71, 111,0.45)] dark:group-hover:shadow-[0_0_12px_-2px_rgba(255, 107, 141,0.55)]">
                             {s.photoPath ? (
                               <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
                             ) : (
@@ -203,7 +203,7 @@ export function StudentsView() {
                       <td className="tnum hidden px-3 py-2.5 xl:table-cell">{formatINR(s.monthlyFee)}</td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center justify-end gap-1 opacity-60 transition-opacity duration-200 group-hover:opacity-100">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-teal-500/10 hover:text-teal-600 dark:hover:text-teal-300" title="Open profile" onClick={() => navigate("student-detail", s.id)}>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-cyan-500/10 hover:text-cyan-700 dark:hover:text-cyan-300" title="Open profile" onClick={() => navigate("student-detail", s.id)}>
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Edit" onClick={() => openStudentForm(s)}>

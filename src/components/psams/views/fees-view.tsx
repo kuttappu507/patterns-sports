@@ -68,10 +68,10 @@ function CollectTab() {
   return (
     <div className="glass relative overflow-hidden rounded-2xl p-8">
       <div className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 rounded-full bg-primary/[0.06] blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-14 right-40 h-44 w-44 rounded-full bg-amber-500/[0.07] blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-14 right-40 h-44 w-44 rounded-full bg-yellow-400/[0.09] blur-3xl" />
 
       <div className="relative mx-auto max-w-xl text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-[0_0_28px_-8px_rgba(99,102,241,0.55)] dark:shadow-[0_0_28px_-8px_rgba(129,140,248,0.6)]">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-[0_0_28px_-8px_rgba(239,71,111,0.55)] dark:shadow-[0_0_28px_-8px_rgba(255,107,141,0.6)]">
           <BadgeIndianRupee className="h-7 w-7" />
         </div>
         <h3 className="mt-4 font-display text-lg font-extrabold">Fee Collection Counter</h3>
@@ -82,7 +82,7 @@ function CollectTab() {
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
           <Button
             size="lg"
-            className="btn-sheen h-11 gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_14px_30px_-12px_rgba(99,102,241,0.7)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_22px_-4px_rgba(129,140,248,0.6)]"
+            className="btn-sheen h-11 gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_14px_30px_-12px_rgba(239,71,111,0.7)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_22px_-4px_rgba(255,107,141,0.6)]"
             onClick={() => openCollectFee()}
           >
             <Receipt className="h-4.5 w-4.5" strokeWidth={2.4} /> Start Fee Collection

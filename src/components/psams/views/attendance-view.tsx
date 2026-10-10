@@ -212,7 +212,7 @@ export function AttendanceView() {
                       status === "Absent" && "border-rose-400/25 bg-rose-400/[0.04]"
                     )}
                   >
-                    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-teal-500/10">
+                    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-cyan-500/10">
                       {s.photoPath ? (
                         <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
                       ) : (

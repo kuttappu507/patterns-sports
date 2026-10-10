@@ -100,7 +100,7 @@ export function PrintRoot() {
           >
             {/* toolbar */}
             <div className="flex items-center gap-3 border-b border-white/10 bg-slate-900/95 px-4 py-2.5 text-slate-100 shadow-lg">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/20 text-rose-300">
                 <FileText className="h-4 w-4" />
               </div>
               <div className="min-w-0">
@@ -147,13 +147,13 @@ export function PrintRoot() {
 
 function Letterhead({ settings, docTitle }: { settings?: Partial<AcademySettings> | null; docTitle: string }) {
   return (
-    <div className="border-b-2 border-[#1f6fb2] pb-2 text-center">
-      <div className="text-[22px] font-bold leading-tight text-[#0f3b66]">{settings?.academyName || "Pattern Sports Academy"}</div>
+    <div className="border-b-2 border-[#ef476f] pb-2 text-center">
+      <div className="text-[22px] font-bold leading-tight text-[#073b4c]">{settings?.academyName || "Pattern Sports Academy"}</div>
       {settings?.tagline && <div className="text-[10px] italic text-neutral-600">{settings.tagline}</div>}
       <div className="mt-0.5 text-[10px] text-neutral-600">
         {[settings?.address, settings?.phone && `Ph: ${settings.phone}`, settings?.email].filter(Boolean).join("  ·  ")}
       </div>
-      <div className="mt-1.5 inline-block rounded bg-[#1f6fb2] px-3 py-0.5 text-[12px] font-bold uppercase tracking-wide text-white">
+      <div className="mt-1.5 inline-block rounded bg-[#ef476f] px-3 py-0.5 text-[12px] font-bold uppercase tracking-wide text-white">
         {docTitle}
       </div>
     </div>
@@ -246,7 +246,7 @@ function ProfileA4({ data, preview }: { data: ProfileData; preview?: boolean }) 
       <SectionHead>Achievements & Career Milestones</SectionHead>
       <table className="w-full border-collapse text-[10.5px]">
         <thead>
-          <tr className="bg-[#eef4fa]">
+          <tr className="bg-[#fdeef2]">
             <th className="border border-neutral-300 px-2 py-1 text-left">#</th>
             <th className="border border-neutral-300 px-2 py-1 text-left">Tournament / Milestone</th>
             <th className="border border-neutral-300 px-2 py-1 text-left">Date</th>
@@ -292,7 +292,7 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 function SectionHead({ children }: { children: React.ReactNode }) {
   return (
     <div className="mb-1.5 mt-3 flex items-center gap-2">
-      <span className="bg-[#1f6fb2] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-white">{children}</span>
+      <span className="bg-[#ef476f] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-white">{children}</span>
       <div className="h-px flex-1 bg-neutral-300" />
     </div>
   )
@@ -407,7 +407,7 @@ function RosterPrint({ payload, preview }: { payload: PrintPayload; preview?: bo
       </div>
       <table className="mt-2 w-full border-collapse text-[10px]">
         <thead>
-          <tr className="bg-[#1f6fb2] text-white">
+          <tr className="bg-[#ef476f] text-white">
             <th className="border border-neutral-400 px-1.5 py-1 text-left">#</th>
             <th className="border border-neutral-400 px-1.5 py-1 text-left">Admission</th>
             <th className="border border-neutral-400 px-1.5 py-1 text-left">Student</th>
@@ -434,7 +434,7 @@ function RosterPrint({ payload, preview }: { payload: PrintPayload; preview?: bo
         </thead>
         <tbody>
           {rows.map((s, i) => (
-            <tr key={s.id} className={i % 2 ? "bg-[#f4f8fc]" : ""}>
+            <tr key={s.id} className={i % 2 ? "bg-[#fdf4f2]" : ""}>
               <td className="border border-neutral-400 px-1.5 py-1">{i + 1}</td>
               <td className="border border-neutral-400 px-1.5 py-1 font-mono">{s.admissionNo}</td>
               <td className="border border-neutral-400 px-1.5 py-1 font-semibold">{s.fullName}</td>
@@ -500,7 +500,7 @@ function AttendancePrint({ data, preview }: { data: AttendanceData; preview?: bo
       </div>
       <table className="mt-2 w-full border-collapse text-[10px]">
         <thead>
-          <tr className="bg-[#1f6fb2] text-white">
+          <tr className="bg-[#ef476f] text-white">
             <th className="border border-neutral-400 px-1.5 py-1 text-left">#</th>
             <th className="border border-neutral-400 px-1.5 py-1 text-left">Admission</th>
             <th className="border border-neutral-400 px-1.5 py-1 text-left">Student</th>
@@ -512,7 +512,7 @@ function AttendancePrint({ data, preview }: { data: AttendanceData; preview?: bo
         </thead>
         <tbody>
           {roster.map((s, i) => (
-            <tr key={s.id} className={i % 2 ? "bg-[#f4f8fc]" : ""}>
+            <tr key={s.id} className={i % 2 ? "bg-[#fdf4f2]" : ""}>
               <td className="border border-neutral-400 px-1.5 py-1">{i + 1}</td>
               <td className="border border-neutral-400 px-1.5 py-1 font-mono">{s.admissionNo}</td>
               <td className="border border-neutral-400 px-1.5 py-1">{s.fullName}</td>

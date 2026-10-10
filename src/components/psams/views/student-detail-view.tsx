@@ -130,7 +130,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
           <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => navigate("students")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg border-2 border-border bg-gradient-to-br from-primary/15 to-teal-500/10 shadow-md">
+          <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg border-2 border-border bg-gradient-to-br from-primary/15 to-cyan-500/10 shadow-md">
             {student.photoPath ? (
                
               <img src={mediaUrl(student.photoPath)} alt={student.fullName} className="h-full w-full object-cover" />

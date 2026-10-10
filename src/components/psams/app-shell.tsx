@@ -84,7 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className="sidebar-court relative z-20 flex h-full shrink-0 flex-col overflow-hidden border-r border-white/[0.06]"
         >
           {/* spike line across the top edge */}
-          <div className="absolute inset-x-0 top-0 z-10 h-[3px] bg-gradient-to-r from-indigo-500 via-indigo-400/70 to-amber-500" />
+          <div className="absolute inset-x-0 top-0 z-10 h-[3px] bg-gradient-to-r from-[#ef476f] via-[#ff6b8d]/70 to-[#ffd166]" />
 
           {/* brand — volleyball tile with spin-on-hover ball */}
           <div className={cn("relative z-10 flex items-center gap-3 px-4 pb-5 pt-6", collapsed && "justify-center px-0")}>
@@ -94,14 +94,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="brand-tile group relative flex h-11 w-11 shrink-0 cursor-default items-center justify-center rounded-2xl"
             >
               <Volleyball className="spin-on-hover h-6 w-6 text-white" strokeWidth={2.2} />
-              <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-[#0e1029] bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.9)]" />
+              <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-[#073b4c] bg-[#ffd166] shadow-[0_0_10px_rgba(255,209,102,0.9)]" />
             </motion.div>
             {!collapsed && (
               <div className="min-w-0">
                 <div className="font-display text-[17px] font-extrabold leading-tight tracking-tight text-white">
                   Pattern Sports
                 </div>
-                <div className="truncate text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-200/60">
+                <div className="truncate text-[11px] font-bold uppercase tracking-[0.18em] text-rose-200/60">
                   Volleyball Academy
                 </div>
               </div>
@@ -122,7 +122,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     "reveal-item group relative flex w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-[14.5px] font-medium transition-colors duration-150",
                     isActive
                       ? "text-white"
-                      : "text-indigo-100/55 hover:text-white"
+                      : "text-sky-100/60 hover:text-white"
                   )}
                 >
                   {isActive && (
@@ -143,8 +143,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     className={cn(
                       "relative z-10 h-5 w-5 shrink-0 transition-all duration-200",
                       isActive
-                        ? "text-white drop-shadow-[0_0_8px_rgba(165,180,252,0.8)]"
-                        : "text-indigo-200/50 group-hover:scale-110 group-hover:text-white"
+                        ? "text-white drop-shadow-[0_0_8px_rgba(255,159,179,0.8)]"
+                        : "text-sky-200/50 group-hover:scale-110 group-hover:text-white"
                     )}
                     strokeWidth={isActive ? 2.4 : 2}
                   />
@@ -152,8 +152,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {!collapsed && (
                     <span
                       className={cn(
-                        "relative z-10 ml-auto text-[10px] font-semibold tracking-wider text-indigo-200/30 transition-colors group-hover:text-indigo-100/70",
-                        isActive && "text-indigo-100/80"
+                        "relative z-10 ml-auto text-[10px] font-semibold tracking-wider text-sky-200/30 transition-colors group-hover:text-sky-100/70",
+                        isActive && "text-sky-100/80"
                       )}
                     >
                       {item.hint}
@@ -176,8 +176,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* footer — version marker only (status text intentionally removed) */}
           <div className="relative z-10 pb-4 text-center">
-            <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-indigo-200/30">
-              {collapsed ? "v1.4.2" : "PS-AMS · v1.4.2"}
+            <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-sky-200/30">
+              {collapsed ? "v1.4.3" : "PS-AMS · v1.4.3"}
             </span>
           </div>
         </motion.aside>
@@ -192,7 +192,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           transition={{ type: "spring", stiffness: 380, damping: 34 }}
           whileHover={{ scale: 1.12 }}
           whileTap={{ scale: 0.92 }}
-          className="absolute top-1/2 z-30 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-[0_6px_18px_-4px_rgba(15,23,42,0.35)] transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_8px_22px_-6px_rgba(99,102,241,0.65)] dark:shadow-[0_0_16px_-4px_rgba(0,0,0,0.8)] dark:hover:shadow-[0_0_20px_-4px_rgba(129,140,248,0.7)]"
+          className="absolute top-1/2 z-30 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-[0_6px_18px_-4px_rgba(7,59,76,0.35)] transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_8px_22px_-6px_rgba(239,71,111,0.65)] dark:shadow-[0_0_16px_-4px_rgba(0,0,0,0.8)] dark:hover:shadow-[0_0_20px_-4px_rgba(255,107,141,0.7)]"
         >
           <ChevronLeft className={cn("h-4.5 w-4.5 transition-transform duration-300", collapsed && "rotate-180")} />
         </motion.button>
@@ -228,7 +228,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <ThemeToggle className="h-9 w-9 rounded-xl" />
               <Button
                 size="sm"
-                className="btn-sheen h-9 gap-2 rounded-xl bg-primary px-3.5 text-[13.5px] font-semibold text-primary-foreground shadow-[0_10px_22px_-10px_rgba(99,102,241,0.65)] transition-all hover:brightness-110 hover:shadow-[0_12px_26px_-10px_rgba(99,102,241,0.75)] active:scale-[0.97] dark:shadow-[0_0_18px_-4px_rgba(129,140,248,0.55)] dark:hover:shadow-[0_0_24px_-4px_rgba(129,140,248,0.75)]"
+                className="btn-sheen h-9 gap-2 rounded-xl bg-primary px-3.5 text-[13.5px] font-semibold text-primary-foreground shadow-[0_10px_22px_-10px_rgba(239,71,111,0.65)] transition-all hover:brightness-110 hover:shadow-[0_12px_26px_-10px_rgba(239,71,111,0.75)] active:scale-[0.97] dark:shadow-[0_0_18px_-4px_rgba(255,107,141,0.55)] dark:hover:shadow-[0_0_24px_-4px_rgba(255,107,141,0.75)]"
                 onClick={() => openStudentForm(null)}
               >
                 <Plus className="h-4 w-4" strokeWidth={2.6} /> Add New Player
@@ -303,7 +303,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : null}
             <span className="font-semibold text-muted-foreground">Pattern Sports Volleyball Academy</span>
             <span className="text-border">·</span>
-            <span className="tnum">PS-AMS v1.4.2</span>
+            <span className="tnum">PS-AMS v1.4.3</span>
             <button
               type="button"
               className="hidden items-center gap-1 rounded-full border border-border bg-card/60 px-2.5 py-0.5 text-[11.5px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground md:inline-flex"

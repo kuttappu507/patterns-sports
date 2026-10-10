@@ -2,7 +2,7 @@
 
 // ============================================================
 // PS-AMS :: branded splash screen — compact borderless boot card.
-// A small floating "match night" card on a fully TRANSPARENT backdrop
+// A small floating "sorbet night" card on a fully TRANSPARENT backdrop
 // (the app stays visible behind the card, which floats dead-center):
 // floodlit gradient, perspective court floor, glowing net band
 // and a bouncing, spinning volleyball. Pure ambience is CSS
@@ -26,9 +26,9 @@ function Volleyball({ className, stroke = "#eef2ff" }: { className?: string; str
     <svg viewBox="0 0 100 100" className={className} aria-hidden>
       <defs>
         <radialGradient id="ball-shade" cx="34%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#818cf8" />
-          <stop offset="55%" stopColor="#4f46e5" />
-          <stop offset="100%" stopColor="#372fae" />
+          <stop offset="0%" stopColor="#ff8fa8" />
+          <stop offset="55%" stopColor="#ef476f" />
+          <stop offset="100%" stopColor="#a3123f" />
         </radialGradient>
       </defs>
       <circle cx="50" cy="50" r="44" fill="url(#ball-shade)" />
@@ -72,9 +72,9 @@ export function Splash({ error }: { error: string | null }) {
         transition={{ duration: 0.3, ease: "easeOut" }}
       >
         {/* corner floodlight flares (clipped by the card) */}
-        <div className="splash-glow pointer-events-none absolute -left-14 top-1/4 h-36 w-36 rounded-full bg-[rgba(99,102,241,0.35)] blur-[70px]" />
+        <div className="splash-glow pointer-events-none absolute -left-14 top-1/4 h-36 w-36 rounded-full bg-[rgba(239,71,111,0.35)] blur-[70px]" />
         <div
-          className="splash-glow pointer-events-none absolute -right-10 bottom-[16%] h-36 w-36 rounded-full bg-[rgba(245,158,11,0.30)] blur-[70px]"
+          className="splash-glow pointer-events-none absolute -right-10 bottom-[16%] h-36 w-36 rounded-full bg-[rgba(255,209,102,0.30)] blur-[70px]"
           style={{ animationDelay: "0.9s" }}
         />
 
@@ -88,13 +88,13 @@ export function Splash({ error }: { error: string | null }) {
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
-              className="h-16 w-16 drop-shadow-[0_0_18px_rgba(129,140,248,0.65)]"
+              className="h-16 w-16 drop-shadow-[0_0_18px_rgba(255,107,141,0.65)]"
             >
               <Volleyball className="h-full w-full" />
             </motion.div>
             {/* pulse rings on impact */}
-            <span className="splash-ring absolute inset-0 rounded-full border-2 border-indigo-300/50" />
-            <span className="splash-ring absolute inset-0 rounded-full border border-amber-300/40" style={{ animationDelay: "0.95s" }} />
+            <span className="splash-ring absolute inset-0 rounded-full border-2 border-rose-300/60" />
+            <span className="splash-ring absolute inset-0 rounded-full border border-yellow-300/50" style={{ animationDelay: "0.95s" }} />
           </motion.div>
           {/* ground shadow */}
           <motion.div
@@ -112,11 +112,11 @@ export function Splash({ error }: { error: string | null }) {
           className="relative z-10 mt-2"
         >
           <div className="splash-chip mx-auto mb-2.5 inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.28em]">
-            <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-amber-300" />
+            <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-yellow-300" />
             Volleyball Academy
           </div>
           <h1 className="splash-title text-[27px] leading-none">PATTERN SPORTS</h1>
-          <p className="mt-1.5 text-[10.5px] font-medium uppercase tracking-[0.34em] text-indigo-200/80">
+          <p className="mt-1.5 text-[10.5px] font-medium uppercase tracking-[0.34em] text-rose-200/80">
             Academy Management Suite
           </p>
         </motion.div>
@@ -136,7 +136,7 @@ export function Splash({ error }: { error: string | null }) {
               className="block h-full rounded-full"
             />
           </div>
-          <div className="mt-2 h-4 text-[11px] font-medium text-indigo-200/70" aria-live="polite">
+          <div className="mt-2 h-4 text-[11px] font-medium text-rose-200/70" aria-live="polite">
             {error ? "Almost there…" : STATUS_LINES[statusIdx]}
           </div>
         </motion.div>
@@ -151,15 +151,15 @@ export function Splash({ error }: { error: string | null }) {
           >
             <p className="text-[12px] font-semibold text-amber-300">Offline backend warning</p>
             <p className="mt-1 break-words text-[11px] leading-relaxed text-amber-100/80">{error}</p>
-            <p className="mt-1 text-[10.5px] text-indigo-200/60">
+            <p className="mt-1 text-[10.5px] text-rose-200/60">
               The interface will still load — data operations may be unavailable.
             </p>
           </motion.div>
         )}
 
         {/* footer line */}
-        <div className="relative z-10 mt-5 text-[9.5px] font-semibold uppercase tracking-[0.24em] text-indigo-200/40">
-          PS-AMS v1.4.2 · Offline-first
+        <div className="relative z-10 mt-5 text-[9.5px] font-semibold uppercase tracking-[0.24em] text-rose-200/40">
+          PS-AMS v1.4.3 · Offline-first
         </div>
       </motion.div>
     </motion.div>

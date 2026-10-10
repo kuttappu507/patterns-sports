@@ -115,19 +115,19 @@ export function DashboardView() {
             <div className="flex items-center gap-6">
               <div>
                 <p className="text-[15px] font-medium uppercase tracking-wide text-muted-foreground">Month revenue</p>
-                <p className="mt-0.5 font-display text-[30px] font-extrabold tnum text-amber-600 dark:text-amber-300">
+                <p className="mt-0.5 font-display text-[30px] font-extrabold tnum text-yellow-600 dark:text-yellow-300">
                   <CountUp value={stats.monthRevenue} format={(n) => formatINR(Math.round(n))} />
                 </p>
               </div>
               <div>
                 <p className="text-[15px] font-medium uppercase tracking-wide text-muted-foreground">Roster</p>
-                <p className="mt-0.5 font-display text-[30px] font-extrabold tnum text-teal-600 dark:text-teal-300">
+                <p className="mt-0.5 font-display text-[30px] font-extrabold tnum text-cyan-700 dark:text-cyan-300">
                   <CountUp value={stats.totalActive} />
                 </p>
               </div>
               <div>
                 <p className="text-[15px] font-medium uppercase tracking-wide text-muted-foreground">Present today</p>
-                <p className="mt-0.5 font-display text-[30px] font-extrabold tnum text-violet-600 dark:text-violet-300">
+                <p className="mt-0.5 font-display text-[30px] font-extrabold tnum text-emerald-600 dark:text-emerald-300">
                   <CountUp value={stats.attendanceToday.present} />
                   <span className="text-base font-semibold text-muted-foreground">/{stats.attendanceToday.totalActive}</span>
                 </p>
@@ -135,7 +135,7 @@ export function DashboardView() {
             </div>
 
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              <Button size="sm" className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-[14px] font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(99, 102, 241,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(129, 140, 248,0.55)]" onClick={() => openStudentForm(null)}>
+              <Button size="sm" className="btn-sheen h-8 gap-1.5 rounded-lg bg-primary text-[14px] font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_rgba(239,71,111,0.6)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_16px_-4px_rgba(255,107,141,0.55)]" onClick={() => openStudentForm(null)}>
                 <UserPlus className="h-3.5 w-3.5" strokeWidth={2.6} /> Add New Student
               </Button>
               <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-[14px] text-foreground transition-all hover:border-primary/40 hover:bg-accent hover:text-accent-foreground active:scale-[0.97]" onClick={() => openCollectFee()}>
@@ -157,7 +157,7 @@ export function DashboardView() {
         <MetricCard
           index={0}
           icon={<Users className="h-4 w-4" />}
-          tint="bg-teal-500/10 text-teal-600 shadow-[0_0_14px_-4px_rgba(20, 184, 166,0.4)] dark:bg-teal-400/10 dark:text-teal-300 dark:shadow-[0_0_14px_-4px_rgba(45, 212, 191,0.5)]"
+          tint="bg-cyan-500/10 text-cyan-700 shadow-[0_0_14px_-4px_rgba(17, 138, 178,0.4)] dark:bg-cyan-400/10 dark:text-cyan-300 dark:shadow-[0_0_14px_-4px_rgba(63, 193, 224,0.5)]"
           label="Active Enrolled Students"
           value={stats.totalActive}
           format={(n) => String(Math.round(n))}
@@ -167,7 +167,7 @@ export function DashboardView() {
         <MetricCard
           index={1}
           icon={<BadgeIndianRupee className="h-4 w-4" />}
-          tint="bg-indigo-500/10 text-indigo-600 shadow-[0_0_14px_-4px_rgba(99, 102, 241,0.45)] dark:bg-indigo-400/10 dark:text-indigo-300 dark:shadow-[0_0_14px_-4px_rgba(129, 140, 248,0.5)]"
+          tint="bg-primary/10 text-primary shadow-[0_0_14px_-4px_rgba(239, 71, 111,0.45)] dark:shadow-[0_0_14px_-4px_rgba(255, 107, 141,0.5)]"
           label="Revenue — Current Month"
           value={stats.monthRevenue}
           format={(n) => formatINR(Math.round(n))}
@@ -177,7 +177,7 @@ export function DashboardView() {
         <MetricCard
           index={2}
           icon={<Receipt className="h-4 w-4" />}
-          tint="bg-violet-500/10 text-violet-600 shadow-[0_0_14px_-4px_rgba(124,58,237,0.4)] dark:bg-violet-400/10 dark:text-violet-300 dark:shadow-[0_0_14px_-4px_rgba(167,139,250,0.5)]"
+          tint="bg-emerald-500/10 text-emerald-600 shadow-[0_0_14px_-4px_rgba(6, 214, 160,0.45)] dark:bg-emerald-400/10 dark:text-emerald-300 dark:shadow-[0_0_14px_-4px_rgba(61, 219, 168,0.5)]"
           label="Fees Settled — Current Cycle"
           value={stats.feeCycle.paidCount}
           format={(n) => String(Math.round(n))}
@@ -220,7 +220,7 @@ export function DashboardView() {
                       initial={{ width: 0 }}
                       animate={{ width: `${(c.count / maxCat) * 100}%` }}
                       transition={{ duration: 0.8, ease: [0.22, 0.68, 0.31, 1], delay: 0.15 }}
-                      className={`h-full rounded-full bg-gradient-to-r ${CATEGORY_GRADIENTS[c.category] ?? "from-primary to-amber-400"} shadow-[0_0_10px_-2px_rgba(99, 102, 241,0.5)] dark:shadow-[0_0_10px_-2px_rgba(129, 140, 248,0.65)]`}
+                      className={`h-full rounded-full bg-gradient-to-r ${CATEGORY_GRADIENTS[c.category] ?? "from-primary to-yellow-400"} shadow-[0_0_10px_-2px_rgba(239, 71, 111,0.5)] dark:shadow-[0_0_10px_-2px_rgba(255, 107, 141,0.65)]`}
                     />
                   </div>
                 </div>
@@ -258,9 +258,9 @@ export function DashboardView() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.2 + i * 0.05 }}
                       whileHover={{ y: -4 }}
-                      className="group rounded-xl border border-border bg-card/60 p-3 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/60 hover:shadow-[0_10px_24px_-12px_rgba(99, 102, 241,0.45)] dark:hover:shadow-[0_0_20px_-8px_rgba(129, 140, 248,0.45)]"
+                      className="group rounded-xl border border-border bg-card/60 p-3 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/60 hover:shadow-[0_10px_24px_-12px_rgba(239, 71, 111,0.45)] dark:hover:shadow-[0_0_20px_-8px_rgba(255, 107, 141,0.45)]"
                     >
-                      <div className="mx-auto h-14 w-14 overflow-hidden rounded-full border-2 border-border bg-gradient-to-br from-primary/15 to-amber-500/10 shadow-inner transition-all duration-200 group-hover:border-primary/40">
+                      <div className="mx-auto h-14 w-14 overflow-hidden rounded-full border-2 border-border bg-gradient-to-br from-primary/15 to-yellow-400/15 shadow-inner transition-all duration-200 group-hover:border-primary/40">
                         {m.photoPath ? (
                           <img src={mediaUrl(m.photoPath)} alt={m.fullName} className="h-full w-full object-cover" />
                         ) : (
@@ -312,7 +312,7 @@ export function DashboardView() {
                     transition={{ delay: 0.25 + i * 0.05 }}
                     className="row-hover flex items-center gap-3 rounded-xl border border-border bg-card/50 pl-4 pr-3 py-2"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 shadow-[0_0_12px_-4px_rgba(245, 158, 11,0.5)] dark:bg-amber-400/10 dark:text-amber-300 dark:shadow-[0_0_12px_-4px_rgba(251, 191, 36,0.6)]">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400/15 text-yellow-700 shadow-[0_0_12px_-4px_rgba(255, 209, 102,0.55)] dark:bg-yellow-300/10 dark:text-yellow-300 dark:shadow-[0_0_12px_-4px_rgba(255, 209, 102,0.6)]">
                       <Receipt className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -355,7 +355,7 @@ export function DashboardView() {
                     onClick={() => navigate("student-detail", b.id)}
                     className="row-hover flex w-full items-center gap-3 rounded-xl border border-border bg-card/50 pl-4 pr-3 py-2 text-left"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 shadow-[0_0_12px_-4px_rgba(217,119,6,0.5)] dark:bg-amber-400/10 dark:text-amber-300 dark:shadow-[0_0_12px_-4px_rgba(251,191,36,0.6)]">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400/15 text-yellow-700 shadow-[0_0_12px_-4px_rgba(255, 209, 102,0.55)] dark:bg-yellow-300/10 dark:text-yellow-300 dark:shadow-[0_0_12px_-4px_rgba(255, 209, 102,0.6)]">
                       <Cake className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
