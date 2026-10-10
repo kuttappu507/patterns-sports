@@ -5,12 +5,12 @@ description = "Pattern Sports Academy Management System — offline-first academ
 authors = ["Pattern Sports Academy"]
 edition = "2021"
 
-# Workspace: the app links sqlx (libsqlite3-sys 0.28) while the native
-# whatsapp-bot sidecar links diesel (libsqlite3-sys 0.37) — Cargo's
-# `links` rule forbids both in ONE binary, so the sidecar is a separate
-# workspace member built as its own executable.
+# Standalone package (NOT a workspace with the whatsapp-bot sidecar):
+# the app links sqlx (libsqlite3-sys 0.28) while the native sidecar links
+# diesel (libsqlite3-sys 0.37) — Cargo's `links` rule forbids both in one
+# dependency graph, so the sidecar lives in its own crate at ../whatsapp-bot
+# with its own Cargo.lock and is built separately by CI.
 [workspace]
-members = ["whatsapp-bot"]
 
 [lib]
 name = "psams_lib"

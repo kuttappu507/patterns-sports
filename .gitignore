@@ -75,6 +75,7 @@ server.log
 
 # rust / tauri build artifacts
 /src-tauri/target/
+/whatsapp-bot/target/
 /src-tauri/gen/
 /.tauri-api-stash/
 /out/
@@ -90,5 +91,5 @@ tool-results/
 /package-lock.json
 scripts/pr2.diff
 
-# WhatsApp sidecar (built per-target, never committed)
+# Native WhatsApp sidecar crate (built per-target, never committed)
 src-tauri/binaries/

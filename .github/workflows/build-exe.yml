@@ -32,7 +32,9 @@ jobs:
       - name: Cache Rust build
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: |
+            src-tauri
+            whatsapp-bot
 
       - name: Install frontend dependencies
         run: bun install
@@ -45,18 +47,18 @@ jobs:
         run: bunx prisma generate
 
       # Native Rust WhatsApp linked-device sidecar (whatsapp-rust engine —
-      # no Node.js). Built as a separate workspace member because the app
-      # links libsqlite3-sys 0.28 (sqlx) while the engine links 0.37
-      # (diesel); Cargo's `links` rule requires them in separate binaries.
-      # Must exist before `tauri build` (bundle.externalBin expects it with
-      # the target-triple suffix inside src-tauri/binaries).
+      # no Node.js). Lives OUTSIDE the src-tauri workspace with its own
+      # Cargo.lock: the app links libsqlite3-sys 0.28 (sqlx) while the
+      # engine links 0.37 (diesel) — Cargo's `links` rule forbids both in
+      # one dependency graph. Must exist before `tauri build`
+      # (bundle.externalBin expects it with the target-triple suffix).
       - name: Build WhatsApp sidecar (native Rust)
         shell: bash
         run: |
-          cd src-tauri
-          cargo build --release -p whatsapp-bot
-          mkdir -p binaries
-          cp target/release/whatsapp-bot.exe binaries/whatsapp-bot-x86_64-pc-windows-msvc.exe
+          cd whatsapp-bot
+          cargo build --release
+          mkdir -p ../src-tauri/binaries
+          cp target/release/whatsapp-bot.exe ../src-tauri/binaries/whatsapp-bot-x86_64-pc-windows-msvc.exe
 
       - name: Build Tauri app (static export + NSIS/MSI)
         run: bun run tauri build
