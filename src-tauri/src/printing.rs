@@ -55,7 +55,11 @@ pub fn run_print_job(
     #[cfg(windows)]
     {
         use webview2_com::Microsoft::Web::WebView2::Win32::*;
-        use windows_core::Interface as _;
+        // Handler wrapper types are re-exported at the webview2-com crate root
+        // (lib.rs: pub use callback::*); PCWSTR lives at the windows-core root
+        // on Windows targets (include!("windows.rs") → pub use windows_strings::*).
+        use webview2_com::{PrintCompletedHandler, PrintToPdfCompletedHandler};
+        use windows_core::{Interface as _, PCWSTR};
 
         let tx_err = tx.clone();
         let outcome: windows_core::Result<()> = unsafe {
