@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS Student (
   classGrade       TEXT,
   division         TEXT,
   bloodGroup       TEXT,
+  gender           TEXT NOT NULL DEFAULT '',
   heightCm         REAL,
   weightKg         REAL,
   standingReachCm  REAL,
@@ -122,7 +123,7 @@ CREATE TABLE IF NOT EXISTS Setting (
 `
 
 /** Resolve the SQLite file path exactly like src/lib/db.ts does for libsql. */
-function resolveDbFile(): string | null {
+export function resolveDbFile(): string | null {
   const raw = process.env.DATABASE_URL ?? "file:../db/custom.db"
   if (!raw.startsWith("file:")) return null
   let p = raw.slice("file:".length)

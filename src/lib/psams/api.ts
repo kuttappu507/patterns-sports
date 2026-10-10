@@ -6,6 +6,7 @@
 // ============================================================
 
 import { convertFileSrc } from "@tauri-apps/api/core"
+import { isSafeMediaPath } from "./domain"
 import type {
   Achievement,
   AttendanceRecord,
@@ -273,10 +274,47 @@ export async function saveSettings(settings: AcademySettings): Promise<AcademySe
   )
 }
 
-export async function exportBackup(): Promise<Blob> {
+export interface BackupSnapshot {
+  blob: Blob
+  /** Absolute path when the file was written on disk — null when nothing was saved. */
+  savedPath: string | null
+}
+
+/** JSON snapshot (label it as a snapshot — the DATABASE backup is backup_now on desktop). */
+export async function exportBackup(): Promise<BackupSnapshot> {
   if (isTauri()) return native.exportBackup()
   const res = await apiFetch(`/api/backup`)
-  return (await ensureOk(res)).blob()
+  return { blob: await (await ensureOk(res)).blob(), savedPath: null }
+}
+
+// ---------- Data location ----------
+
+export interface DataLocationInfo {
+  mode: "desktop" | "web"
+  appData: string
+  database: string
+  media: string
+  backup: string
+  backupTarget: string
+  logFile: string
+}
+
+/**
+ * Where the data actually lives. Desktop asks the Rust `data_paths` command;
+ * web reports the SQLite file behind DATABASE_URL (bootstrap resolves it).
+ */
+export async function dataInfo(): Promise<DataLocationInfo> {
+  if (isTauri()) return native.dataInfo()
+  const info = await json<{ database: string }>(await apiFetch(`/api/data-info`))
+  return {
+    mode: "web",
+    appData: "",
+    database: info.database,
+    media: "",
+    backup: "",
+    backupTarget: "",
+    logFile: "",
+  }
 }
 
 // ---------- Demo data ----------
@@ -316,6 +354,9 @@ export async function uploadMedia(file: File, folder: UploadFolder): Promise<{ p
 
 export function mediaUrl(path?: string | null): string {
   if (!path) return ""
+  // Same traversal guard as the web /api/media route: a tampered photoPath in
+  // the database must never resolve to a file outside the media folders.
+  if (!isSafeMediaPath(path)) return ""
   if (isTauri()) {
     const base = native.getMediaBase()
     if (!base) return ""

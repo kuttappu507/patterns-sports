@@ -52,6 +52,11 @@ struct DataPaths {
     database: String,
     media: String,
     backup: String,
+    /// Effective backup folder: the remembered external target (ps-ams-backup-target.txt)
+    /// when that drive is mounted, otherwise the default local backups folder.
+    backup_target: String,
+    /// Absolute path of boot.log (shown on the Settings screen).
+    log_file: String,
 }
 
 /* ---------------- boot diagnostics (never panics) ---------------- */
@@ -124,11 +129,26 @@ pub(crate) fn resolve_data_paths(handle: &tauri::AppHandle) -> DataPaths {
         let _ = fs::create_dir_all(dir);
     }
 
+    // Effective backup target: remembered external folder if mounted.
+    let mut backup_target = backup.clone();
+    if let Ok(saved) = fs::read_to_string(base.join(BACKUP_MARKER)) {
+        let ext = PathBuf::from(saved.trim());
+        if ext.is_dir() {
+            backup_target = ext;
+        }
+    }
+
+    let log_file = log_dir()
+        .map(|d| d.join("boot.log").to_string_lossy().into_owned())
+        .unwrap_or_default();
+
     DataPaths {
         app_data: base.to_string_lossy().into_owned(),
         database: base.join("ps-ams.db").to_string_lossy().into_owned(),
         media: media.to_string_lossy().into_owned(),
         backup: backup.to_string_lossy().into_owned(),
+        backup_target: backup_target.to_string_lossy().into_owned(),
+        log_file,
     }
 }
 
@@ -200,9 +220,105 @@ fn data_paths(handle: tauri::AppHandle) -> DataPaths {
 }
 
 /// Frontend command: run the backup routine right now (Settings page).
+/// Copies ps-ams.db (+ WAL sidecars) and the whole media tree into the
+/// effective target folder and returns that folder so the UI can name it.
 #[tauri::command]
 fn backup_now(handle: tauri::AppHandle) -> Result<String, String> {
     Ok(run_exit_backup(&handle))
+}
+
+/// Frontend command: remember (or clear) the folder backups are written to.
+/// Writes/clears ps-ams-backup-target.txt NEXT TO THE DATABASE — the same
+/// marker the exit-backup routine reads. `None` resets to the default folder.
+#[tauri::command]
+fn set_backup_target(handle: tauri::AppHandle, path: Option<String>) -> Result<String, String> {
+    let paths = resolve_data_paths(&handle);
+    let marker = PathBuf::from(&paths.app_data).join(BACKUP_MARKER);
+    match path {
+        Some(p) if !p.trim().is_empty() => {
+            let dir = PathBuf::from(p.trim());
+            if !dir.is_dir() {
+                return Err("Choose an existing folder".into());
+            }
+            fs::write(&marker, dir.to_string_lossy().as_bytes())
+                .map_err(|e| format!("Could not write {}: {e}", BACKUP_MARKER))?;
+            log_line(&format!("backup target set to {}", dir.display()));
+            Ok(format!("Backups will be written to {}", dir.display()))
+        }
+        _ => {
+            let _ = fs::remove_file(&marker);
+            log_line("backup target reset to the default folder");
+            Ok(format!("Backup target reset to {}", paths.backup))
+        }
+    }
+}
+
+const RESTORE_MARKER: &str = "ps-ams-restore-pending.txt";
+const RESTORE_STAGED: &str = "ps-ams.restored.db";
+
+/// Frontend command: stage a database restore from a backup file.
+/// The live SQLite file cannot be replaced while the app has it open, so the
+/// copy is staged next to the database and swapped in by apply_pending_restore
+/// on the NEXT boot — before the SQL plugin opens the file.
+#[tauri::command]
+fn restore_backup(handle: tauri::AppHandle, source: String) -> Result<String, String> {
+    let paths = resolve_data_paths(&handle);
+    let src = PathBuf::from(&source);
+    if !src.exists() {
+        return Err("Backup file not found".into());
+    }
+    // Accept only a real SQLite database file — never an arbitrary payload.
+    use std::io::Read;
+    let mut header = [0u8; 16];
+    let header_ok = fs::File::open(&src)
+        .and_then(|mut f| f.read_exact(&mut header))
+        .map(|_| &header == b"SQLite format 3\0")
+        .unwrap_or(false);
+    if !header_ok {
+        return Err("That file is not a PS-AMS database (SQLite header missing). Use a ps-ams-*.db backup.".into());
+    }
+    let staged = PathBuf::from(&paths.app_data).join(RESTORE_STAGED);
+    fs::copy(&src, &staged).map_err(|e| format!("Could not stage the restore: {e}"))?;
+    fs::write(PathBuf::from(&paths.app_data).join(RESTORE_MARKER), RESTORE_STAGED)
+        .map_err(|e| format!("Could not write the restore marker: {e}"))?;
+    log_line(&format!("restore staged from {}", src.display()));
+    Ok("Restore staged — restart the app to apply it".into())
+}
+
+/// Swap a staged restore into place. Called during setup, BEFORE any webview
+/// (and therefore before the SQL plugin) opens the database file.
+fn apply_pending_restore(paths: &DataPaths) {
+    let marker = PathBuf::from(&paths.app_data).join(RESTORE_MARKER);
+    let Ok(staged_name) = fs::read_to_string(&marker) else {
+        return;
+    };
+    let staged = PathBuf::from(&paths.app_data).join(staged_name.trim());
+    if staged.exists() {
+        let db = PathBuf::from(&paths.database);
+        // Safety net: keep one copy of the database being replaced.
+        let pre = db.with_extension("pre-restore.db");
+        let _ = fs::copy(&db, &pre);
+        // Stale WAL/SHM sidecars belong to the OLD database — remove them.
+        for ext in ["-wal", "-shm"] {
+            let _ = fs::remove_file(PathBuf::from(format!("{}{}", db.display(), ext)));
+        }
+        match fs::copy(&staged, &db) {
+            Ok(_) => log_line("pending restore applied — database replaced from backup"),
+            Err(e) => log_line(&format!("pending restore FAILED: {e}")),
+        }
+    } else {
+        log_line("restore marker found but the staged file is missing — skipped");
+    }
+    let _ = fs::remove_file(&marker);
+    let _ = fs::remove_file(&staged);
+}
+
+/// Frontend command: restart the app so a staged restore (or any pending
+/// data change) takes effect immediately.
+#[tauri::command]
+fn restart_app(app: tauri::AppHandle) {
+    log_line("restart requested from Settings");
+    app.restart();
 }
 
 /// Frontend command: the embedded DDL — guarantees the schema exists even
@@ -254,6 +370,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             data_paths,
             backup_now,
+            set_backup_target,
+            restore_backup,
+            restart_app,
             schema_sql,
             finish_boot,
             whatsapp::wa_snapshot,
@@ -278,6 +397,9 @@ pub fn run() {
             use tauri_plugin_fs::FsExt;
             let handle = app.handle();
             let paths = resolve_data_paths(handle);
+            // Apply a staged database restore BEFORE anything opens the file
+            // (the SQL plugin connects only when the webview asks for it).
+            apply_pending_restore(&paths);
             if let Err(e) = handle.fs_scope().allow_directory(&paths.app_data, true) {
                 log_line(&format!("fs scope extension failed: {e}"));
             }

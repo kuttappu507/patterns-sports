@@ -3,6 +3,8 @@
 // numbering, formatting. Pure functions, shared client & server.
 // ============================================================
 
+import type { AcademySettings } from "./types"
+
 // ---------- Age & category ----------
 
 /** Compute precise age in whole years from a date of birth (live, timezone-safe). */
@@ -81,6 +83,25 @@ export function jumpDelta(spikeReach?: number | null, standingReach?: number | n
 
 /** Official Google Maps location of the academy (shared across footer, settings & prints). */
 export const ACADEMY_MAPS_URL = "https://maps.app.goo.gl/yUGoSNRdvcN4qKdu6"
+
+/**
+ * The academy's real address — the ONE shared letterhead default.
+ * Used by the web settings API, the desktop settings backend and the demo
+ * dataset, so an empty web preview and a fresh desktop install print the
+ * same letterhead. Never duplicate this string elsewhere.
+ */
+export const ACADEMY_ADDRESS = "Markaz Colony, Karanthur, Kunnamangalam, Kozhikode, Kerala 673571"
+
+/** Letterhead defaults for an empty database (both backends share this object). */
+export const DEFAULT_SETTINGS: AcademySettings = {
+  academyName: "Pattern Sports Academy",
+  tagline: "Building Champions, One Serve at a Time",
+  address: ACADEMY_ADDRESS,
+  phone: "+91 98470 00000",
+  email: "office@patternsportsacademy.in",
+  defaultMonthlyFee: 500,
+  receiptSignatory: "General Secretary",
+}
 
 // ---------- Sports science insights ----------
 // Reference values a coach can act on. They are ESTIMATES computed from
@@ -213,6 +234,137 @@ export function computeFeeStatus(
 /** True when the student has settled the CURRENT billing month. */
 export function hasPaidCurrentMonth(paidMonths: string[], now: Date = new Date()): boolean {
   return paidMonths.includes(monthKey(now))
+}
+
+/** Current billing-cycle bucket — the ONE classification used by both backends. */
+export type FeeCycleBucket = "paid" | "due" | "defaulter"
+
+/**
+ * Classify a student for the Dashboard fee cards and the Fees page so both
+ * screens ALWAYS agree (previously each screen had its own inline rule and
+ * they contradicted each other):
+ *
+ *   defaulter — overdue by MORE than one billing month, even when the
+ *               current month itself is already settled (same rule as
+ *               `computeFeeStatus().isDefaulter` — do not change it here)
+ *   due       — anything still unpaid for the current cycle (the current
+ *               month, or exactly one older month behind)
+ *   paid      — nothing pending at all. A player registered this month owes
+ *               nothing (joining month is complimentary) and is NOT "due".
+ */
+export function classifyFeeCycle(st: { pendingMonths: string[]; overdueMonths: string[] }): FeeCycleBucket {
+  if (st.overdueMonths.length > 1) return "defaulter"
+  if (st.pendingMonths.length > 0) return "due"
+  return "paid"
+}
+
+// ---------- Shared write-path validation (web routes AND desktop backend enforce the same rejects) ----------
+
+/** Strict "YYYY-MM" billing-month key. */
+export const MONTH_KEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/
+
+/** Indian mobile: 10 digits, optional leading 0 or 91 prefix. */
+export const MOBILE_DIGITS_RE = /^(\d{10}|0\d{10}|91\d{10})$/
+
+/**
+ * Sanity guards for a student record — mirrored by the web POST /api/students
+ * route and the desktop createStudent. Throws with a user-facing message.
+ */
+export function assertValidStudentInput(input: Record<string, unknown>): void {
+  const required = ["fullName", "dateOfBirth", "parentName", "mobile", "ageCategory"] as const
+  for (const k of required) {
+    if (!input[k]) throw new Error(`Missing required field: ${k}`)
+  }
+  const dob = new Date(String(input.dateOfBirth))
+  if (Number.isNaN(dob.getTime()) || dob > new Date()) {
+    throw new Error("Date of birth is invalid or in the future")
+  }
+  if (!MOBILE_DIGITS_RE.test(String(input.mobile).replace(/\D/g, ""))) {
+    throw new Error("Mobile number must be 10 digits (country code / leading 0 accepted)")
+  }
+  const fee = Number(input.monthlyFee ?? 0)
+  if (!Number.isFinite(fee) || fee < 0) {
+    throw new Error("Monthly fee cannot be negative")
+  }
+}
+
+/**
+ * Guards the payment write path on BOTH backends. Rejects:
+ *   - months that are not strict "YYYY-MM" keys (desktop previously accepted any string)
+ *   - duplicate months inside one request
+ *   - a month that is ALREADY settled — no double receipting
+ *   - any amount other than months.length × monthlyFee
+ *     (a discount field would be a deliberate feature; it does not exist)
+ * `alreadyPaidMonths` comes from computeFeeStatus().paidMonths on the live
+ * student row — recompute it server-side, never trust the client.
+ */
+export function assertValidPayment(
+  months: unknown[],
+  amount: number,
+  monthlyFee: number,
+  alreadyPaidMonths: string[] = []
+): void {
+  if (!Array.isArray(months) || months.length === 0) {
+    throw new Error("studentId and at least one billing month are required")
+  }
+  if (!months.every((m) => typeof m === "string" && MONTH_KEY_RE.test(m))) {
+    throw new Error("Billing months must be in YYYY-MM format")
+  }
+  if (new Set(months as string[]).size !== months.length) {
+    throw new Error("Duplicate billing months in one payment are not allowed")
+  }
+  const paid = new Set(alreadyPaidMonths)
+  const already = (months as string[]).filter((m) => paid.has(m))
+  if (already.length > 0) {
+    throw new Error(`Month already settled — a receipt exists for ${already.map(monthLabel).join(", ")}`)
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Collected amount must be greater than zero")
+  }
+  const expected = months.length * (monthlyFee || 0)
+  if (expected <= 0) {
+    throw new Error("This student has no monthly fee to collect")
+  }
+  if (amount !== expected) {
+    throw new Error(
+      `Amount must match the selected months — ${months.length} month${months.length === 1 ? "" : "s"} × ${formatINR(monthlyFee)} = ${formatINR(expected)}`
+    )
+  }
+}
+
+const ATT_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/** Whole-batch attendance validation — a bad record must abort the entire register save. */
+export function assertValidAttendanceRecords(
+  records: { studentId?: string; date?: string; batch?: string; status?: string }[]
+): void {
+  if (!Array.isArray(records)) throw new Error("records array required")
+  for (const r of records) {
+    if (!r?.studentId) throw new Error("Each attendance record needs a student")
+    if (!r?.date || !ATT_DATE_RE.test(r.date)) throw new Error("Attendance date must be in YYYY-MM-DD format")
+    if (r?.status !== "Present" && r?.status !== "Absent") throw new Error("Attendance status must be Present or Absent")
+  }
+}
+
+/** Upload allowlist — identical to the web /api/upload route (images + PDF, ≤ 10 MB). */
+export const ALLOWED_UPLOAD_EXT = new Set([".png", ".jpg", ".jpeg", ".webp", ".pdf"])
+export const ALLOWED_UPLOAD_MIME = new Set(["image/png", "image/jpeg", "image/webp", "application/pdf"])
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
+/**
+ * Same rejects on both runtimes: size cap, extension allowlist AND MIME check
+ * (the desktop previously checked the extension only, with no size cap).
+ */
+export function assertValidUpload(file: { name: string; type?: string; size: number }): void {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error("File exceeds the 10 MB limit")
+  }
+  const safe = sanitizeFileName(file.name || "upload")
+  const dot = safe.lastIndexOf(".")
+  const ext = dot >= 0 ? safe.slice(dot).toLowerCase() : ""
+  if (!ALLOWED_UPLOAD_EXT.has(ext) || (file.type && !ALLOWED_UPLOAD_MIME.has(file.type))) {
+    throw new Error("Unsupported file type — allowed: PNG, JPG, WEBP or PDF")
+  }
 }
 
 // ---------- Numbering ----------

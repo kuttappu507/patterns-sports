@@ -1,0 +1,36 @@
+name: Verify (lint · typecheck · tests · parity)
+
+# Quality gate for the codebase itself — complements build-exe.yml (which
+# packages the Windows installers). Runs the same `npm run verify` the README
+# documents: ESLint, tsc --noEmit, the Vitest suite and the backend parity
+# check (prisma ↔ schema.sql ↔ bootstrap.ts DDL ↔ API surface).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    {}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: lint + typecheck + test + parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bunx prisma generate
+
+      - name: Verify
+        run: npm run verify

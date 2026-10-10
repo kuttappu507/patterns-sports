@@ -125,8 +125,13 @@ export async function loadDemoDataset(db: PrismaClient): Promise<{ students: num
     })
   }
 
+  // Academy profile — fill ONLY the keys the user has never saved. Loading
+  // demo players must never overwrite a real academy name, phone or address
+  // (removing the demo players would not bring the old profile back).
+  const existingSettings = new Set((await db.setting.findMany({ select: { key: true } })).map((r) => r.key))
   for (const [key, value] of Object.entries(DEMO_SETTINGS)) {
-    await db.setting.upsert({ where: { key }, create: { key, value }, update: { value } })
+    if (existingSettings.has(key)) continue
+    await db.setting.create({ data: { key, value } })
   }
 
   const trackedValue = JSON.stringify({ students: demoStudentIds, committee: demoCommitteeIds })

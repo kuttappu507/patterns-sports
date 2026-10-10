@@ -11,5 +11,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // never run the copies `next build` traces into the standalone output —
+    // a stale duplicate could silently mask a fresh test
+    exclude: ["**/node_modules/**", ".next/**"],
   },
 })

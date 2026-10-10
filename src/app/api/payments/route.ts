@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { parsePaidMonths, nextReceiptNo } from "@/lib/psams/domain"
+import { parsePaidMonths, nextReceiptNo, computeFeeStatus, assertValidPayment } from "@/lib/psams/domain"
 import { toWirePayment, type FeePaymentRow } from "@/lib/psams/serialize"
 
 function isUniqueViolation(e: unknown): boolean {
@@ -46,22 +46,35 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/payments — collect a fee payment (multi-month settle)
-const MONTH_KEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { studentId, months, amount, paymentMode } = body
+    const { studentId, months, amount } = body
     if (!studentId || !Array.isArray(months) || months.length === 0) {
       return NextResponse.json({ error: "studentId and at least one billing month are required" }, { status: 400 })
     }
-    // every month key must be a well-formed "YYYY-MM" — never persist arbitrary payloads
-    if (!months.every((m: unknown) => typeof m === "string" && MONTH_KEY_RE.test(m))) {
-      return NextResponse.json({ error: "Billing months must be in YYYY-MM format" }, { status: 400 })
+
+    // Recompute the settled months from the LEDGER — never trust the client.
+    // The shared validator (also used by the desktop backend) rejects a month
+    // that is already paid (no double receipting) and any amount other than
+    // months.length × monthlyFee, so ₹1 can never mark six months paid.
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      include: { payments: { orderBy: { paymentDate: "asc" } } },
+    })
+    if (!student) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 })
     }
     const amountNum = Number(amount)
-    if (!Number.isFinite(amountNum) || amountNum <= 0) {
-      return NextResponse.json({ error: "Collected amount must be greater than zero" }, { status: 400 })
+    try {
+      assertValidPayment(
+        months,
+        amountNum,
+        student.monthlyFee,
+        computeFeeStatus(student, student.payments).paidMonths
+      )
+    } catch (v) {
+      return NextResponse.json({ error: v instanceof Error ? v.message : "Invalid payment" }, { status: 400 })
     }
 
     const now = new Date()
@@ -78,7 +91,7 @@ export async function POST(req: NextRequest) {
             paymentDate: body.paymentDate ? new Date(body.paymentDate) : now,
             months: JSON.stringify(months),
             amount: amountNum,
-            paymentMode: paymentMode || "Cash",
+            paymentMode: body.paymentMode || "Cash",
             notes: body.notes || null,
             collectedBy: body.collectedBy || null,
           },

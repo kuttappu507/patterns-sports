@@ -310,7 +310,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : null}
             <span className="font-semibold text-muted-foreground">Pattern Sports Volleyball Academy</span>
             <span className="text-border">·</span>
-            <span className="tnum">PS-AMS v1.6.0</span>
+            <span className="tnum">PS-AMS v1.6.1</span>
             <button
               type="button"
               className="hidden items-center gap-1 rounded-full border border-border bg-card/60 px-2.5 py-0.5 text-[11.5px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground md:inline-flex"

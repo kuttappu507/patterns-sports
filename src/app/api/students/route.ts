@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { computeAge, nextAdmissionNo } from "@/lib/psams/domain"
+import { computeAge, nextAdmissionNo, assertValidStudentInput } from "@/lib/psams/domain"
 
 function isUniqueViolation(e: unknown): boolean {
   return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002"
@@ -51,26 +51,15 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/students — register a new student (auto admission number)
-const MOBILE_DIGITS_RE = /^(\d{10}|0\d{10}|91\d{10})$/
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const required = ["fullName", "dateOfBirth", "parentName", "mobile", "ageCategory"]
-    for (const k of required) {
-      if (!body[k]) return NextResponse.json({ error: `Missing required field: ${k}` }, { status: 400 })
-    }
-    // sanity guards — reject impossible data instead of persisting it
-    const dob = new Date(body.dateOfBirth)
-    if (Number.isNaN(dob.getTime()) || dob > new Date()) {
-      return NextResponse.json({ error: "Date of birth is invalid or in the future" }, { status: 400 })
-    }
-    if (!MOBILE_DIGITS_RE.test(String(body.mobile).replace(/\D/g, ""))) {
-      return NextResponse.json({ error: "Mobile number must be 10 digits (country code / leading 0 accepted)" }, { status: 400 })
-    }
-    const fee = Number(body.monthlyFee ?? 0)
-    if (!Number.isFinite(fee) || fee < 0) {
-      return NextResponse.json({ error: "Monthly fee cannot be negative" }, { status: 400 })
+    // Shared sanity guards (also enforced by the desktop createStudent):
+    // required fields, future-DOB guard, mobile digits, non-negative fee.
+    try {
+      assertValidStudentInput(body as Record<string, unknown>)
+    } catch (v) {
+      return NextResponse.json({ error: v instanceof Error ? v.message : "Invalid student" }, { status: 400 })
     }
     const year = new Date().getFullYear()
     // Sequence continues after the highest existing suffix (deletion-safe);
@@ -103,7 +92,7 @@ export async function POST(req: NextRequest) {
             playingPosition: body.playingPosition || null,
             ageCategory: body.ageCategory,
             trainingBatch: body.trainingBatch || null,
-            monthlyFee: fee,
+            monthlyFee: Number(body.monthlyFee ?? 0),
             photoPath: body.photoPath || null,
             birthCertPath: body.birthCertPath || null,
             idCardPath: body.idCardPath || null,

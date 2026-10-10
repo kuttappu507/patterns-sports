@@ -17,6 +17,7 @@ import {
   DatabaseBackup,
   Download,
   Upload,
+  FolderOpen,
   Building2,
   Phone,
   Mail,
@@ -34,11 +35,14 @@ import {
   fetchSettings,
   saveSettings,
   exportBackup,
+  dataInfo,
+  isTauri,
   mediaUrl,
   demoStatus,
   loadDemoData,
   removeDemoData,
   type DemoStatus as DemoStatusT,
+  type DataLocationInfo,
 } from "@/lib/psams/api"
 import { COMMITTEE_ROLES, type CommitteeMember, type AcademySettings } from "@/lib/psams/types"
 import { ACADEMY_MAPS_URL } from "@/lib/psams/domain"
@@ -637,25 +641,145 @@ function DemoDataCard() {
 
 function DataSafety() {
   const { toast } = useToast()
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<null | "db" | "json" | "restore" | "target">(null)
+  const [paths, setPaths] = useState<DataLocationInfo | null>(null)
+  const [restorePath, setRestorePath] = useState<string | null>(null)
+  const [restartAsk, setRestartAsk] = useState(false)
+  const desktop = isTauri()
 
-  async function downloadBackup() {
-    setBusy(true)
+  useEffect(() => {
+    let alive = true
+    dataInfo()
+      .then((p) => {
+        if (alive) setPaths(p)
+      })
+      .catch(() => {
+        /* the location box simply stays generic */
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  // DESKTOP — the real database backup: copies ps-ams.db (with WAL sidecars)
+  // and the whole media tree via the Rust `backup_now` command, then names
+  // the folder it wrote.
+  async function backupNow() {
+    setBusy("db")
     try {
-      const blob = await exportBackup()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `PS-AMS-backup-${new Date().toISOString().slice(0, 10)}.json`
-      a.click()
-      URL.revokeObjectURL(url)
-      toast({ title: "Backup downloaded", description: "Store it on a USB drive or cloud folder for redundancy." })
+      const { invoke } = await import("@tauri-apps/api/core")
+      const folder = await invoke<string>("backup_now")
+      toast({
+        title: "Database backup written",
+        description: `A full copy of ps-ams.db and the media library was written to ${folder}`,
+      })
     } catch (e) {
       toast({ title: "Backup failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
+
+  // JSON snapshot (both runtimes) — on desktop the success toast fires only
+  // after the file was REALLY written; cancelling the save dialog never
+  // claims success (and no second browser download fires).
+  async function downloadSnapshot() {
+    setBusy("json")
+    try {
+      const { blob, savedPath } = await exportBackup()
+      if (desktop) {
+        if (savedPath) {
+          toast({ title: "JSON snapshot saved", description: savedPath })
+        } else {
+          toast({ title: "Snapshot not saved", description: "The save dialog was closed without choosing a file." })
+        }
+      } else {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `PS-AMS-snapshot-${new Date().toISOString().slice(0, 10)}.json`
+        a.click()
+        URL.revokeObjectURL(url)
+        toast({ title: "JSON snapshot download started", description: "Check your downloads folder — this is a data snapshot, not the database file." })
+      }
+    } catch (e) {
+      toast({ title: "Snapshot failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function pickRestoreFile() {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog")
+      const sel = await open({
+        multiple: false,
+        title: "Choose a PS-AMS database backup",
+        filters: [{ name: "PS-AMS database backup", extensions: ["db", "sqlite", "db3"] }],
+      })
+      if (typeof sel === "string") setRestorePath(sel)
+    } catch (e) {
+      toast({ title: "Could not open the file picker", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    }
+  }
+
+  async function confirmRestore() {
+    const source = restorePath
+    setRestorePath(null)
+    if (!source) return
+    setBusy("restore")
+    try {
+      const { invoke } = await import("@tauri-apps/api/core")
+      await invoke("restore_backup", { source })
+      setRestartAsk(true)
+    } catch (e) {
+      toast({ title: "Restore failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function restartNow() {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core")
+      await invoke("restart_app")
+    } catch {
+      /* the webview dies mid-restart — nothing to handle */
+    }
+  }
+
+  async function pickBackupTarget() {
+    setBusy("target")
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog")
+      const dir = await open({ directory: true, title: "Choose the backup folder (e.g. a USB drive)" })
+      if (typeof dir !== "string") return
+      const { invoke } = await import("@tauri-apps/api/core")
+      const msg = await invoke<string>("set_backup_target", { path: dir })
+      toast({ title: "Backup folder set", description: msg })
+      setPaths(await dataInfo())
+    } catch (e) {
+      toast({ title: "Could not set the backup folder", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function resetBackupTarget() {
+    setBusy("target")
+    try {
+      const { invoke } = await import("@tauri-apps/api/core")
+      const msg = await invoke<string>("set_backup_target", { path: null })
+      toast({ title: "Backup folder reset", description: msg })
+      setPaths(await dataInfo())
+    } catch (e) {
+      toast({ title: "Could not reset the backup folder", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const targetIsExternal = !!paths && paths.backupTarget !== paths.backup
 
   return (
     <div className="glass rounded-2xl p-4">
@@ -664,19 +788,90 @@ function DataSafety() {
         <span className="text-sm font-semibold">Data Safety</span>
       </div>
       <p className="text-[15.5px] leading-relaxed text-muted-foreground">
-        The active SQLite database and the media directory are backed up automatically when the desktop app exits (USB target configurable in the Tauri shell). You can also snapshot a portable JSON backup right now:
+        {desktop
+          ? "The active SQLite database and the media directory are backed up automatically every time the desktop app exits — into the folder below, or onto a remembered USB drive. Backup now writes that same full copy immediately."
+          : "Download a JSON snapshot of every record for archiving. The full database backup (database file + media) is a desktop-app feature."}
       </p>
-      <div className="mt-3 flex gap-2">
-        <Button size="sm" className="h-8 gap-1.5 text-xs" disabled={busy} onClick={downloadBackup}>
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Backup now
+      <div className="mt-3 flex flex-wrap gap-2">
+        {desktop && (
+          <Button size="sm" className="h-8 gap-1.5 text-xs" disabled={busy !== null} onClick={backupNow}>
+            {busy === "db" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <DatabaseBackup className="h-3.5 w-3.5" />} Backup now
+          </Button>
+        )}
+        <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" disabled={busy !== null} onClick={downloadSnapshot}>
+          {busy === "json" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Download JSON snapshot
         </Button>
-        <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => toast({ title: "Restore from backup", description: "Use the restore command in the Tauri shell or copy the backup file into the database folder while the app is closed." })}>
-          <Upload className="h-3.5 w-3.5" /> Restore guide
-        </Button>
+        {desktop && (
+          <>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" disabled={busy !== null} onClick={pickRestoreFile}>
+              {busy === "restore" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Restore from backup…
+            </Button>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" disabled={busy !== null} onClick={pickBackupTarget} title="Choose where automatic and manual backups are written">
+              {busy === "target" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FolderOpen className="h-3.5 w-3.5" />} Backup folder…
+            </Button>
+            {targetIsExternal && (
+              <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs text-muted-foreground" disabled={busy !== null} onClick={resetBackupTarget}>
+                Use default folder
+              </Button>
+            )}
+          </>
+        )}
       </div>
-      <div className="mt-3 rounded-lg border bg-muted/40 p-2.5 text-[14.5px] text-muted-foreground">
-        Windows data location: <span className="font-mono">%APPDATA%\PS-AMS\</span> — database <span className="font-mono">ps-ams.db</span>, media in <span className="font-mono">media\</span>.
+      <div className="mt-3 space-y-0.5 rounded-lg border bg-muted/40 p-2.5 text-[14.5px] text-muted-foreground">
+        {paths ? (
+          paths.mode === "desktop" ? (
+            <>
+              <div>Data folder: <span className="font-mono">{paths.appData}</span></div>
+              <div>Database: <span className="font-mono">{paths.database}</span></div>
+              <div>Media: <span className="font-mono">{paths.media}</span></div>
+              <div>Backups → <span className="font-mono">{paths.backupTarget}</span></div>
+              {paths.logFile && <div>Boot log: <span className="font-mono">{paths.logFile}</span></div>}
+            </>
+          ) : (
+            <div>Web preview database: <span className="font-mono">{paths.database}</span> — desktop builds store data in the app data folder instead.</div>
+          )
+        ) : (
+          <div>Resolving the data location…</div>
+        )}
       </div>
+
+      {/* restore confirmation */}
+      <AlertDialog open={!!restorePath} onOpenChange={(o) => !o && setRestorePath(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore the database from this backup?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {restorePath}
+              {"\n"}
+              The current database will be REPLACED by the selected file the next time the app starts (a safety copy is kept as ps-ams.pre-restore.db). JSON snapshots cannot be restored here — choose a ps-ams-*.db backup written by this app.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-xs text-white hover:bg-destructive/90" onClick={confirmRestore}>
+              Stage restore
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* restart prompt after a staged restore */}
+      <AlertDialog open={restartAsk} onOpenChange={setRestartAsk}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore staged</AlertDialogTitle>
+            <AlertDialogDescription>
+              The backup will replace the active database the next time the app starts. Restart now to apply it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs">Later</AlertDialogCancel>
+            <AlertDialogAction className="bg-primary text-xs text-white hover:bg-primary/90" onClick={restartNow}>
+              Restart now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

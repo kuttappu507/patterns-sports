@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { DEFAULT_SETTINGS } from "@/lib/psams/domain"
 import type { AcademySettings } from "@/lib/psams/types"
 
-const DEFAULTS: AcademySettings = {
-  academyName: "Pattern Sports Academy",
-  tagline: "Building Champions, One Serve at a Time",
-  address: "Municipal Stadium Road, Kerala, India",
-  phone: "+91 98470 00000",
-  email: "office@patternsportsacademy.in",
-  defaultMonthlyFee: 500,
-  receiptSignatory: "General Secretary",
-}
+// Empty-database letterhead defaults — the SAME shared constant the desktop
+// backend and the demo dataset use, so web and desktop never print two
+// different letterheads.
+const DEFAULTS: AcademySettings = DEFAULT_SETTINGS
 
 export async function GET() {
   const rows = await db.setting.findMany()

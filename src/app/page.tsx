@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button"
 
 /* ---------- last-resort error boundary (no white screens) ---------- */
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+class ErrorBoundary extends Component<{ children: ReactNode; onReset?: () => void }, { error: Error | null }> {
   state = { error: null as Error | null }
 
   static getDerivedStateFromError(error: Error) {
@@ -57,13 +57,28 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
             <pre className="mt-3 max-h-32 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-2.5 text-left text-xs text-rose-600 dark:text-rose-300">
               {this.state.error.message}
             </pre>
-            <Button
-              size="sm"
-              className="mt-4 rounded-lg bg-primary font-semibold text-primary-foreground hover:brightness-110"
-              onClick={() => this.setState({ error: null })}
-            >
-              <RotateCcw className="h-3.5 w-3.5" /> Reload interface
-            </Button>
+            <div className="mt-4 flex justify-center gap-2">
+              {this.props.onReset && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-lg border-border bg-card text-xs hover:bg-muted"
+                  onClick={() => {
+                    this.props.onReset?.()
+                    this.setState({ error: null })
+                  }}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" /> Close dialog & continue
+                </Button>
+              )}
+              <Button
+                size="sm"
+                className="rounded-lg bg-primary font-semibold text-primary-foreground hover:brightness-110"
+                onClick={() => this.setState({ error: null })}
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Reload interface
+              </Button>
+            </div>
           </div>
         </div>
       )
@@ -199,9 +214,17 @@ export default function Home() {
         <PrintRoot />
       </ErrorBoundary>
 
-      {/* app-wide popup forms — reachable from every module via the store */}
-      <StudentFormDialog />
-      <CollectFeeDialog />
+      {/* app-wide popup forms — reachable from every module via the store.
+          Each popup gets its OWN boundary so a crash in Register Player or
+          Collect Fee degrades to a recovery card (with a close-and-continue
+          reset) instead of white-screening the whole app. The error is always
+          logged to the console — never swallowed silently. */}
+      <ErrorBoundary onReset={() => useAppStore.getState().closeStudentForm()}>
+        <StudentFormDialog />
+      </ErrorBoundary>
+      <ErrorBoundary onReset={() => useAppStore.getState().closeCollectFee()}>
+        <CollectFeeDialog />
+      </ErrorBoundary>
 
       {/* branded volleyball splash — rides above the app, exits with a flourish */}
       {!splashGone && (

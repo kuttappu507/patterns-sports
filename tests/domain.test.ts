@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest"
 import {
   computeAge,
   computeFeeStatus,
+  classifyFeeCycle,
+  assertValidPayment,
+  assertValidStudentInput,
+  assertValidAttendanceRecords,
+  assertValidUpload,
+  ACADEMY_ADDRESS,
+  DEFAULT_SETTINGS,
   hasPaidCurrentMonth,
   isSafeMediaPath,
   monthKey,
@@ -16,6 +23,7 @@ import {
   trainingAge,
   healthyWeightBand,
 } from "../src/lib/psams/domain"
+import { DEMO_SETTINGS } from "../src/lib/psams/demo-data"
 import { toIntlPhone, waLink } from "../src/lib/psams/whatsapp"
 
 // ---------------------------------------------------------------------------
@@ -306,5 +314,167 @@ describe("whatsapp helpers", () => {
     const link = waLink("919847012001", "Fee Receipt\nThank you!")
     expect(link.startsWith("https://wa.me/919847012001?text=")).toBe(true)
     expect(link).toContain("Fee%20Receipt")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// v1.6.1 — ONE fee-cycle classification for Dashboard AND Fees (they used to
+// disagree: paid-this-month counted as settled even with older arrears, and a
+// brand-new joiner was counted as "due")
+// ---------------------------------------------------------------------------
+
+describe("classifyFeeCycle", () => {
+  const reg = { id: "s1", registrationDate: "2026-01-15", monthlyFee: 500 }
+
+  it("counts a player who paid this month but owes two older months as a DEFAULTER", () => {
+    const now = new Date("2026-04-10")
+    const st = computeFeeStatus(reg, [{ months: '["2026-04"]', paymentDate: "2026-04-02" }], now)
+    // settled: 2026-04 · still owed: 2026-02, 2026-03
+    expect(st.paidMonths).toContain("2026-04")
+    expect(st.overdueMonths).toEqual(["2026-02", "2026-03"])
+    expect(classifyFeeCycle(st)).toBe("defaulter")
+  })
+
+  it("counts a new joiner with nothing pending as PAID — neither due nor overdue", () => {
+    const now = new Date("2026-02-10")
+    const st = computeFeeStatus({ ...reg, registrationDate: "2026-02-05" }, [], now)
+    expect(st.pendingMonths).toEqual([]) // joining month is complimentary
+    expect(st.overdueMonths).toEqual([])
+    const bucket = classifyFeeCycle(st)
+    expect(bucket).toBe("paid")
+    expect(bucket).not.toBe("due")
+    expect(bucket).not.toBe("defaulter")
+  })
+
+  it("counts a fully settled player as PAID", () => {
+    const now = new Date("2026-04-10")
+    const st = computeFeeStatus(reg, [{ months: '["2026-02","2026-03","2026-04"]', paymentDate: "2026-04-01" }], now)
+    expect(classifyFeeCycle(st)).toBe("paid")
+  })
+
+  it("counts only the current month unpaid as DUE (not a defaulter)", () => {
+    const now = new Date("2026-03-10")
+    const st = computeFeeStatus(reg, [], now)
+    expect(st.overdueMonths).toEqual(["2026-02"]) // one month behind → not a defaulter
+    expect(st.pendingMonths).toEqual(["2026-02", "2026-03"])
+    expect(classifyFeeCycle(st)).toBe("due")
+  })
+
+  it("counts exactly one older month behind as DUE (the defaulter rule is > 1)", () => {
+    const now = new Date("2026-04-10")
+    const st = computeFeeStatus(reg, [{ months: '["2026-02"]', paymentDate: "2026-02-11" }], now)
+    expect(st.overdueMonths).toEqual(["2026-03"])
+    expect(st.isDefaulter).toBe(false)
+    expect(classifyFeeCycle(st)).toBe("due")
+  })
+
+  it("agrees with computeFeeStatus().isDefaulter on every bucket boundary", () => {
+    const now = new Date("2026-05-10")
+    const scenarios: string[][] = [
+      '["2026-05"]', '["2026-04","2026-05"]', '["2026-02"]', '["2026-02","2026-03"]', '["2026-02","2026-03","2026-04"]',
+    ].map((m) => JSON.parse(m))
+    for (const months of scenarios) {
+      const st = computeFeeStatus(reg, [{ months: JSON.stringify(months), paymentDate: "2026-05-01" }], now)
+      expect(classifyFeeCycle(st) === "defaulter").toBe(st.isDefaulter)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// v1.6.1 — shared write-path validators (web routes AND desktop backend)
+// ---------------------------------------------------------------------------
+
+describe("assertValidPayment", () => {
+  it("rejects a token amount that does not cover the selected months", () => {
+    expect(() => assertValidPayment(["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"], 1, 500)).toThrow(
+      /Amount must match/
+    )
+  })
+
+  it("rejects a month that already has a receipt (no double receipting)", () => {
+    expect(() => assertValidPayment(["2026-01"], 500, 500, ["2026-01"])).toThrow(/already settled/)
+  })
+
+  it("rejects malformed month keys and duplicates", () => {
+    expect(() => assertValidPayment(["01-2026"], 500, 500)).toThrow(/YYYY-MM/)
+    expect(() => assertValidPayment(["2026-13"], 500, 500)).toThrow(/YYYY-MM/)
+    expect(() => assertValidPayment(["2026-01", "2026-01"], 1000, 500)).toThrow(/Duplicate/)
+  })
+
+  it("accepts the exact months.length × monthlyFee amount", () => {
+    expect(() => assertValidPayment(["2026-01", "2026-02"], 1000, 500, [])).not.toThrow()
+  })
+
+  it("rejects zero/negative amounts and zero-fee students", () => {
+    expect(() => assertValidPayment(["2026-01"], 0, 500)).toThrow(/greater than zero/)
+    expect(() => assertValidPayment(["2026-01"], -500, 500)).toThrow(/greater than zero/)
+    expect(() => assertValidPayment(["2026-01"], 500, 0)).toThrow(/no monthly fee/)
+  })
+})
+
+describe("assertValidStudentInput", () => {
+  const base = { fullName: "Test Player", dateOfBirth: "2012-05-01", parentName: "Parent", mobile: "9847012345", ageCategory: "Junior" }
+
+  it("accepts a clean record", () => {
+    expect(() => assertValidStudentInput(base)).not.toThrow()
+  })
+
+  it("rejects a future date of birth", () => {
+    expect(() => assertValidStudentInput({ ...base, dateOfBirth: "2999-01-01" })).toThrow(/future/)
+  })
+
+  it("rejects a bad mobile number", () => {
+    expect(() => assertValidStudentInput({ ...base, mobile: "12345" })).toThrow(/10 digits/)
+  })
+
+  it("rejects a negative monthly fee", () => {
+    expect(() => assertValidStudentInput({ ...base, monthlyFee: -1 })).toThrow(/cannot be negative/)
+  })
+
+  it("rejects missing required fields", () => {
+    expect(() => assertValidStudentInput({ ...base, mobile: undefined })).toThrow(/Missing required field: mobile/)
+  })
+})
+
+describe("assertValidAttendanceRecords", () => {
+  const rec = { studentId: "s1", date: "2026-05-01", batch: "Morning", status: "Present" }
+
+  it("accepts a clean batch", () => {
+    expect(() => assertValidAttendanceRecords([rec])).not.toThrow()
+  })
+
+  it("rejects a bad date or status in ANY record", () => {
+    expect(() => assertValidAttendanceRecords([rec, { ...rec, date: "05/01/2026" }])).toThrow(/YYYY-MM-DD/)
+    expect(() => assertValidAttendanceRecords([{ ...rec, status: "Late" }])).toThrow(/Present or Absent/)
+  })
+})
+
+describe("assertValidUpload", () => {
+  it("enforces the 10 MB cap on both runtimes", () => {
+    expect(() => assertValidUpload({ name: "photo.png", type: "image/png", size: 11 * 1024 * 1024 })).toThrow(/10 MB/)
+  })
+
+  it("enforces the extension AND MIME allowlist (desktop used to skip MIME)", () => {
+    expect(() => assertValidUpload({ name: "evil.html", type: "text/html", size: 10 })).toThrow(/Unsupported file type/)
+    // a png that claims to be an HTML file is rejected on MIME alone
+    expect(() => assertValidUpload({ name: "photo.png", type: "text/html", size: 10 })).toThrow(/Unsupported file type/)
+    expect(() => assertValidUpload({ name: "archive.zip", type: "application/zip", size: 10 })).toThrow(/Unsupported file type/)
+    expect(() => assertValidUpload({ name: "doc.pdf", type: "application/pdf", size: 1024 })).not.toThrow()
+    expect(() => assertValidUpload({ name: "pic.webp", type: "image/webp", size: 1024 })).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// v1.6.1 — ONE letterhead default (web, desktop and demo must never diverge)
+// ---------------------------------------------------------------------------
+
+describe("academy letterhead defaults", () => {
+  it("DEFAULT_SETTINGS uses the shared ACADEMY_ADDRESS", () => {
+    expect(DEFAULT_SETTINGS.address).toBe(ACADEMY_ADDRESS)
+    expect(ACADEMY_ADDRESS).toContain("Kozhikode")
+  })
+
+  it("the demo dataset letterhead matches the empty-database default", () => {
+    expect(DEMO_SETTINGS.address).toBe(ACADEMY_ADDRESS)
   })
 })

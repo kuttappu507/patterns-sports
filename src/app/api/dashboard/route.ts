@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { computeAge, computeFeeStatus, monthKey } from "@/lib/psams/domain"
+import { computeAge, computeFeeStatus, classifyFeeCycle } from "@/lib/psams/domain"
 
 // GET /api/dashboard — executive snapshot
 export async function GET() {
@@ -23,15 +23,18 @@ export async function GET() {
     count: active.filter((s) => s.ageCategory === category).length,
   }))
 
-  // Current billing cycle: who has settled the current month
-  const currentKey = monthKey(now)
+  // Current billing cycle — the SAME classification the Fees page uses
+  // (classifyFeeCycle): a defaulter is overdue by MORE than one month even
+  // when the current month is settled, and a new joiner with no pending
+  // months is settled, never "due".
   let paidCount = 0
   let defaulterCount = 0
   let dueSoonCount = 0
   for (const s of active) {
     const st = computeFeeStatus(s, s.payments, now)
-    if (st.paidMonths.includes(currentKey)) paidCount++
-    else if (st.overdueMonths.length > 1) defaulterCount++
+    const bucket = classifyFeeCycle(st)
+    if (bucket === "paid") paidCount++
+    else if (bucket === "defaulter") defaulterCount++
     else dueSoonCount++
   }
 

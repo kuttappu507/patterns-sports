@@ -6,7 +6,7 @@ No cloud. No accounts. All data stays in a local SQLite database with media on d
 
 ## Themes & UI
 
-The UI ships with a **light "Volt Arena" theme by default** (porcelain surfaces, electric-indigo primary, volt-amber spike accent, court-teal highlights on an always-dark patterned sidebar) and an optional **"Night Arena" dark mode** (floodlit ink-violet court with neon indigo & amber). Switch anytime with the sun/moon toggle in the header — the choice is remembered across sessions and even recolours the native window title bar. A branded volleyball splash screen opens the app: bouncing match ball, perspective court floor and glowing net. Every surface keeps the modern interaction language: hover lift + glow on cards, animated page transitions, springy micro-interactions, shimmer skeletons and accent-rail row hovers — on an upsized typographic scale (17.5px base).
+The UI ships with the **light "Watermelon Sorbet" theme by default** (porcelain surfaces, watermelon-rose primary `#EF476F`, sunlit amber `#FFD166` spike accent, mint-teal `#06D6A0` highlights on an always-dark navy `#073B4C` patterned sidebar) and an optional **dark court mode** (glowing watermelon on deep navy ink). Switch anytime with the sun/moon toggle in the header — the choice is remembered across sessions and even recolours the native window title bar. A branded volleyball splash screen opens the app: bouncing match ball, perspective court floor and glowing net. Every surface keeps the modern interaction language: hover lift + glow on cards, animated page transitions, springy micro-interactions, shimmer skeletons and accent-rail row hovers — on an upsized typographic scale (17.5px base).
 
 ## Feature Map
 
@@ -14,11 +14,11 @@ The UI ships with a **light "Volt Arena" theme by default** (porcelain surfaces,
 |---|---|
 | Executive Dashboard | Live metric cards (enrolment, five age categories, paid vs due this month, monthly revenue with count-up animation), committee showcase, quick actions |
 | Student Profiles | Auto-generated admission numbers, registration date picker, live age and BMI calculation, height/weight, standing/spike/jump reach stats, sport & field position, photo and document uploads (photos, birth certificate, school/government ID), achievements log with medals, selection levels and certificate attachments |
-| Fees & POS | Student lookup brings up pending months and dues, multi-month combined collection with OVERDUE chips, Cash / UPI-GPay / Bank Transfer, dual-format receipts (A5 formal with signature strip + 80 mm thermal POS slip), WhatsApp receipt dispatch, defaulter monitor that flags students overdue by more than one month, export to Print / Excel / PDF |
-| Search & Reports | Real-time search (name / admission no / parent phone), multi-parameter filter engine (age range, height threshold, age category, school, field position, gender, status), formal letterhead report on A4, Excel (.xlsx) and PDF output |
+| Fees & POS | Student lookup brings up pending months and dues, multi-month combined collection with OVERDUE chips, Cash / UPI-GPay / Bank Transfer, dual-format receipts (A5 formal with signature strip + 80 mm thermal POS slip), WhatsApp receipt dispatch over a linked device (QR pairing, one click, no WhatsApp Web), defaulter monitor that flags students overdue by more than one month, search + category/gender filters on the monitoring and history tabs, export to Print / Excel / PDF |
+| Search & Reports | Real-time search (name / admission no / parent phone), multi-parameter filter engine (age range, height threshold, age category, school, sport, field position, training batch, status), formal letterhead report on A4, Excel (.xlsx) and PDF output |
 | Committee | Add, edit, reorder and remove members; changes sync live to the dashboard showcase |
-| Attendance | Daily roster segmented by batch/age category with rapid Present / Absent / Late / Excused toggles, bulk upsert, printable attendance sheet |
-| Administration | Academy profile used on letterheads and receipts, data-safety overview, backup controls, exit auto-backup (database + media to a local folder or a remembered USB drive) |
+| Attendance | Daily roster segmented by batch/age category with rapid Present / Absent toggles, whole-batch all-or-nothing upsert, printable attendance sheet |
+| Administration | Academy profile used on letterheads and receipts, real data-location readout (Rust `data_paths` on desktop / `DATABASE_URL` file on web), backup controls — one-click full database backup (`backup_now`), JSON snapshot export, staged database restore with a restart handshake, configurable backup folder (written to `ps-ams-backup-target.txt` next to the database) — plus exit auto-backup (database + media to the local folder or a remembered USB drive) and demo-data load/remove |
 
 ## Screenshots
 
@@ -54,9 +54,13 @@ patterns-sports/
 ├── prisma/schema.prisma            # Student, Achievement, FeePayment,
 │                                   # CommitteeMember, Attendance, Setting
 ├── scripts/seed.ts                 # realistic demo dataset
+├── scripts/check-parity.mjs        # prisma ↔ schema.sql ↔ bootstrap.ts DDL ↔ API surface
+├── whatsapp-bot/                   # native Rust WhatsApp sidecar (linked devices,
+│                                   # NDJSON stdio bridge, wa-store.db session)
 ├── src-tauri/                      # Tauri v2 shell: tauri.conf.json, Cargo.toml,
-│                                   # capabilities, icons, main.rs (data-dir
-│                                   # bootstrap + backup-on-exit + commands)
+│                                   # capabilities, icons; shell logic lives in
+│                                   # src-tauri/src/lib.rs (data-dir bootstrap,
+│                                   # backup-on-exit, restore + WhatsApp commands)
 │   └── resources/schema.sql        # canonical SQLite DDL (indexes + FK cascades)
 ├── docs/
 │   ├── PORTING_GUIDE.md            # desktop build & porting guide
@@ -67,7 +71,7 @@ patterns-sports/
 
 - **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui (Radix), Framer Motion, lucide-react
 - **Domain engine**: `src/lib/psams/domain.ts` — live age (years + months), BMI with health bands, age-category suggestion (Mini U-10, Sub-Junior 10–12, Junior 13–15, Youth 16–18, Senior 19+), billing-month ledger (registration month complimentary), defaulter rule (>1 month overdue), admission/receipt numbering, INR/date formatting, media path sanitisation with traversal guard
-- **Database**: SQLite via Prisma (indexes and FK cascades defined in `prisma/schema.prisma`, mirrored in `src-tauri/resources/schema.sql` — `npm run check:parity` fails the build if the two drift apart)
+- **Database**: SQLite via Prisma (indexes and FK cascades defined in `prisma/schema.prisma`, mirrored in `src-tauri/resources/schema.sql` and in the boot-time DDL of `src/lib/psams/bootstrap.ts` — `npm run check:parity` fails when ANY of the three copies drift apart)
 - **Media policy**: photos, documents and certificates are stored **on disk** under `media/` (photos / documents / certificates); the database keeps sanitised relative paths only — never BLOBs
 - **Exports**: ExcelJS (.xlsx with letterhead sheet), PapaParse (CSV), jsPDF + AutoTable (PDF), CSS `@media print` pipeline for A4/A5/80 mm output
 - **Desktop kit**: Tauri v2 (Rust host with sql/dialog/fs/shell plugins, WebView2 bootstrapper, NSIS + MSI bundle targets)
@@ -88,9 +92,11 @@ npm run dev                # http://localhost:3000
 
 The seeder populates 12 students across all five age categories, 20 fee payments producing a realistic paid/due/defaulter mix, 8 achievements, 36 attendance records, 5 committee members and academy settings.
 
-Quality gates (also enforced in CI): `npm run verify` runs ESLint, `tsc
---noEmit`, the Vitest domain-suite (`npm test`) and the backend parity check
-(`npm run check:parity` — Prisma schema ↔ Tauri `schema.sql` ↔ API surface).
+Quality gates (also enforced in CI by `.github/workflows/verify.yml` on every
+push and pull request): `npm run verify` runs ESLint, `tsc --noEmit`, the
+Vitest domain-suite (`npm test`) and the backend parity check
+(`npm run check:parity` — Prisma schema ↔ Tauri `schema.sql` ↔ bootstrap.ts
+DDL ↔ API surface).
 
 ### Engine-free Prisma (driver adapter)
 
@@ -156,12 +162,14 @@ bun run tauri build   # release NSIS installer + MSI
 
 Installers land in `src-tauri/target/release/bundle/{nsis,msi}/`. The
 frontend is compiled as a static export (`npm run build:tauri`), and the Rust
-host (`src-tauri/src/main.rs`) bootstraps the data folder, applies
+host (`src-tauri/src/lib.rs`) bootstraps the data folder, applies
 `src-tauri/resources/schema.sql` on first run, and on every app exit copies
 the database (with WAL sidecars) plus the whole media tree into the backups
 folder — or to a remembered USB drive when its path is written into
-`ps-ams-backup-target.txt` next to the database. See
-[`docs/PORTING_GUIDE.md`](docs/PORTING_GUIDE.md) for the full guide.
+`ps-ams-backup-target.txt` next to the database (Settings → Data Safety →
+Backup folder…). The same screen can run `backup_now` immediately and stage a
+database restore from any `ps-ams-*.db` backup (applied on the next start).
+See [`docs/PORTING_GUIDE.md`](docs/PORTING_GUIDE.md) for the full guide.
 
 ## Security (read this before exposing the web app)
 
@@ -186,8 +194,10 @@ folder — or to a remembered USB drive when its path is written into
 ## Data & Safety
 
 - **Local-first storage**: everything lives in SQLite; media files live on disk with traversal-guarded relative paths in the database.
-- **Exit backup**: database + media mirrored automatically when the window closes (desktop build), with a timestamped folder per run.
-- **Snapshot API**: `GET /api/backup` returns a full JSON manifest of all records for external archiving.
+- **Exit backup**: database + media mirrored automatically when the window closes (desktop build), into the default backups folder or a remembered USB drive.
+- **Backup now (desktop)**: the Settings → Data Safety button invokes the Rust `backup_now` command — a real copy of `ps-ams-*.db` (with WAL sidecars) plus the media tree, and the toast names the folder it wrote.
+- **JSON snapshot**: `GET /api/backup` (web) or the "Download JSON snapshot" button returns a full JSON manifest of all records for external archiving. It is a data snapshot — the database-file backup is the desktop `backup_now` path.
+- **Restore (desktop)**: pick a `ps-ams-*.db` backup in Settings → Data Safety → Restore from backup… — the file is validated (SQLite header), staged next to the database and swapped in on the next start (the current database is kept as `ps-ams.pre-restore.db`).
 - **Print pipeline**: A4 player profile card, A5 formal receipt, 80 mm thermal POS slip, rosters and reports all render through an isolated print root; app chrome is suppressed via `@media print`, and "Save as PDF" works through the same dialog.
 
 ## License

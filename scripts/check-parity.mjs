@@ -10,7 +10,9 @@
 // of these three layers silently breaks one mode. This script fails when:
 //   a) a Prisma model/table/column/type/nullability/unique differs from
 //      the SQLite DDL, or
-//   b) api.ts delegates to a `native.*` function that tauri-api.ts does
+//   b) the SCHEMA_DDL copy embedded in src/lib/psams/bootstrap.ts (the DDL
+//      the web preview bootstraps from) drifts from schema.sql, or
+//   c) api.ts delegates to a `native.*` function that tauri-api.ts does
 //      not export (or a public api.ts endpoint lacks a Tauri counterpart).
 //
 // Run: npm run check:parity
@@ -70,24 +72,70 @@ for (const m of prismaSrc.matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm)) {
 }
 
 // -- parse SQLite DDL --
-const tables = new Map()
-for (const m of sqlSrc.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)\s*\(([\s\S]*?)\n\);/g)) {
-  const [, name, body] = m
-  const columns = new Map()
-  for (const raw of body.split("\n")) {
-    const line = raw.split("--")[0].trim()
-    if (!line) continue
-    const cm = line.match(/^(\w+)\s+(TEXT|INTEGER|REAL|NUMERIC|BLOB|BOOLEAN|DOUBLE|FLOAT|VARCHAR\w*)(.*)$/i)
-    if (!cm) continue // table-level constraints e.g. UNIQUE (a, b)
-    const [, colName, colType, rest] = cm
-    columns.set(colName, {
-      type: colType.toUpperCase().replace(/\(\d+\)$/, ""),
-      notNull: /\bNOT NULL\b/i.test(rest),
-      unique: /\bUNIQUE\b/i.test(rest),
-      primary: /\bPRIMARY KEY\b/i.test(rest),
-    })
+/** Parse CREATE TABLE statements into Map<table, Map<col, meta>>. */
+function parseSqliteDdl(src) {
+  const tables = new Map()
+  for (const m of src.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)\s*\(([\s\S]*?)\n\);/g)) {
+    const [, name, body] = m
+    const columns = new Map()
+    for (const raw of body.split("\n")) {
+      const line = raw.split("--")[0].trim()
+      if (!line) continue
+      const cm = line.match(/^(\w+)\s+(TEXT|INTEGER|REAL|NUMERIC|BLOB|BOOLEAN|DOUBLE|FLOAT|VARCHAR\w*)(.*)$/i)
+      if (!cm) continue // table-level constraints e.g. UNIQUE (a, b)
+      const [, colName, colType, rest] = cm
+      columns.set(colName, {
+        type: colType.toUpperCase().replace(/\(\d+\)$/, ""),
+        notNull: /\bNOT NULL\b/i.test(rest),
+        unique: /\bUNIQUE\b/i.test(rest),
+        primary: /\bPRIMARY KEY\b/i.test(rest),
+      })
+    }
+    tables.set(name, columns)
   }
-  tables.set(name, columns)
+  return tables
+}
+
+const tables = parseSqliteDdl(sqlSrc)
+
+// -- the bootstrap.ts SCHEMA_DDL copy must mirror schema.sql exactly --
+// (the web preview applies THIS copy on boot; a forgotten column would boot a
+// web database without it while this check stayed green)
+const bootSrc = readFileSync(join(root, "src/lib/psams/bootstrap.ts"), "utf8")
+const bootDdl = bootSrc.match(/const SCHEMA_DDL = `([\s\S]*?)`/)
+if (!bootDdl) {
+  errors.push("bootstrap: could not find `const SCHEMA_DDL` in src/lib/psams/bootstrap.ts")
+} else {
+  const bootTables = parseSqliteDdl(bootDdl[1])
+  for (const [name, cols] of tables) {
+    const bt = bootTables.get(name)
+    if (!bt) {
+      errors.push(`bootstrap: table ${name} is missing from the SCHEMA_DDL copy in bootstrap.ts`)
+      continue
+    }
+    for (const [col, meta] of cols) {
+      const bc = bt.get(col)
+      if (!bc) {
+        errors.push(`bootstrap: ${name}.${col} is in schema.sql but missing from bootstrap.ts SCHEMA_DDL`)
+        continue
+      }
+      for (const k of ["type", "notNull", "unique", "primary"]) {
+        if (String(bc[k]) !== String(meta[k])) {
+          errors.push(`bootstrap: ${name}.${col} ${k} mismatch — schema.sql "${meta[k]}" vs bootstrap.ts "${bc[k]}"`)
+        }
+      }
+    }
+    for (const col of bt.keys()) {
+      if (!cols.has(col)) {
+        errors.push(`bootstrap: ${name}.${col} exists in bootstrap.ts SCHEMA_DDL but not in schema.sql`)
+      }
+    }
+  }
+  for (const name of bootTables.keys()) {
+    if (!tables.has(name)) {
+      errors.push(`bootstrap: table ${name} exists in bootstrap.ts SCHEMA_DDL but not in schema.sql`)
+    }
+  }
 }
 
 // -- diff models ↔ tables --

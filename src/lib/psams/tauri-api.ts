@@ -26,11 +26,17 @@ import type {
 import {
   computeAge,
   computeFeeStatus,
+  classifyFeeCycle,
   parsePaidMonths,
   sanitizeFileName,
   todayKey,
   nextAdmissionNo,
   nextReceiptNo,
+  assertValidPayment,
+  assertValidStudentInput,
+  assertValidAttendanceRecords,
+  assertValidUpload,
+  DEFAULT_SETTINGS,
 } from "./domain"
 import {
   DEMO_STUDENTS,
@@ -279,9 +285,9 @@ export type StudentInput = Partial<Omit<Student, "id" | "createdAt" | "updatedAt
 
 export async function createStudent(input: Partial<StudentInput>): Promise<Student> {
   const db = await getDb()
-  for (const k of ["fullName", "dateOfBirth", "parentName", "mobile", "ageCategory"]) {
-    if (!(input as Record<string, unknown>)[k]) throw new Error(`Missing required field: ${k}`)
-  }
+  // Same rejects as the web POST /api/students route — shared validator
+  // (required fields, future-DOB guard, mobile digits, non-negative fee).
+  assertValidStudentInput(input as Record<string, unknown>)
   const existing = await db.select<{ admissionNo: string }[]>("SELECT admissionNo FROM Student", [])
   const year = new Date().getFullYear()
   const admissionNo =
@@ -472,6 +478,21 @@ export async function collectPayment(input: {
   if (!input.amount || Number(input.amount) <= 0) {
     throw new Error("Collected amount must be greater than zero")
   }
+  // Same rejects as the web POST /api/payments route (shared validator):
+  // strict YYYY-MM keys, no duplicate months, no month that already has a
+  // receipt, and the amount must equal months.length × monthlyFee — so a
+  // token payment can never clear months it did not pay for.
+  const student = await getStudentRow(input.studentId)
+  const priorPayments = await db.select<FeePayment[]>(
+    "SELECT * FROM FeePayment WHERE studentId = $1 ORDER BY paymentDate ASC",
+    [input.studentId]
+  )
+  assertValidPayment(
+    input.months,
+    Number(input.amount),
+    student.monthlyFee,
+    computeFeeStatus(student, priorPayments).paidMonths
+  )
   const existing = await db.select<{ receiptNo: string }[]>("SELECT receiptNo FROM FeePayment", [])
   const now = new Date()
   const receiptNo = nextReceiptNo(existing.map((r) => r.receiptNo), now)
@@ -494,7 +515,6 @@ export async function collectPayment(input: {
       now.toISOString(),
     ]
   )
-  const student = await getStudentRow(input.studentId)
   return {
     id,
     receiptNo,
@@ -570,14 +590,17 @@ export async function fetchDashboard(): Promise<DashboardStats> {
     count: active.filter((s) => s.ageCategory === category).length,
   }))
 
-  const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   let paidCount = 0
   let defaulterCount = 0
   let dueSoonCount = 0
   for (const s of active) {
+    // Same bucketing as the web /api/dashboard route and the Fees page:
+    // defaulter = overdue by MORE than one month (even if this month is
+    // paid); nothing pending at all = settled — a brand-new joiner is not "due".
     const st = computeFeeStatus(s, byStudent.get(s.id) ?? [], now)
-    if (st.paidMonths.includes(currentKey)) paidCount++
-    else if (st.overdueMonths.length > 1) defaulterCount++
+    const bucket = classifyFeeCycle(st)
+    if (bucket === "paid") paidCount++
+    else if (bucket === "defaulter") defaulterCount++
     else dueSoonCount++
   }
 
@@ -711,34 +734,33 @@ export async function markAttendance(
   records: { studentId: string; date: string; batch: string; status: string }[]
 ): Promise<void> {
   const db = await getDb()
-  // validate the whole batch before writing — mirrors the web route
-  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-  for (const r of records) {
-    if (!r?.studentId) throw new Error("Each attendance record needs a student")
-    if (!r?.date || !DATE_RE.test(r.date)) throw new Error("Attendance date must be in YYYY-MM-DD format")
-    if (r?.status !== "Present" && r?.status !== "Absent") throw new Error("Attendance status must be Present or Absent")
-  }
-  for (const r of records) {
-    await db.execute(
-      `INSERT INTO Attendance (id, studentId, date, batch, status)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT(studentId, date) DO UPDATE SET status = excluded.status, batch = excluded.batch`,
-      [uuid(), r.studentId, r.date, r.batch, r.status]
-    )
-  }
+  // Same whole-batch validation as the web POST /api/attendance route —
+  // every record is checked BEFORE anything is written.
+  assertValidAttendanceRecords(records)
+  if (records.length === 0) return
+  // All-or-nothing write: ONE multi-row upsert statement is a single implicit
+  // SQLite transaction. The old row-by-row loop could leave a half-saved
+  // register behind when a middle row failed.
+  const values: string[] = []
+  const params: unknown[] = []
+  records.forEach((r, i) => {
+    const b = i * 5
+    values.push(`($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5})`)
+    params.push(uuid(), r.studentId, r.date, r.batch, r.status)
+  })
+  await db.execute(
+    `INSERT INTO Attendance (id, studentId, date, batch, status)
+     VALUES ${values.join(", ")}
+     ON CONFLICT(studentId, date) DO UPDATE SET status = excluded.status, batch = excluded.batch`,
+    params
+  )
 }
 
 // ---------- Settings / Backup ----------
 
-const SETTINGS_DEFAULTS: AcademySettings = {
-  academyName: "Pattern Sports Academy",
-  tagline: "Building Champions, One Serve at a Time",
-  address: "Markaz Colony, Karanthur, Kunnamangalam, Kozhikode, Kerala 673571",
-  phone: "+91 98470 00000",
-  email: "office@patternsportsacademy.in",
-  defaultMonthlyFee: 500,
-  receiptSignatory: "General Secretary",
-}
+// Letterhead defaults come from the ONE shared constant (domain.ts) so an
+// empty desktop database and an empty web database print the same letterhead.
+const SETTINGS_DEFAULTS: AcademySettings = DEFAULT_SETTINGS
 
 export async function fetchSettings(): Promise<AcademySettings> {
   const db = await getDb()
@@ -768,7 +790,14 @@ export async function saveSettings(settings: AcademySettings): Promise<AcademySe
   return fetchSettings()
 }
 
-export async function exportBackup(): Promise<Blob> {
+export interface BackupSnapshot {
+  blob: Blob
+  /** Absolute path when the file was actually written to disk — null when the user cancelled the save dialog (no toast may claim success then). */
+  savedPath: string | null
+}
+
+/** Portable JSON snapshot of every table. Desktop also offers a native save dialog. */
+export async function exportBackup(): Promise<BackupSnapshot> {
   const db = await getDb()
   const [students, achievements, payments, committee, attendance, settings] = await Promise.all([
     db.select<Student[]>("SELECT * FROM Student", []),
@@ -796,33 +825,71 @@ export async function exportBackup(): Promise<Blob> {
     null,
     2
   )
-  // Desktop: offer a native Save dialog as well (anchor downloads are unreliable in WebView2)
+  // Desktop: offer a native Save dialog as well (anchor downloads are unreliable in WebView2).
+  // savedPath stays null when the dialog is cancelled — the caller must not
+  // toast success for a file that was never written.
+  let savedPath: string | null = null
   try {
     const target = await saveDialog({
-      defaultPath: `PS-AMS-backup-${new Date().toISOString().slice(0, 10)}.json`,
-      filters: [{ name: "JSON backup", extensions: ["json"] }],
+      defaultPath: `PS-AMS-snapshot-${new Date().toISOString().slice(0, 10)}.json`,
+      filters: [{ name: "JSON snapshot", extensions: ["json"] }],
     })
-    if (target) await writeTextFile(target, json)
+    if (target) {
+      await writeTextFile(target, json)
+      savedPath = target
+    }
   } catch {
     /* dialog unavailable — fall back to the returned blob */
   }
-  return new Blob([json], { type: "application/json" })
+  return { blob: new Blob([json], { type: "application/json" }), savedPath }
+}
+
+// ---------- Data location (Settings → Data Safety) ----------
+
+export interface DataLocationInfo {
+  mode: "desktop" | "web"
+  appData: string
+  database: string
+  media: string
+  backup: string
+  /** Effective backup folder (remembered USB target when mounted). */
+  backupTarget: string
+  /** boot.log path (%LOCALAPPDATA%\PS-AMS\boot.log on installed builds). */
+  logFile: string
+}
+
+/** Real data layout from the Rust shell — never a hardcoded guess. */
+export async function dataInfo(): Promise<DataLocationInfo> {
+  const p = await invoke<{
+    app_data: string
+    database: string
+    media: string
+    backup: string
+    backup_target: string
+    log_file: string
+  }>("data_paths")
+  return {
+    mode: "desktop",
+    appData: p.app_data,
+    database: p.database,
+    media: p.media,
+    backup: p.backup,
+    backupTarget: p.backup_target,
+    logFile: p.log_file,
+  }
 }
 
 // ---------- Media upload (disk-backed, relative paths only) ----------
 
 export type UploadFolder = "photos" | "documents" | "certificates"
 
-// Same allowlist as the web /api/upload route — images + PDF only.
-const ALLOWED_UPLOAD_EXT = new Set([".png", ".jpg", ".jpeg", ".webp", ".pdf"])
-
 export async function uploadMedia(file: File, folder: UploadFolder): Promise<{ path: string }> {
   if (!_mediaBase) await initBackend()
+  // Same rejects as the web /api/upload route — shared validator enforces the
+  // 10 MB cap, the extension allowlist AND the MIME check (the desktop used
+  // to check the extension only).
+  assertValidUpload({ name: file.name, type: file.type, size: file.size })
   const safeName = sanitizeFileName(file.name)
-  const ext = safeName.slice(safeName.lastIndexOf(".")).toLowerCase()
-  if (!ALLOWED_UPLOAD_EXT.has(ext)) {
-    throw new Error("Unsupported file type — allowed: PNG, JPG, WEBP or PDF")
-  }
   const bytes = new Uint8Array(await file.arrayBuffer())
   const rel = `${folder}/${Date.now()}-${safeName}`
   const abs = await join(_mediaBase!, rel)
@@ -950,8 +1017,16 @@ export async function loadDemoData(): Promise<{ students: number; committee: num
     )
   }
 
+  // Academy profile — fill ONLY the keys the user has never saved (same rule
+  // as the web demo loader). Loading demo players must never overwrite a real
+  // academy name, phone or address; removing demo data would not bring the
+  // old profile back.
+  const existingSettings = new Set(
+    (await db.select<{ key: string }[]>("SELECT key FROM Setting", [])).map((r) => r.key)
+  )
   for (const [key, value] of Object.entries(DEMO_SETTINGS)) {
-    await db.execute(`INSERT INTO Setting (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = $2`, [key, value])
+    if (existingSettings.has(key)) continue
+    await db.execute(`INSERT INTO Setting (key, value) VALUES ($1, $2) ON CONFLICT(key) DO NOTHING`, [key, value])
   }
   const tracked = JSON.stringify({ students: demoStudentIds, committee: demoCommitteeIds })
   await db.execute(`INSERT INTO Setting (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = $2`, [DEMO_KEY, tracked])
