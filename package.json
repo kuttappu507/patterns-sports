@@ -1,6 +1,6 @@
 {
   "name": "ps-ams",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Pattern Sports Academy Management System — offline-first academy suite (Next.js SPA + Tauri v2 desktop shell, Clean Court / Dark Court themes)",
   "private": true,
   "scripts": {

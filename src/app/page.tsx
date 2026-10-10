@@ -108,8 +108,9 @@ export default function Home() {
 
   // Frameless desktop: the OS window starts hidden (tauri.conf "visible": false)
   // so the raw white webview frame never flashes. Reveal it as soon as the
-  // branded splash card has painted — the user sees ONLY the splash first,
-  // and the main window content appears after the splash completes.
+  // branded splash card has painted — the user sees the transparent-backed
+  // splash floating dead-center over the app first, and the boot card only
+  // hands over to the interface once it completes.
   useEffect(() => {
     if (!isTauri()) return
     let cancelled = false
@@ -155,6 +156,31 @@ export default function Home() {
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [printPayload])
+
+  // Direct-print pipeline — a payload flagged mode:"direct" skips the
+  // preview overlay entirely: the paper renders into the hidden print
+  // root, then window.print() fires straight away. The OS dialog opens
+  // on the default printer and, because every @page margin is zero,
+  // Chromium/WebView2 draws NO automatic headers, footers or time stamps.
+  // document.title is swapped so "Save as PDF" suggests a proper filename.
+  const directPayload = printPayload && printPayload.mode === "direct" ? printPayload : null
+  useEffect(() => {
+    if (!directPayload) return
+    const prevTitle = document.title
+    if (directPayload.title) document.title = directPayload.title
+    const t = setTimeout(() => {
+      try {
+        window.print()
+      } finally {
+        document.title = prevTitle
+        useAppStore.getState().setPrint(null)
+      }
+    }, 120)
+    return () => {
+      clearTimeout(t)
+      document.title = prevTitle
+    }
+  }, [directPayload])
 
   const splashVisible = !booted || !minSplashDone
 

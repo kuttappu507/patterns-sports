@@ -608,15 +608,16 @@
 
 /* ============================================================
    SPLASH SCREEN — compact borderless "match night" boot card.
-   A fully opaque backdrop hides the app behind it while a small
-   floating card shows the bouncing ball, brand and boot progress.
-   Pure CSS ambience, scaled for the small box.
+   The backdrop is fully TRANSPARENT — the boot card floats dead-center
+   over the app itself (which is already mounted and painted behind it),
+   showing the bouncing ball, brand and boot progress. Pure CSS ambience,
+   scaled for the small box.
    ============================================================ */
 
-/* boot overlay: fully OPAQUE match-night backdrop — the app behind is
-   NOT visible while booting, so the main window appears only after the
-   splash completes. No backdrop-filter (a full-screen blur at boot is
-   the single most expensive thing the webview can do). */
+/* boot overlay: transparent — the app behind stays visible while the
+   branded card floats centered above it. No scrim, no backdrop-filter
+   (a full-screen blur at boot is the single most expensive thing the
+   webview can do). */
 .splash-overlay {
   position: fixed;
   inset: 0;
@@ -624,9 +625,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(1100px 640px at 50% 34%, rgba(63, 58, 158, 0.30), transparent 68%),
-    linear-gradient(180deg, #12143a 0%, #0b0c24 55%, #060713 100%);
+  background: transparent;
 }
 
 /* the borderless boot card */
@@ -756,8 +755,13 @@
   #psams-print-root {
     display: block !important;
   }
+  /* ZERO page margins — Chromium/WebView2 suppress the automatic
+     header & footer (URL, date/time stamp, page count) when the page
+     margin box is empty, so paper output is clean by default.
+     Every paper document carries its own padding instead. */
   @page {
-    margin: 10mm;
+    size: auto;
+    margin: 0;
   }
   @page profileA4 {
     size: A4 portrait;
@@ -778,6 +782,27 @@
   .no-print {
     display: none !important;
   }
+}
+
+/* named-page binding — puts each document on its proper paper size
+   (supported in evergreen Chromium / WebView2) */
+.print-page-a4 {
+  page: profileA4;
+}
+.print-page-a5 {
+  page: receiptA5;
+}
+.print-page-thermal {
+  page: thermal80;
+}
+
+/* keep brand colors on paper — the blue letterhead band must not wash out */
+.print-page,
+.print-a4-preview,
+.print-a5-preview,
+.print-thermal-preview {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 /* on-screen preview surfaces for print artifacts */
@@ -815,5 +840,12 @@
   }
   .print-thermal-preview {
     font-size: 10.5px;
+  }
+}
+
+@media(prefers-reduced-motion: reduce) {
+  .splash-ring,
+  .splash-glow {
+    animation: none !important;
   }
 }

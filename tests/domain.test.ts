@@ -10,7 +10,13 @@ import {
   nextReceiptNo,
   parsePaidMonths,
   sanitizeFileName,
+  verticalJumpRating,
+  spikeClearance,
+  reachRatio,
+  trainingAge,
+  healthyWeightBand,
 } from "../src/lib/psams/domain"
+import { toIntlPhone, waLink } from "../src/lib/psams/whatsapp"
 
 // ---------------------------------------------------------------------------
 // Fee ledger (billing starts the month AFTER registration; defaulter =
@@ -239,5 +245,66 @@ describe("monthKey / monthsBetween", () => {
       "2026-02",
       "2026-03",
     ])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Sports-science insights (Athletic Lab) — estimates derived from facts
+// ---------------------------------------------------------------------------
+
+describe("sports science helpers", () => {
+  it("rates a vertical jump gain on the coaching ladder", () => {
+    expect(verticalJumpRating(null).label).toBe("—")
+    expect(verticalJumpRating(35).label).toBe("Developing")
+    expect(verticalJumpRating(45).label).toBe("Average")
+    expect(verticalJumpRating(55).label).toBe("Good")
+    expect(verticalJumpRating(65).label).toBe("Excellent")
+    expect(verticalJumpRating(75).label).toBe("Elite")
+  })
+
+  it("computes spike clearance against the category net height", () => {
+    // Sub-Junior reference net = 2.15 m → 215 cm
+    expect(spikeClearance(228, "Sub-Junior")).toBe(13)
+    expect(spikeClearance(200, "Junior")).toBe(-20) // falls short
+    expect(spikeClearance(null, "Senior")).toBeNull()
+    // unknown category falls back to the Senior net (2.43 m)
+    expect(spikeClearance(250, "Unknown")).toBe(7)
+  })
+
+  it("computes reach-to-height ratio only with both facts", () => {
+    expect(reachRatio(216, 168)).toBeCloseTo(1.2857, 3)
+    expect(reachRatio(216, null)).toBeNull()
+    expect(reachRatio(null, 168)).toBeNull()
+  })
+
+  it("computes training age in whole months since registration", () => {
+    expect(trainingAge("2026-01-15", new Date("2026-07-10"))).toBe(6)
+    expect(trainingAge("bad-date", new Date("2026-07-10"))).toBeNull()
+  })
+
+  it("derives the healthy weight band (BMI 18.5–24.9) for a height", () => {
+    const [lo, hi] = healthyWeightBand(170)!
+    expect(lo).toBe(53)
+    expect(hi).toBe(72)
+    expect(healthyWeightBand(null)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// WhatsApp deep links
+// ---------------------------------------------------------------------------
+
+describe("whatsapp helpers", () => {
+  it("normalises Indian mobiles to international wa.me targets", () => {
+    expect(toIntlPhone("9847012001")).toBe("919847012001")
+    expect(toIntlPhone("+91 98470 12001")).toBe("919847012001")
+    expect(toIntlPhone("919847012001")).toBe("919847012001")
+    expect(toIntlPhone("")).toBe("")
+  })
+
+  it("builds a wa.me link with an encoded pre-filled message", () => {
+    const link = waLink("919847012001", "Fee Receipt\nThank you!")
+    expect(link.startsWith("https://wa.me/919847012001?text=")).toBe(true)
+    expect(link).toContain("Fee%20Receipt")
   })
 })

@@ -160,20 +160,50 @@ export function ReceiptDialog({
           <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Amount</span><span className="font-bold text-emerald-600 dark:text-emerald-300">{formatINR(receipt.amount)}</span></div>
           <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-medium">{receipt.paymentMode}</span></div>
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <Button size="sm" className="h-9 gap-1.5 text-xs" onClick={() => setPrint({ kind: "receipt-a5", title: "Fee Receipt (A5)", data: { receipt, settings } })}>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Button
+            size="sm"
+            className="h-9 gap-1.5 text-xs"
+            onClick={() => setPrint({ kind: "receipt-a5", title: `PS-AMS-Receipt-${receipt.receiptNo}`, data: { receipt, settings }, mode: "direct" })}
+            title="Straight to the default printer — zero page margins, no headers or footers"
+          >
             <Printer className="h-3.5 w-3.5" /> Print A5
           </Button>
-          <Button size="sm" variant="outline" className="h-9 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => setPrint({ kind: "receipt-thermal", title: "POS Slip (80mm)", data: { receipt, settings } })}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 gap-1.5 border-border bg-card text-xs hover:bg-muted"
+            onClick={() => setPrint({ kind: "receipt-a5", title: `PS-AMS-Receipt-${receipt.receiptNo}`, data: { receipt, settings }, mode: "direct" })}
+            title="Opens the print dialog — choose 'Save as PDF' as the destination"
+          >
+            <FileText className="h-3.5 w-3.5" /> Save PDF
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 gap-1.5 border-border bg-card text-xs hover:bg-muted"
+            onClick={() => setPrint({ kind: "receipt-thermal", title: `PS-AMS-Slip-${receipt.receiptNo}`, data: { receipt, settings }, mode: "direct" })}
+            title="Direct thermal print — 80 mm POS roll"
+          >
             <Printer className="h-3.5 w-3.5" /> 80mm Slip
           </Button>
           <Button size="sm" className="h-9 gap-1.5 bg-emerald-600 text-xs font-semibold text-white shadow-[0_8px_18px_-8px_rgba(16,185,129,0.7)] hover:bg-emerald-500 active:scale-[0.97]" onClick={waDispatch}>
             <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
           </Button>
         </div>
-        <p className="text-[15px] text-muted-foreground">
-          A5 renders for standard printers; the 80 mm slip is sized for thermal POS rolls. The WhatsApp button opens the itemized receipt straight in the parent WhatsApp chat with one click.
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-[15px] text-muted-foreground">
+            <b>Print A5 / 80mm Slip</b> go straight to the printer with no automatic headers or time stamps; <b>Save PDF</b> suggests the receipt number as the filename. The <b>WhatsApp</b> button opens the itemized receipt in the parent2019s chat with one click.
+          </p>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 shrink-0 text-[15px] text-muted-foreground hover:text-foreground"
+            onClick={() => setPrint({ kind: "receipt-a5", title: `Fee Receipt ${receipt.receiptNo} (A5)`, data: { receipt, settings } })}
+          >
+            Preview
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -408,8 +438,8 @@ function HistoryTab() {
               <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatINR(p.amount)}</td>
               <td className="px-3 py-2">
                 <div className="flex justify-end gap-1">
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" onClick={() => setPrint({ kind: "receipt-a5", title: "Fee Receipt (A5)", data: { receipt: p, settings } })}>A5</Button>
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" onClick={() => setPrint({ kind: "receipt-thermal", title: "POS Slip (80mm)", data: { receipt: p, settings } })}>Thermal</Button>
+                  <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" title="Straight to the default printer" onClick={() => setPrint({ kind: "receipt-a5", title: `PS-AMS-Receipt-${p.receiptNo}`, data: { receipt: p, settings }, mode: "direct" })}>A5</Button>
+                  <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" title="Direct thermal print — 80 mm roll" onClick={() => setPrint({ kind: "receipt-thermal", title: `PS-AMS-Slip-${p.receiptNo}`, data: { receipt: p, settings }, mode: "direct" })}>Thermal</Button>
                   <Button
                     size="sm"
                     variant="outline"

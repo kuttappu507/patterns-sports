@@ -18,10 +18,13 @@ import {
   Square,
   X,
   TriangleAlert,
+  MapPin,
 } from "lucide-react"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { useAppStore, type ViewKey } from "@/lib/psams/store"
 import { isTauri } from "@/lib/psams/api"
+import { openExternal } from "@/lib/psams/whatsapp"
+import { ACADEMY_MAPS_URL } from "@/lib/psams/domain"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -174,7 +177,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* footer — version marker only (status text intentionally removed) */}
           <div className="relative z-10 pb-4 text-center">
             <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-indigo-200/30">
-              {collapsed ? "v1.4.1" : "PS-AMS · v1.4.1"}
+              {collapsed ? "v1.4.2" : "PS-AMS · v1.4.2"}
             </span>
           </div>
         </motion.aside>
@@ -189,7 +192,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           transition={{ type: "spring", stiffness: 380, damping: 34 }}
           whileHover={{ scale: 1.12 }}
           whileTap={{ scale: 0.92 }}
-          className="absolute top-1/2 z-30 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-[0_6px_18px_-4px_rgba(15,23,42,0.35)] transition-colors hover:border-primary/40 hover:bg-accent hover:text-accent-foreground dark:shadow-[0_0_16px_-4px_rgba(0,0,0,0.8)]"
+          className="absolute top-1/2 z-30 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-[0_6px_18px_-4px_rgba(15,23,42,0.35)] transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_8px_22px_-6px_rgba(99,102,241,0.65)] dark:shadow-[0_0_16px_-4px_rgba(0,0,0,0.8)] dark:hover:shadow-[0_0_20px_-4px_rgba(129,140,248,0.7)]"
         >
           <ChevronLeft className={cn("h-4.5 w-4.5 transition-transform duration-300", collapsed && "rotate-180")} />
         </motion.button>
@@ -300,7 +303,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : null}
             <span className="font-semibold text-muted-foreground">Pattern Sports Volleyball Academy</span>
             <span className="text-border">·</span>
-            <span className="tnum">PS-AMS v1.4.1</span>
+            <span className="tnum">PS-AMS v1.4.2</span>
+            <button
+              type="button"
+              className="hidden items-center gap-1 rounded-full border border-border bg-card/60 px-2.5 py-0.5 text-[11.5px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground md:inline-flex"
+              title="Open the academy location in Google Maps"
+              onClick={() => {
+                void openExternal(ACADEMY_MAPS_URL).catch(() => window.open(ACADEMY_MAPS_URL, "_blank", "noopener,noreferrer"))
+              }}
+            >
+              <MapPin className="h-3 w-3 text-primary/80" /> Karanthur, Kozhikode · Map
+            </button>
             <span className="ml-auto hidden items-center gap-1.5 sm:inline-flex">
               <kbd className="rounded border border-border bg-muted px-1.5 py-px font-sans text-[10px] text-muted-foreground">Alt</kbd>
               <span>+ 1-6 to switch modules</span>

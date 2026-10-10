@@ -178,4 +178,9 @@ export interface PrintPayload {
   kind: PrintKind
   title?: string
   data?: unknown
+  /** "preview" (default) opens the on-screen preview overlay first;
+   *  "direct" skips the preview and fires window.print() immediately —
+   *  the OS print dialog lands on the default printer with zero page
+   *  margins, so no automatic headers/footers/time stamps are drawn. */
+  mode?: "preview" | "direct"
 }

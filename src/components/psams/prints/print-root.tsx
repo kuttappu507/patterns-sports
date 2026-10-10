@@ -11,7 +11,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { FileText, Printer, X } from "lucide-react"
 import { useAppStore } from "@/lib/psams/store"
 import type { AcademySettings, Achievement, FeePayment, PrintPayload, Student } from "@/lib/psams/types"
-import { computeAge, ageDetailed, computeBMI, formatDate, formatINR, monthLabel, parsePaidMonths, categoryBracket } from "@/lib/psams/domain"
+import { computeAge, ageDetailed, computeBMI, formatDate, formatINR, monthLabel, parsePaidMonths, categoryBracket, ACADEMY_MAPS_URL } from "@/lib/psams/domain"
 import { mediaUrl } from "@/lib/psams/api"
 import { Button } from "@/components/ui/button"
 
@@ -24,28 +24,61 @@ const KIND_LABEL: Record<string, string> = {
   "attendance-sheet": "A4 session sheet",
 }
 
-/** Render the paper document for a payload (used by both the print layer and the preview). */
+/** CSS named-page binding per document kind — selects the right paper size. */
+const PAGE_CLASS: Record<string, string> = {
+  "profile-a4": "print-page-a4",
+  "receipt-a5": "print-page-a5",
+  "receipt-thermal": "print-page-thermal",
+  defaulters: "print-page-a4",
+  report: "print-page-a4",
+  "attendance-sheet": "print-page-a4",
+}
+
+/** Render the paper document for a payload (used by both the print layer and the preview).
+ *  Non-preview output is wrapped in the kind's named-page class so the OS print
+ *  dialog preselects the correct paper size (A4 / A5 / 80 mm roll). */
 function PaperFor({ payload, preview }: { payload: PrintPayload; preview?: boolean }) {
+  let paper: React.ReactNode
   switch (payload.kind) {
     case "profile-a4":
-      return <ProfileA4 data={payload.data as ProfileData} preview={preview} />
+      paper = <ProfileA4 data={payload.data as ProfileData} preview={preview} />
+      break
     case "receipt-a5":
-      return <ReceiptA5 data={payload.data as ReceiptData} preview={preview} />
+      paper = <ReceiptA5 data={payload.data as ReceiptData} preview={preview} />
+      break
     case "receipt-thermal":
-      return <ReceiptThermal data={payload.data as ReceiptData} preview={preview} />
+      paper = <ReceiptThermal data={payload.data as ReceiptData} preview={preview} />
+      break
     case "defaulters":
     case "report":
-      return <RosterPrint payload={payload} preview={preview} />
+      paper = <RosterPrint payload={payload} preview={preview} />
+      break
     case "attendance-sheet":
-      return <AttendancePrint data={payload.data as AttendanceData} preview={preview} />
+      paper = <AttendancePrint data={payload.data as AttendanceData} preview={preview} />
+      break
     default:
-      return null
+      paper = null
   }
+  if (preview || !paper) return paper
+  return <div className={PAGE_CLASS[payload.kind] ?? ""}>{paper}</div>
 }
 
 export function PrintRoot() {
   const { printPayload, setPrint } = useAppStore()
-  const open = !!printPayload
+  const open = !!printPayload && printPayload.mode !== "direct"
+
+  /** One-click print from the preview — swaps document.title so a
+   *  "Save as PDF" destination suggests a proper filename, then restores. */
+  function printNow() {
+    if (!printPayload) return
+    const prev = document.title
+    if (printPayload.title) document.title = printPayload.title
+    try {
+      window.print()
+    } finally {
+      document.title = prev
+    }
+  }
 
   return (
     <>
@@ -54,7 +87,7 @@ export function PrintRoot() {
         {printPayload && <PaperFor payload={printPayload} />}
       </div>
 
-      {/* ---------- On-screen preview overlay (never prints) ---------- */}
+      {/* ---------- On-screen preview overlay (never prints; direct mode skips it) ---------- */}
       <AnimatePresence>
         {open && printPayload && (
           <motion.div
@@ -72,11 +105,14 @@ export function PrintRoot() {
               </div>
               <div className="min-w-0">
                 <div className="truncate text-[13.5px] font-semibold">{printPayload.title || "Print preview"}</div>
-                <div className="text-[11px] text-slate-400">{KIND_LABEL[printPayload.kind] ?? "Document"} · what you see is exactly what prints</div>
+                <div className="text-[11px] text-slate-400">{KIND_LABEL[printPayload.kind] ?? "Document"} · zero margins — no headers or footers on paper</div>
               </div>
               <div className="ml-auto flex items-center gap-2">
-                <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => window.print()}>
-                  <Printer className="h-3.5 w-3.5" /> Print / Save as PDF
+                <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={printNow} title="Send straight to the printer — no page headers or footers">
+                  <Printer className="h-3.5 w-3.5" /> Print
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 gap-1.5 border-white/20 bg-white/5 text-xs text-slate-100 hover:bg-white/10" onClick={printNow} title="Choose 'Save as PDF' as the printer destination">
+                  <FileText className="h-3.5 w-3.5" /> Save PDF
                 </Button>
                 <button
                   aria-label="Close preview"
@@ -237,6 +273,8 @@ function ProfileA4({ data, preview }: { data: ProfileData; preview?: boolean }) 
       <SigLine role={settings?.receiptSignatory || "General Secretary"} />
       <div className="mt-2 border-t border-dashed border-neutral-300 pt-1 text-center text-[8.5px] text-neutral-400">
         Generated by PS-AMS · Pattern Sports Academy Management System · {formatDate(new Date())}
+        <br />
+        Find us on Google Maps: {ACADEMY_MAPS_URL.replace("https://", "")}
       </div>
     </div>
   )

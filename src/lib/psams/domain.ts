@@ -77,6 +77,62 @@ export function jumpDelta(spikeReach?: number | null, standingReach?: number | n
   return spikeReach - standingReach
 }
 
+// ---------- Academy identity ----------
+
+/** Official Google Maps location of the academy (shared across footer, settings & prints). */
+export const ACADEMY_MAPS_URL = "https://maps.app.goo.gl/yUGoSNRdvcN4qKdu6"
+
+// ---------- Sports science insights ----------
+// Reference values a coach can act on. They are ESTIMATES computed from
+// the athlete's recorded facts — not medical measurements.
+
+/** Reference net heights (metres) per age category — used for spike clearance. */
+export const NET_HEIGHT_M: Record<string, number> = {
+  Mini: 2.0,
+  "Sub-Junior": 2.15,
+  Junior: 2.2,
+  Youth: 2.35,
+  Senior: 2.43,
+}
+
+/** How far the spike reach clears (or falls short of) the category net, in cm. */
+export function spikeClearance(spikeReachCm?: number | null, ageCategory?: string | null): number | null {
+  if (!spikeReachCm) return null
+  const net = NET_HEIGHT_M[ageCategory || ""] ?? NET_HEIGHT_M.Senior
+  return Math.round(spikeReachCm - net * 100)
+}
+
+/** Rate a vertical jump gain (spike reach − standing reach) in cm. */
+export function verticalJumpRating(gain: number | null): { label: string; color: string } {
+  if (gain === null) return { label: "—", color: "text-muted-foreground" }
+  if (gain < 40) return { label: "Developing", color: "text-amber-600 dark:text-amber-300" }
+  if (gain < 50) return { label: "Average", color: "text-sky-600 dark:text-sky-300" }
+  if (gain < 60) return { label: "Good", color: "text-emerald-600 dark:text-emerald-300" }
+  if (gain < 70) return { label: "Excellent", color: "text-emerald-600 dark:text-emerald-300" }
+  return { label: "Elite", color: "text-violet-600 dark:text-violet-300" }
+}
+
+/** Standing-reach-to-height ratio — typically 1.28–1.33 for court athletes. */
+export function reachRatio(standingReachCm?: number | null, heightCm?: number | null): number | null {
+  if (!standingReachCm || !heightCm || heightCm <= 0) return null
+  return standingReachCm / heightCm
+}
+
+/** Training age — whole months since registration (the coaching "experience" figure). */
+export function trainingAge(registrationDate: string | Date, at: Date = new Date()): number | null {
+  const d = new Date(registrationDate)
+  if (isNaN(d.getTime())) return null
+  const months = (at.getFullYear() - d.getFullYear()) * 12 + (at.getMonth() - d.getMonth())
+  return Math.max(0, months)
+}
+
+/** Healthy weight band (kg) for a height on the adult BMI 18.5–24.9 scale. */
+export function healthyWeightBand(heightCm?: number | null): [number, number] | null {
+  if (!heightCm || heightCm <= 0) return null
+  const m = heightCm / 100
+  return [Math.round(18.5 * m * m), Math.round(24.9 * m * m)]
+}
+
 // ---------- Billing months (YYYY-MM keys) ----------
 
 export function monthKey(d: Date): string {

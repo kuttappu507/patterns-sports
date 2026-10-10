@@ -18,6 +18,12 @@ import {
   Receipt,
   Loader2,
   Download,
+  Activity,
+  Dumbbell,
+  Timer,
+  Scale,
+  Goal,
+  Info,
 } from "lucide-react"
 import {
   fetchStudent,
@@ -39,6 +45,13 @@ import {
   monthLabel,
   MEDAL_ICONS,
   CATEGORY_COLORS,
+  jumpDelta,
+  spikeClearance,
+  verticalJumpRating,
+  reachRatio,
+  trainingAge,
+  healthyWeightBand,
+  NET_HEIGHT_M,
 } from "@/lib/psams/domain"
 import type {
   AcademySettings,
@@ -172,6 +185,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
       <Tabs defaultValue="achievements" className="space-y-3">
         <TabsList className="h-8 bg-card/60 backdrop-blur">
           <TabsTrigger value="achievements" className="h-6 gap-1.5 text-xs"><Trophy className="h-3 w-3" /> Achievements ({student.achievements.length})</TabsTrigger>
+          <TabsTrigger value="athletic-lab" className="h-6 gap-1.5 text-xs"><Activity className="h-3 w-3" /> Athletic Lab</TabsTrigger>
           <TabsTrigger value="fee" className="h-6 gap-1.5 text-xs"><Receipt className="h-3 w-3" /> Fee history ({student.payments.length})</TabsTrigger>
           <TabsTrigger value="documents" className="h-6 gap-1.5 text-xs"><FileText className="h-3 w-3" /> Documents</TabsTrigger>
         </TabsList>
@@ -232,6 +246,11 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
               </AnimatePresence>
             </div>
           </div>
+        </TabsContent>
+
+        {/* athletic lab — sports-science insights derived from recorded facts */}
+        <TabsContent value="athletic-lab">
+          <AthleticLab student={student} age={age} bmi={bmi} band={band} />
         </TabsContent>
 
         {/* fee history */}
@@ -323,6 +342,92 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
           refresh()
         }}
       />
+    </div>
+  )
+}
+
+/* =================== Athletic Lab — sports-science insights =================== */
+
+/** One derived insight card: icon, label, headline value, coach-readable interpretation. */
+function LabTile({ icon, label, value, sub, tone }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-card/60 p-3.5 backdrop-blur transition-colors hover:border-primary/30">
+      <div className="flex items-center gap-1.5 text-[11.5px] font-medium uppercase tracking-wide text-muted-foreground">
+        {icon} {label}
+      </div>
+      <div className={`mt-1.5 font-display text-xl font-bold leading-none tnum ${tone || ""}`}>{value}</div>
+      {sub && <div className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">{sub}</div>}
+    </div>
+  )
+}
+
+function AthleticLab({
+  student: s,
+  age,
+  bmi,
+  band,
+}: {
+  student: StudentWithRelations
+  age: number
+  bmi: number | null
+  band: { label: string; color: string }
+}) {
+  const jump = jumpDelta(s.spikeReachCm, s.standingReachCm)
+  const jumpRate = verticalJumpRating(jump)
+  const clearance = spikeClearance(s.spikeReachCm, s.ageCategory)
+  const ratio = reachRatio(s.standingReachCm, s.heightCm)
+  const tAge = trainingAge(s.registrationDate)
+  const weightBand = healthyWeightBand(s.heightCm)
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <LabTile
+          icon={<Dumbbell className="h-3.5 w-3.5" />}
+          label="Vertical jump gain"
+          value={jump !== null ? `${jump} cm` : "—"}
+          sub={jump !== null ? `Spike ${s.spikeReachCm} − standing ${s.standingReachCm} cm · rated ${jumpRate.label.toLowerCase()} for a court athlete` : "Record standing & spike reach to unlock"}
+          tone={jump !== null ? jumpRate.color : undefined}
+        />
+        <LabTile
+          icon={<Goal className="h-3.5 w-3.5" />}
+          label="Spike clearance vs net"
+          value={clearance !== null ? `${clearance >= 0 ? "+" : ""}${clearance} cm` : "—"}
+          sub={clearance !== null ? `Reference ${s.ageCategory} net height: ${NET_HEIGHT_M[s.ageCategory] ?? NET_HEIGHT_M.Senior} m · ${clearance >= 0 ? "ball can be attacked above the tape" : "needs more jump height to attack above the tape"}` : "Record spike reach to unlock"}
+          tone={clearance !== null ? (clearance >= 0 ? "text-emerald-600 dark:text-emerald-300" : "text-amber-600 dark:text-amber-300") : undefined}
+        />
+        <LabTile
+          icon={<Ruler className="h-3.5 w-3.5" />}
+          label="Reach-to-height ratio"
+          value={ratio !== null ? ratio.toFixed(2) : "—"}
+          sub={ratio !== null ? `Standing reach ÷ height · court athletes typically sit between 1.28 and 1.33` : "Record standing reach & height to unlock"}
+          tone={ratio !== null ? (ratio >= 1.28 && ratio <= 1.33 ? "text-emerald-600 dark:text-emerald-300" : "text-sky-600 dark:text-sky-300") : undefined}
+        />
+        <LabTile
+          icon={<Scale className="h-3.5 w-3.5" />}
+          label="Body composition"
+          value={bmi !== null ? `BMI ${bmi.toFixed(1)}` : "—"}
+          sub={bmi !== null ? `${band.label} · healthy weight for ${s.heightCm ?? "—"} cm ≈ ${weightBand ? `${weightBand[0]}–${weightBand[1]} kg (adult scale)` : "—"}` : "Record height & weight to unlock"}
+        />
+        <LabTile
+          icon={<Timer className="h-3.5 w-3.5" />}
+          label="Training age"
+          value={tAge !== null ? `${tAge} mo` : "—"}
+          sub={tAge !== null ? `In structured training since ${formatDate(s.registrationDate)} · ${tAge >= 24 ? "consolidated fundamentals expected" : "still building the foundation"}` : "—"}
+        />
+        <LabTile
+          icon={<Activity className="h-3.5 w-3.5" />}
+          label="Load watch"
+          value={`${age < 14 ? "Skill-first" : age < 17 ? "Build base" : "Sharpen power"}`}
+          sub={`Age ${age} · ${age < 14 ? "prioritise coordination & ball feel over heavy strength work" : age < 17 ? "bodyweight strength plus plyometrics in a controlled progression" : "progressive loading with jump-landing technique supervision"}`}
+        />
+      </div>
+      <div className="flex items-start gap-2 rounded-xl border border-sky-500/25 bg-sky-500/[0.06] p-3">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-300" />
+        <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+          These are coaching <b className="text-foreground">estimates computed live from the recorded facts</b> — anthropometry, reach measurements, category and registration date. Net heights follow the standard Kerala youth volley ladder (Mini 2.00 m → Senior 2.43 m). For official athlete profiling, log quarterly jump, sprint and flexibility tests and keep the profile up to date.
+        </p>
+      </div>
     </div>
   )
 }

@@ -2,8 +2,8 @@
 
 // ============================================================
 // PS-AMS :: branded splash screen — compact borderless boot card.
-// A small floating "match night" card on a fully OPAQUE backdrop
-// (the app behind is not visible until the splash completes):
+// A small floating "match night" card on a fully TRANSPARENT backdrop
+// (the app stays visible behind the card, which floats dead-center):
 // floodlit gradient, perspective court floor, glowing net band
 // and a bouncing, spinning volleyball. Pure ambience is CSS
 // (.splash); the ball is framer-motion.
@@ -57,8 +57,8 @@ export function Splash({ error }: { error: string | null }) {
   }, [])
 
   return (
-    /* boot overlay — dims + blurs the app behind the card; the whole
-       overlay fades on exit while the card additionally shrinks away */
+    /* boot overlay — transparent; the card floats centered over the app;
+       the whole overlay fades on exit while the card additionally shrinks away */
     <motion.div
       className="splash-overlay"
       initial={{ opacity: 1 }}
@@ -159,7 +159,7 @@ export function Splash({ error }: { error: string | null }) {
 
         {/* footer line */}
         <div className="relative z-10 mt-5 text-[9.5px] font-semibold uppercase tracking-[0.24em] text-indigo-200/40">
-          PS-AMS v1.4.1 · Offline-first
+          PS-AMS v1.4.2 · Offline-first
         </div>
       </motion.div>
     </motion.div>

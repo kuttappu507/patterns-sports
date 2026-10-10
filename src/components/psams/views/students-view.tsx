@@ -162,11 +162,12 @@ export function StudentsView() {
                   {!loading && students.map((s, i) => (
                     <motion.tr
                       key={s.id}
-                      layout
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0, transition: { delay: Math.min(i * 0.03, 0.4) } }}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0, transition: { delay: Math.min(i * 0.02, 0.3) } }}
                       exit={{ opacity: 0 }}
-                      className="group border-b border-border/60 transition-colors hover:bg-muted/40"
+                      onDoubleClick={() => navigate("student-detail", s.id)}
+                      title="Double-click to open the player profile"
+                      className="group cursor-default border-b border-border/60 transition-colors hover:bg-muted/40"
                     >
                       <td className="row-hover px-4 py-2.5">
                         <button className="flex items-center gap-2.5 text-left" onClick={() => navigate("student-detail", s.id)}>
@@ -221,6 +222,8 @@ export function StudentsView() {
           </div>
         </div>
       </StaggerItem>
+
+      <p className="mt-3 px-1 text-[13px] text-muted-foreground">Tip — <b className="text-foreground">double-click</b> any row to open the player2019s full profile.</p>
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent className="border-border bg-popover">

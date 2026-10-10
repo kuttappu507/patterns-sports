@@ -168,9 +168,12 @@ export function CollectFeeDialog() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-y-auto lg:grid-cols-[340px_1fr] lg:overflow-hidden">
+          {/* grid-rows constraint: on desktop the single row is capped to the
+              dialog height (minmax(0,1fr)) so BOTH columns scroll internally
+              instead of the content being clipped with no scrollbar */}
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-y-auto lg:grid-cols-[340px_1fr] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
             {/* student picker */}
-            <div className="flex flex-col border-b lg:border-b-0 lg:border-r">
+            <div className="flex min-h-0 flex-col border-b lg:border-b-0 lg:border-r">
               <div className="border-b p-3">
                 <div className="text-xs font-semibold">1 · Select Student</div>
                 <p className="text-[15px] text-muted-foreground">Pending months are retrieved automatically</p>
@@ -220,7 +223,7 @@ export function CollectFeeDialog() {
                     Pick a student from the left to load their pending billing months.
                   </motion.div>
                 ) : (
-                  <motion.div key={selected.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex-1 space-y-4 overflow-y-auto p-4">
+                  <motion.div key={selected.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
                     <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
                       <div>
                         <div className="text-sm font-semibold">{selected.fullName}</div>
