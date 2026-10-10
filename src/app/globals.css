@@ -637,6 +637,18 @@
   background: transparent;
 }
 
+/* dedicated desktop splash WINDOW (tauri.conf windows[0], ?boot=splash):
+   the whole page must be see-through so the user's desktop shows around
+   the floating boot card — no theme background, no scrollbars. */
+html.splash-window,
+html.splash-window body {
+  background: transparent !important;
+  overflow: hidden;
+}
+html.splash-window body::-webkit-scrollbar {
+  display: none;
+}
+
 /* the borderless boot card */
 .splash {
   position: relative;

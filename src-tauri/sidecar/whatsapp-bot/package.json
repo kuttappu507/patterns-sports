@@ -1,0 +1,16 @@
+{
+  "name": "psams-whatsapp-bot",
+  "version": "1.5.0",
+  "private": true,
+  "type": "module",
+  "description": "PS-AMS WhatsApp linked-device sidecar (Baileys) — compiled to a standalone binary with bun build --compile",
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.7.19",
+    "link-preview-js": "^5.0.0",
+    "pino": "^9.6.0"
+  },
+  "trustedDependencies": [
+    "protobufjs"
+  ]
+}

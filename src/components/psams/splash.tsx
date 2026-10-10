@@ -159,7 +159,7 @@ export function Splash({ error }: { error: string | null }) {
 
         {/* footer line */}
         <div className="relative z-10 mt-5 text-[9.5px] font-semibold uppercase tracking-[0.24em] text-rose-200/40">
-          PS-AMS v1.4.3 · Offline-first
+          PS-AMS v1.5.0 · Offline-first
         </div>
       </motion.div>
     </motion.div>

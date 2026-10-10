@@ -1,6 +1,6 @@
 [package]
 name = "ps-ams"
-version = "1.4.3"
+version = "1.5.0"
 description = "Pattern Sports Academy Management System — offline-first academy suite"
 authors = ["Pattern Sports Academy"]
 edition = "2021"

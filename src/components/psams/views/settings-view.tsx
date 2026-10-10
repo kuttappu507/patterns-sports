@@ -22,6 +22,9 @@ import {
   Mail,
   MapPin,
   Volleyball,
+  MessageCircle,
+  QrCode,
+  Unlink,
 } from "lucide-react"
 import {
   fetchCommittee,
@@ -39,7 +42,7 @@ import {
 } from "@/lib/psams/api"
 import { COMMITTEE_ROLES, type CommitteeMember, type AcademySettings } from "@/lib/psams/types"
 import { ACADEMY_MAPS_URL } from "@/lib/psams/domain"
-import { openExternal } from "@/lib/psams/whatsapp"
+import { openExternal, useWaStore, renderQrDataUrl, type WaStatus } from "@/lib/psams/whatsapp"
 import { useAppStore } from "@/lib/psams/store"
 import { MediaUpload } from "@/components/psams/media-upload"
 import { Button } from "@/components/ui/button"
@@ -58,9 +61,139 @@ export function SettingsView() {
       <CommitteeManager />
       <div className="space-y-5">
         <AcademyProfile />
+        <WhatsAppCard />
         <DataSafety />
         <DemoDataCard />
       </div>
+    </div>
+  )
+}
+
+/* ---------------- WhatsApp Linked Device ---------------- */
+
+const WA_STATUS_META: Record<WaStatus, { label: string; tone: string }> = {
+  unsupported: { label: "Desktop only", tone: "text-muted-foreground border-border bg-muted" },
+  stopped: { label: "Not linked", tone: "text-muted-foreground border-border bg-muted" },
+  starting: { label: "Starting…", tone: "text-sky-700 dark:text-sky-300 border-sky-500/30 bg-sky-500/10" },
+  pairing: { label: "Connecting…", tone: "text-sky-700 dark:text-sky-300 border-sky-500/30 bg-sky-500/10" },
+  waiting_scan: { label: "Waiting for scan", tone: "text-yellow-700 dark:text-yellow-300 border-yellow-500/40 bg-yellow-500/10" },
+  connected: { label: "Linked", tone: "text-emerald-700 dark:text-emerald-300 border-emerald-500/30 bg-emerald-500/10" },
+  reconnecting: { label: "Reconnecting…", tone: "text-amber-700 dark:text-amber-300 border-amber-500/40 bg-amber-500/10" },
+  logged_out: { label: "Unlinked", tone: "text-rose-700 dark:text-rose-300 border-rose-500/30 bg-rose-500/10" },
+}
+
+function WhatsAppCard() {
+  const { toast } = useToast()
+  const { status, qr, me, connect, disconnect } = useWaStore()
+  const [qrImg, setQrImg] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    if (qr) {
+      renderQrDataUrl(qr)
+        .then((d) => {
+          if (alive) setQrImg(d)
+        })
+        .catch(() => {})
+    } else {
+      setQrImg(null)
+    }
+    return () => {
+      alive = false
+    }
+  }, [qr])
+
+  async function link() {
+    setBusy(true)
+    try {
+      await connect()
+    } catch (e) {
+      toast({ title: "Could not start WhatsApp bridge", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function unlink() {
+    setBusy(true)
+    try {
+      await disconnect()
+      toast({ title: "WhatsApp unlinked", description: "The paired device was removed from this computer and the saved session wiped." })
+    } catch (e) {
+      toast({ title: "Could not unlink", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const meta = WA_STATUS_META[status]
+
+  return (
+    <div className="glass rounded-2xl p-4">
+      <div className="mb-2 flex items-center gap-2">
+        <MessageCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+        <span className="text-sm font-semibold">WhatsApp Linked Device</span>
+        <span className={`ml-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta.tone}`}>
+          {status === "connected" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+          {meta.label}
+        </span>
+      </div>
+
+      {status === "connected" ? (
+        <>
+          <p className="text-[15.5px] leading-relaxed text-muted-foreground">
+            The academy WhatsApp is linked to this computer. Receipts and reminders now go out with a single click — straight from this app to the parent’s chat. No WhatsApp Web, no phone handling.
+          </p>
+          {me && (
+            <p className="mt-1 text-[15.5px] font-medium">
+              Linked number: <span className="font-semibold">+{me}</span>
+            </p>
+          )}
+          <div className="mt-3">
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 border-rose-500/30 text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-300" disabled={busy} onClick={unlink}>
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />} Unlink device
+            </Button>
+          </div>
+        </>
+      ) : status === "waiting_scan" && qrImg ? (
+        <>
+          <p className="text-[15.5px] leading-relaxed text-muted-foreground">
+            On the academy phone open <b>WhatsApp → Settings → Linked devices → Link a device</b> and scan this code. One-time setup — afterwards the app reconnects silently on every launch.
+          </p>
+          <div className="mt-3 flex items-center gap-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrImg} alt="WhatsApp pairing QR code" className="h-40 w-40 rounded-xl border-4 border-white shadow-md" />
+            <div className="text-[12px] leading-relaxed text-muted-foreground">
+              <p className="font-semibold text-foreground">QR refreshes automatically</p>
+              <p className="mt-1">Each code is valid for a few seconds; a fresh one appears until the scan succeeds.</p>
+            </div>
+          </div>
+        </>
+      ) : status === "unsupported" ? (
+        <p className="text-[15.5px] leading-relaxed text-muted-foreground">
+          Linked-device sending works in the Windows desktop app. Link the device there once, and receipts will go out from the app itself — one click, no WhatsApp Web.
+        </p>
+      ) : (
+        <>
+          <p className="text-[15.5px] leading-relaxed text-muted-foreground">
+            {status === "waiting_scan"
+              ? "Generating pairing QR…"
+              : status === "starting" || status === "pairing"
+                ? "Connecting to WhatsApp…"
+                : status === "reconnecting"
+                  ? "Connection dropped — reconnecting automatically. The saved pairing survives."
+                  : "Link the academy’s WhatsApp once — scan a QR with the academy phone — and after that every receipt and reminder goes out with a single click, straight from this app. No WhatsApp Web."}
+          </p>
+          {(status === "stopped" || status === "logged_out") && (
+            <div className="mt-3">
+              <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-500" disabled={busy} onClick={link}>
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <QrCode className="h-3.5 w-3.5" />} {status === "logged_out" ? "Scan again to relink" : "Link a device (scan QR)"}
+              </Button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

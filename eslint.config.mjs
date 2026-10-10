@@ -80,7 +80,7 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-undef": "error",
   },
 }, {
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
+  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "src-tauri/**"]
 }];
 
 export default eslintConfig;

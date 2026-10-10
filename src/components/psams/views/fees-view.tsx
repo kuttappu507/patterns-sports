@@ -35,7 +35,7 @@ import {
 import { type FeePayment, type StudentFeeStatus, type AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { exportExcel, exportPDF } from "@/lib/psams/export"
-import { waLink, toIntlPhone, openExternal, receiptWaMessage, reminderWaMessage } from "@/lib/psams/whatsapp"
+import { toIntlPhone, receiptWaMessage, reminderWaMessage, dispatchWa } from "@/lib/psams/whatsapp"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -122,6 +122,7 @@ export function ReceiptDialog({
 }) {
   const { setPrint } = useAppStore()
   const { toast } = useToast()
+  const [waBusy, setWaBusy] = useState(false)
 
   async function waDispatch() {
     if (!receipt) return
@@ -136,10 +137,22 @@ export function ReceiptDialog({
       toast({ title: "You appear to be offline", description: "WhatsApp dispatch needs connectivity. The receipt is still saved and printable.", variant: "destructive" })
       return
     }
+    setWaBusy(true)
     try {
-      await openExternal(waLink(intl, message))
+      const res = await dispatchWa(intl, message)
+      if (res.via === "linked") {
+        if (res.ok) {
+          toast({ title: "Receipt sent on WhatsApp", description: `Delivered through the academy's linked device to +${intl} — no chat window needed.` })
+        } else {
+          toast({ title: "WhatsApp send failed", description: res.error ?? "Unknown error", variant: "destructive" })
+        }
+      } else {
+        toast({ title: "Opening WhatsApp chat", description: "Tip: link the academy WhatsApp once in Settings → WhatsApp Linked Device to send receipts directly — one click, no chat window." })
+      }
     } catch (e) {
-      toast({ title: "Could not open WhatsApp", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+      toast({ title: "Could not send via WhatsApp", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setWaBusy(false)
     }
   }
 
@@ -187,13 +200,13 @@ export function ReceiptDialog({
           >
             <Printer className="h-3.5 w-3.5" /> 80mm Slip
           </Button>
-          <Button size="sm" className="h-9 gap-1.5 bg-emerald-600 text-xs font-semibold text-white shadow-[0_8px_18px_-8px_rgba(16,185,129,0.7)] hover:bg-emerald-500 active:scale-[0.97]" onClick={waDispatch}>
-            <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+          <Button size="sm" disabled={waBusy} className="h-9 gap-1.5 bg-emerald-600 text-xs font-semibold text-white shadow-[0_8px_18px_-8px_rgba(16,185,129,0.7)] hover:bg-emerald-500 active:scale-[0.97]" onClick={waDispatch} title="Sends through the academy's linked WhatsApp device when connected — no chat window opens">
+            {waBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />} WhatsApp
           </Button>
         </div>
         <div className="flex items-center justify-between">
           <p className="text-[15px] text-muted-foreground">
-            <b>Print A5 / 80mm Slip</b> go straight to the printer with no automatic headers or time stamps; <b>Save PDF</b> suggests the receipt number as the filename. The <b>WhatsApp</b> button opens the itemized receipt in the parent2019s chat with one click.
+            <b>Print A5 / 80mm Slip</b> go straight to the printer with no automatic headers or time stamps; <b>Save PDF</b> suggests the receipt number as the filename. The <b>WhatsApp</b> button delivers the itemized receipt through the academy’s linked WhatsApp device — one click, straight to the parent’s chat.
           </p>
           <Button
             size="sm"
@@ -352,9 +365,15 @@ function DefaultersTab() {
                         }
                         const pending = r.overdueMonths.length > 0 ? r.overdueMonths : r.pendingMonths
                         try {
-                          await openExternal(waLink(intl, reminderWaMessage({ studentName: r.student.fullName, academyName: settings?.academyName, periodsLabel: pending.map(monthLabel).join(", "), dueAmount: r.dueAmount })))
+                          const res = await dispatchWa(r.student.mobile, reminderWaMessage({ studentName: r.student.fullName, academyName: settings?.academyName, periodsLabel: pending.map(monthLabel).join(", "), dueAmount: r.dueAmount }))
+                          if (res.via === "linked") {
+                            if (res.ok) toast({ title: "Reminder sent on WhatsApp", description: `Fee reminder for ${r.student.fullName} delivered via the linked device.` })
+                            else toast({ title: "WhatsApp send failed", description: res.error ?? "Unknown error", variant: "destructive" })
+                          } else {
+                            toast({ title: "Opening WhatsApp chat", description: "Tip: link the academy WhatsApp once in Settings → WhatsApp Linked Device for direct one-click sends." })
+                          }
                         } catch (e) {
-                          toast({ title: "Could not open WhatsApp", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+                          toast({ title: "Could not send reminder", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
                         }
                       }}
                     >
@@ -451,9 +470,15 @@ function HistoryTab() {
                         return
                       }
                       try {
-                        await openExternal(waLink(intl, receiptWaMessage(p, settings, parsePaidMonths(p.months).map(monthLabel).join(", "))))
+                        const res = await dispatchWa(mobiles[p.studentId], receiptWaMessage(p, settings, parsePaidMonths(p.months).map(monthLabel).join(", ")))
+                        if (res.via === "linked") {
+                          if (res.ok) toast({ title: "Receipt sent on WhatsApp", description: `Delivered through the linked device to +${intl}.` })
+                          else toast({ title: "WhatsApp send failed", description: res.error ?? "Unknown error", variant: "destructive" })
+                        } else {
+                          toast({ title: "Opening WhatsApp chat", description: "Tip: link the academy WhatsApp once in Settings → WhatsApp Linked Device for direct one-click sends." })
+                        }
                       } catch (e) {
-                        toast({ title: "Could not open WhatsApp", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+                        toast({ title: "Could not send receipt", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
                       }
                     }}
                   >

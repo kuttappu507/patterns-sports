@@ -14,14 +14,37 @@
 //    or a remembered USB drive when present)
 // ============================================================
 
+mod whatsapp;
+
 use serde::Serialize;
 use std::fs;
 use std::path::PathBuf;
-use tauri::{Manager, RunEvent};
+use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::{Manager, RunEvent, WindowEvent};
 
 const APP_DIR_NAME: &str = "PS-AMS";
 const BACKUP_MARKER: &str = "ps-ams-backup-target.txt";
 const SCHEMA_SQL: &str = include_str!("../resources/schema.sql");
+
+/// Set once the main window has been revealed after the splash window.
+static BOOT_REVEALED: AtomicBool = AtomicBool::new(false);
+
+/// Show the main (hidden-at-boot) window, focus it, and dismiss the
+/// splash window. Idempotent — safe to call from finish_boot, the
+/// failsafe timer and the splash-destroyed handler.
+fn reveal_main(app: &tauri::AppHandle) {
+    if BOOT_REVEALED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+    if let Some(s) = app.get_webview_window("splash") {
+        let _ = s.close();
+    }
+    log_line("main window revealed — boot finished");
+}
 
 #[derive(Serialize, Clone)]
 struct DataPaths {
@@ -53,7 +76,7 @@ fn log_dir() -> Option<PathBuf> {
 }
 
 /// Append a timestamped line to boot.log. Best effort — ignore all errors.
-fn log_line(msg: &str) {
+pub(crate) fn log_line(msg: &str) {
     let Some(dir) = log_dir() else { return };
     if fs::create_dir_all(&dir).is_err() {
         return;
@@ -78,7 +101,7 @@ fn log_line(msg: &str) {
 ///   portable:  <exe dir>/PS-AMS-Data/{media,backups}
 ///   installed: %APPDATA%/<identifier>/{media,backups}
 ///              (the SQL plugin opens ps-ams.db in the same folder)
-fn resolve_data_paths(handle: &tauri::AppHandle) -> DataPaths {
+pub(crate) fn resolve_data_paths(handle: &tauri::AppHandle) -> DataPaths {
     let base: PathBuf = match portable_root() {
         Some(p) => p,
         None => handle.path().app_data_dir().unwrap_or_else(|_| {
@@ -189,6 +212,13 @@ fn schema_sql() -> String {
     SCHEMA_SQL.to_string()
 }
 
+/// Frontend command (splash window): boot completed and the minimum
+/// splash time elapsed — reveal the main window and close the splash.
+#[tauri::command]
+fn finish_boot(app: tauri::AppHandle) {
+    reveal_main(&app);
+}
+
 /* ---------------- boot ---------------- */
 
 /// Assemble and run the PS-AMS desktop application.
@@ -221,7 +251,24 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![data_paths, backup_now, schema_sql])
+        .invoke_handler(tauri::generate_handler![
+            data_paths,
+            backup_now,
+            schema_sql,
+            finish_boot,
+            whatsapp::wa_snapshot,
+            whatsapp::wa_start,
+            whatsapp::wa_send,
+            whatsapp::wa_logout
+        ])
+        .manage(whatsapp::WaState::default())
+        .on_window_event(|window, event| {
+            // If the splash window dies for ANY reason (crash, Alt+F4) before
+            // the boot handshake finished, still reveal the main window.
+            if matches!(event, WindowEvent::Destroyed) && window.label() == "splash" {
+                reveal_main(window.app_handle());
+            }
+        })
         .setup(|app| {
             // Create the data layout NOW — before the webview loads — and
             // extend the FS plugin scope to cover it. Portable builds keep
@@ -234,6 +281,28 @@ pub fn run() {
                 log_line(&format!("fs scope extension failed: {e}"));
             }
             log_line(&format!("data root ready: {}", paths.app_data));
+
+            // WhatsApp linked-device sidecar: auto-connect at boot when a
+            // saved pairing session exists (scan-once, send-always). Failure
+            // is non-fatal — the Settings page can retry manually.
+            let wa_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = whatsapp::spawn_sidecar(&wa_handle) {
+                    log_line(&format!("whatsapp sidecar autostart: {e}"));
+                }
+            });
+
+            // Hard failsafe: if the splash window never completes the boot
+            // handshake (webview crash, JS error), reveal the main window
+            // after 30s so the user is never left staring at the desktop.
+            let fs_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(30));
+                if !BOOT_REVEALED.load(Ordering::SeqCst) {
+                    log_line("failsafe: splash did not finish boot in 30s — revealing main");
+                    reveal_main(&fs_handle);
+                }
+            });
             Ok(())
         })
         .build(tauri::generate_context!())
@@ -251,7 +320,8 @@ pub fn run() {
     app.run(|_app_handle, event| match event {
         // ---- Automated data backup on exit ----
         RunEvent::Exit { .. } => {
-            log_line("exit — running backup routine");
+            log_line("exit — killing whatsapp sidecar + running backup routine");
+            whatsapp::kill_sidecar(_app_handle);
             let _ = run_exit_backup(_app_handle);
             log_line("backup routine done");
         }

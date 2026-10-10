@@ -23,7 +23,7 @@ import {
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { useAppStore, type ViewKey } from "@/lib/psams/store"
 import { isTauri } from "@/lib/psams/api"
-import { openExternal } from "@/lib/psams/whatsapp"
+import { openExternal, initWaBridge } from "@/lib/psams/whatsapp"
 import { ACADEMY_MAPS_URL } from "@/lib/psams/domain"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -55,6 +55,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     tick()
     const id = setInterval(tick, 30000)
     return () => clearInterval(id)
+  }, [])
+
+  // WhatsApp linked-device bridge — listen for sidecar events (status,
+  // QR, connected, send acks) and seed the store from the Rust snapshot.
+  // Desktop only; the sidecar itself auto-connects at boot (lib.rs setup).
+  useEffect(() => {
+    initWaBridge()
   }, [])
 
   // Alt+1..6 module shortcuts — desktop-app muscle memory
@@ -177,7 +184,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* footer — version marker only (status text intentionally removed) */}
           <div className="relative z-10 pb-4 text-center">
             <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-sky-200/30">
-              {collapsed ? "v1.4.3" : "PS-AMS · v1.4.3"}
+              {collapsed ? "v1.5.0" : "PS-AMS · v1.5.0"}
             </span>
           </div>
         </motion.aside>
@@ -303,7 +310,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : null}
             <span className="font-semibold text-muted-foreground">Pattern Sports Volleyball Academy</span>
             <span className="text-border">·</span>
-            <span className="tnum">PS-AMS v1.4.3</span>
+            <span className="tnum">PS-AMS v1.5.0</span>
             <button
               type="button"
               className="hidden items-center gap-1 rounded-full border border-border bg-card/60 px-2.5 py-0.5 text-[11.5px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground md:inline-flex"

@@ -1,12 +1,20 @@
 // ============================================================
-// PS-AMS :: WhatsApp one-click dispatch
-// Builds wa.me deep links (open the installed WhatsApp Desktop /
-// mobile app directly, falling back to WhatsApp Web) and opens
-// them through the OS default handler — inside Tauri via the
-// shell plugin (already registered + permitted), on the web via
-// a plain new tab.
-// ============================================================
+// PS-AMS :: WhatsApp dispatch
+//
+// Two delivery paths, chosen automatically per message:
+//
+//  1. LINKED DEVICE (desktop, preferred) — the bundled whatsapp-bot
+//     sidecar (Baileys) holds a "linked device" session with the
+//     academy's WhatsApp (scan the QR once in Settings). Messages go
+//     straight to the recipient's chat with one click — no WhatsApp
+//     Web, no phone in hand.
+//  2. DEEP LINK (fallback) — wa.me link via the OS handler, opening
+//     the installed WhatsApp app (or web.whatsapp.com in a browser).
+//
+// Templates and phone normalization are shared by both paths.
+// ===========================================================
 
+import { create } from "zustand"
 import { isTauri } from "@/lib/psams/api"
 import type { AcademySettings, FeePayment } from "@/lib/psams/types"
 
@@ -83,4 +91,167 @@ export function reminderWaMessage(opts: {
     `Kindly clear the dues at your earliest convenience. Thank you! 🏐`,
   ]
   return lines.join("\n")
+}
+
+/* ============ linked-device bridge (Baileys sidecar) ============ */
+
+export type WaStatus =
+  | "unsupported" // web build — sidecar path does not exist
+  | "stopped" // sidecar not running / not yet paired
+  | "starting" // process spawned, handshake in progress
+  | "pairing" // socket connecting
+  | "waiting_scan" // QR issued — waiting for the phone to scan
+  | "connected" // linked and ready
+  | "reconnecting" // transient drop, session persists
+  | "logged_out" // pairing revoked on the phone
+
+interface WaStore {
+  status: WaStatus
+  qr: string | null
+  me: string | null // linked account's phone number, when connected
+  refresh: () => Promise<void>
+  connect: () => Promise<void>
+  disconnect: () => Promise<void>
+  send: (to: string, text: string) => Promise<{ ok: boolean; error?: string }>
+}
+
+export const useWaStore = create<WaStore>(() => ({
+  status: "stopped",
+  qr: null,
+  me: null,
+  refresh: async () => {
+    if (!isTauri()) {
+      useWaStore.setState({ status: "unsupported" })
+      return
+    }
+    try {
+      const { invoke } = await import("@tauri-apps/api/core")
+      const snap = await invoke<{ status: WaStatus; qr: string | null; me: string | null }>("wa_snapshot")
+      useWaStore.setState({
+        status: snap.status,
+        qr: snap.qr,
+        me: snap.me ? snap.me.split(":")[0] : null,
+      })
+    } catch {
+      /* bridge not ready — stay on current state */
+    }
+  },
+  connect: async () => {
+    if (!isTauri()) return
+    const { invoke } = await import("@tauri-apps/api/core")
+    const snap = await invoke<{ status: WaStatus; qr: string | null; me: string | null }>("wa_start")
+    useWaStore.setState({ status: snap.status, qr: snap.qr })
+  },
+  disconnect: async () => {
+    if (!isTauri()) return
+    const { invoke } = await import("@tauri-apps/api/core")
+    await invoke("wa_logout")
+    useWaStore.setState({ status: "stopped", qr: null, me: null })
+  },
+  send: async (to, text) => {
+    if (!isTauri()) return { ok: false, error: "WhatsApp linked-device sending is desktop-only" }
+    const id = `wa-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const ack = waitWaAck(id, 20000)
+    try {
+      const { invoke } = await import("@tauri-apps/api/core")
+      await invoke("wa_send", { to, text, id })
+    } catch (e) {
+      pendingAcks.delete(id)
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+    return ack
+  },
+}))
+
+/* pending send acknowledgements, resolved by "sent"/"send_error" events */
+const pendingAcks = new Map<string, (ok: boolean, error?: string) => void>()
+
+function waitWaAck(id: string, timeoutMs: number): Promise<{ ok: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      if (pendingAcks.delete(id)) resolve({ ok: false, error: "WhatsApp did not acknowledge in time" })
+    }, timeoutMs)
+    pendingAcks.set(id, (ok, error) => {
+      clearTimeout(timer)
+      pendingAcks.delete(id)
+      resolve(ok ? { ok: true } : { ok: false, error })
+    })
+  })
+}
+
+let bridgeReady = false
+
+/** Listen for sidecar events and seed the store. Call once (AppShell). */
+export function initWaBridge(): void {
+  if (bridgeReady) return
+  if (!isTauri()) {
+    // web build — no sidecar path; the Settings card explains desktop-only
+    useWaStore.setState({ status: "unsupported" })
+    return
+  }
+  bridgeReady = true
+  void (async () => {
+    try {
+      const { listen } = await import("@tauri-apps/api/event")
+      await listen<Record<string, unknown>>("wa://event", (e) => {
+        const p = (e.payload ?? {}) as { type?: string; value?: unknown; id?: unknown; error?: unknown }
+        switch (p.type) {
+          case "status":
+            useWaStore.setState({ status: (p.value as WaStatus) || "stopped" })
+            break
+          case "qr":
+            useWaStore.setState({ status: "waiting_scan", qr: (p.value as string) ?? null })
+            break
+          case "connected": {
+            const jid = String(p.value ?? "")
+            const me = jid.split("@")[0]?.split(":")[0] || null
+            useWaStore.setState({ status: "connected", me, qr: null })
+            break
+          }
+          case "sent": {
+            pendingAcks.get(String(p.id ?? ""))?.(true)
+            break
+          }
+          case "send_error": {
+            pendingAcks.get(String(p.id ?? ""))?.(false, String(p.error ?? "send failed"))
+            break
+          }
+        }
+      })
+      await useWaStore.getState().refresh()
+    } catch (e) {
+      console.warn("wa bridge init failed", e)
+      bridgeReady = false
+    }
+  })()
+}
+
+/**
+ * One-click WhatsApp dispatch.
+ * Desktop + linked  → through the sidecar (no window ever opens).
+ * Otherwise        → wa.me deep link via the OS handler (graceful fallback).
+ */
+export async function dispatchWa(
+  phone: string,
+  message: string,
+): Promise<{ via: "linked" | "link"; ok: boolean; error?: string }> {
+  if (isTauri()) {
+    const { status, send } = useWaStore.getState()
+    if (status === "connected") {
+      const res = await send(toIntlPhone(phone), message)
+      return { via: "linked", ...res }
+    }
+  }
+  await openExternal(waLink(toIntlPhone(phone), message))
+  return { via: "link", ok: true }
+}
+
+/** Render a raw QR payload into a data URL for the pairing card. */
+export async function renderQrDataUrl(text: string): Promise<string> {
+  const QR = (await import("qrcode")).default
+  return QR.toDataURL(text, {
+    margin: 1,
+    width: 264,
+    color: { dark: "#073b4c", light: "#ffffff" },
+  })
 }

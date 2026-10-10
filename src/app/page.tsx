@@ -15,6 +15,7 @@ import { AlertTriangle, RotateCcw } from "lucide-react"
 import { useAppStore, initHashRouting } from "@/lib/psams/store"
 import { AppShell } from "@/components/psams/app-shell"
 import { Splash } from "@/components/psams/splash"
+import { SplashWindow } from "@/components/psams/splash-window"
 import { PrintRoot } from "@/components/psams/prints/print-root"
 import { StudentFormDialog } from "@/components/psams/student-form-dialog"
 import { CollectFeeDialog } from "@/components/psams/collect-fee-dialog"
@@ -79,66 +80,52 @@ export default function Home() {
   const [bootError, setBootError] = useState<string | null>(null)
   const [minSplashDone, setMinSplashDone] = useState(false)
   const [splashGone, setSplashGone] = useState(false)
+  // "boot" = window kind not yet resolved · "splash" = dedicated boot
+  // window (small transparent card on the desktop) · "app" = main app.
+  // The main window stays hidden until the splash window finishes the
+  // boot handshake — the app and the splash are never seen together.
+  const [mode, setMode] = useState<"boot" | "app" | "splash">("boot")
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("boot")
+    setMode(q === "splash" && isTauri() ? "splash" : "app")
+  }, [])
 
   // Boot the offline backend (SQLite + media dirs) before any view loads,
   // and wire hash routing (#/students, #/fees, …) so refresh + browser
-  // back/forward keep the current module.
+  // back/forward keep the current module. On desktop the result is also
+  // broadcast to the splash window via "psams://booted".
   useEffect(() => {
     initHashRouting()
     let alive = true
     ;(async () => {
+      let err: string | null = null
       try {
         if (isTauri()) await initBackend()
       } catch (e) {
         console.error("Backend boot failed", e)
+        err = e instanceof Error ? e.message : String(e)
         if (alive) {
-          const msg = e instanceof Error ? e.message : String(e)
-          setBootError(msg)
+          setBootError(err)
           // also surface it in the shell footer — the splash disappears, the error must not
-          useAppStore.getState().setBootError(msg)
+          useAppStore.getState().setBootError(err)
         }
       } finally {
-        if (alive) setBooted(true)
+        if (alive) {
+          setBooted(true)
+          if (isTauri()) {
+            try {
+              const { emit } = await import("@tauri-apps/api/event")
+              await emit("psams://booted", { ok: !err, error: err })
+            } catch (e) {
+              console.warn("booted event failed", e)
+            }
+          }
+        }
       }
     })()
     return () => {
       alive = false
-    }
-  }, [])
-
-  // Frameless desktop: the OS window starts hidden (tauri.conf "visible": false)
-  // so the raw white webview frame never flashes. Reveal it as soon as the
-  // branded splash card has painted — the user sees the transparent-backed
-  // splash floating dead-center over the app first, and the boot card only
-  // hands over to the interface once it completes.
-  useEffect(() => {
-    if (!isTauri()) return
-    let cancelled = false
-    const raf = requestAnimationFrame(() => {
-      setTimeout(async () => {
-        if (cancelled) return
-        try {
-          const { getCurrentWindow } = await import("@tauri-apps/api/window")
-          await getCurrentWindow().show()
-        } catch (e) {
-          console.warn("Window reveal failed", e)
-        }
-      }, 60)
-    })
-    // hard fallback — never leave the user staring at nothing
-    const failsafe = setTimeout(async () => {
-      if (cancelled) return
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window")
-        await getCurrentWindow().show()
-      } catch {
-        /* already shown */
-      }
-    }, 2500)
-    return () => {
-      cancelled = true
-      cancelAnimationFrame(raf)
-      clearTimeout(failsafe)
     }
   }, [])
 
@@ -182,7 +169,20 @@ export default function Home() {
     }
   }, [directPayload])
 
-  const splashVisible = !booted || !minSplashDone
+  // Web preview keeps the in-app splash overlay. On desktop the splash is
+  // its own window (SplashWindow) — the main window renders straight away,
+  // safely invisible until the boot handshake reveals it.
+  const inAppSplash = !isTauri()
+  const splashVisible = inAppSplash && (!booted || !minSplashDone)
+
+  if (mode === "splash") {
+    return <SplashWindow />
+  }
+  if (mode === "boot") {
+    // one blank frame while the window kind resolves — the main window is
+    // hidden at this point and the splash window page is transparent
+    return null
+  }
 
   return (
     <>

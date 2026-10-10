@@ -41,6 +41,7 @@
     "skills",
     "download",
     "docs",
-    "scripts/seed-check.cjs"
+    "scripts/seed-check.cjs",
+    "src-tauri/sidecar"
   ]
 }

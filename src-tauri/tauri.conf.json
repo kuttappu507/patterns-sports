@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "PS-AMS",
-  "version": "1.4.3",
+  "version": "1.5.0",
   "identifier": "in.patternsports.psams",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -12,6 +12,23 @@
   "app": {
     "windows": [
       {
+        "label": "splash",
+        "title": "PS-AMS",
+        "url": "index.html?boot=splash",
+        "width": 460,
+        "height": 680,
+        "center": true,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": true,
+        "visible": true
+      },
+      {
+        "label": "main",
         "title": "Pattern Sports Academy Management System",
         "width": 1440,
         "height": 900,
@@ -45,6 +62,7 @@
       "icons/icon.ico",
       "icons/icon.png"
     ],
+    "externalBin": ["binaries/whatsapp-bot"],
     "windows": {
       "webviewInstallMode": {
         "type": "embedBootstrapper"
