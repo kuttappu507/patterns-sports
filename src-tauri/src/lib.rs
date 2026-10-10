@@ -291,14 +291,16 @@ pub fn run() {
                 let _ = main_win.maximize();
             }
 
-            // WhatsApp linked-device engine (native, in-process — no
-            // sidecar): auto-connects at boot when a saved pairing session
-            // exists (scan-once, send-always). Failure is non-fatal — the
-            // Settings page can retry manually.
+            // WhatsApp linked-device sidecar (native Rust engine): auto-
+            // connect at boot when a saved pairing session exists (scan-once,
+            // send-always). Failure is non-fatal — the Settings page can
+            // retry manually.
             let wa_handle = app.handle().clone();
-            if let Err(e) = whatsapp::start_engine(&wa_handle) {
-                log_line(&format!("whatsapp engine autostart: {e}"));
-            }
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = whatsapp::spawn_sidecar(&wa_handle) {
+                    log_line(&format!("whatsapp sidecar autostart: {e}"));
+                }
+            });
 
             // Hard failsafe: if the splash window never completes the boot
             // handshake (webview crash, JS error), reveal the main window
@@ -328,8 +330,8 @@ pub fn run() {
     app.run(|_app_handle, event| match event {
         // ---- Automated data backup on exit ----
         RunEvent::Exit { .. } => {
-            log_line("exit — stopping whatsapp engine + running backup routine");
-            whatsapp::shutdown_engine(_app_handle);
+            log_line("exit — killing whatsapp sidecar + running backup routine");
+            whatsapp::kill_sidecar(_app_handle);
             let _ = run_exit_backup(_app_handle);
             log_line("backup routine done");
         }

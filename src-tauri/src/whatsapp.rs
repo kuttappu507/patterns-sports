@@ -1,54 +1,36 @@
 // ============================================================
-// PS-AMS :: WhatsApp linked-device engine — 100 % native Rust
+// PS-AMS :: WhatsApp linked-device bridge (native Rust sidecar)
 //
-// Powered by the `whatsapp-rust` crate (a native port of the
-// whatmeow / Baileys protocol stack). This replaces the previous
-// Bun-compiled Baileys sidecar that added ~40 MB to every
-// installer and slowed the app down: everything now runs
-// IN-PROCESS on a dedicated tokio runtime.
+// Spawns the bundled `whatsapp-bot` sidecar binary — a ~6 MB native
+// Rust engine built on the `whatsapp-rust` crate (the whatmeow/Baileys
+// protocol stack ported to Rust, NO Node.js anywhere) — and shuttles
+// NDJSON frames over stdio:
 //
-//  - Scan-once pairing: the engine connects at boot; when the
-//    academy WhatsApp is not yet linked it emits a raw QR string
-//    that the Settings page renders (WhatsApp → Linked devices).
-//  - Session persistence: the pairing lives in a SQLite store
-//    under <data root>/whatsapp-session — every later launch
-//    reconnects silently, no re-scan, no WhatsApp Web.
-//  - One-click sends: text (`wa_send`) and PDF documents
-//    (`wa_send_document`) go straight to the recipient's chat.
+//   app -> sidecar : {"type":"send","id":"..","to":"9194..","text":".."}
+//                    {"type":"send_document","id":"..","to":"..",
+//                     "data_base64":"..","file_name":"..","caption":".."}
+//                    {"type":"logout"}
+//   sidecar -> app : {"type":"status","value":"pairing|reconnecting|.."}
+//                    {"type":"qr","value":"<raw qr payload>"}
+//                    {"type":"connected","value":"<jid>"}
+//                    {"type":"sent"|"send_error","id":"..",..}
 //
-// The IPC contract with the frontend (src/lib/psams/whatsapp.ts)
-// is unchanged from the sidecar era:
-//
-//   commands : wa_snapshot / wa_start / wa_send / wa_logout
-//              (+ new wa_send_document for PDF receipts)
-//   events   : wa://event {type: status|qr|connected|sent|send_error}
+// The pairing session persists in <data root>/whatsapp-session, so a
+// QR scan is a ONE-TIME setup: every later launch reconnects silently
+// and receipts go out with a single click — no WhatsApp Web.
+// (The sidecar is a SEPARATE binary because the app itself links
+// libsqlite3-sys 0.28 via sqlx while the engine links 0.37 via diesel;
+// Cargo's `links` rule forbids both in one executable.)
 // ============================================================
 
-use base64::Engine as _;
 use serde::Serialize;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
-use whatsapp_rust::bot::Bot;
-use whatsapp_rust::http::UreqHttpClient;
-use whatsapp_rust::media;
-use whatsapp_rust::store::SqliteStore;
-use whatsapp_rust::transport::TokioWebSocketTransportFactory;
-use whatsapp_rust::wacore::download::MediaType;
-use whatsapp_rust::wacore::types::events::Event;
-use whatsapp_rust::{Client, Jid, TokioRuntime};
-
-/// 20 MB cap on receipt/document uploads — receipts are ~50 KB.
-const MAX_DOCUMENT_BYTES: usize = 20 * 1024 * 1024;
+use tauri_plugin_shell::process::{Command, CommandChild, CommandEvent};
+use tauri_plugin_shell::ShellExt;
 
 pub struct WaState {
-    /// Dedicated tokio runtime for the WhatsApp engine. The engine is
-    /// fully self-contained (its own reconnect loop, storage saver and
-    /// callback workers) and must never block or destabilise the UI.
-    rt: Mutex<Option<Arc<tokio::runtime::Runtime>>>,
-    /// Live client once the engine is running.
-    client: Mutex<Option<Arc<Client>>>,
-    /// Supervision handle — abort() tears the engine down.
-    handle: Mutex<Option<whatsapp_rust::bot::BotHandle>>,
+    child: Mutex<Option<CommandChild>>,
     status: Mutex<String>,
     qr: Mutex<Option<String>>,
     me: Mutex<Option<String>>,
@@ -57,9 +39,7 @@ pub struct WaState {
 impl Default for WaState {
     fn default() -> Self {
         Self {
-            rt: Mutex::new(None),
-            client: Mutex::new(None),
-            handle: Mutex::new(None),
+            child: Mutex::new(None),
             status: Mutex::new("stopped".into()),
             qr: Mutex::new(None),
             me: Mutex::new(None),
@@ -88,7 +68,6 @@ fn set_status(app: &AppHandle, status: &str) {
     if status != "waiting_scan" {
         *state.qr.lock().unwrap() = None;
     }
-    drop(state);
     let _ = app.emit("wa://event", serde_json::json!({ "type": "status", "value": status }));
 }
 
@@ -98,165 +77,122 @@ fn auth_dir(app: &AppHandle) -> String {
     format!("{}/whatsapp-session", base.trim_end_matches('/'))
 }
 
-fn emit_wa(app: &AppHandle, value: serde_json::Value) {
-    let _ = app.emit("wa://event", value);
+/// Resolve the sidecar: shell-plugin resolution first (handles dev vs
+/// installed layouts), plain exe-dir fallback second.
+fn resolve_command(app: &AppHandle) -> Result<Command, String> {
+    if let Ok(cmd) = app.shell().sidecar("whatsapp-bot") {
+        return Ok(cmd.args(["--auth-dir", &auth_dir(app)]));
+    }
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let dir = exe.parent().ok_or("no exe dir")?;
+    let path = dir.join(if cfg!(windows) { "whatsapp-bot.exe" } else { "whatsapp-bot" });
+    if !path.exists() {
+        return Err(format!("whatsapp-bot sidecar not found at {}", path.display()));
+    }
+    Ok(app
+        .shell()
+        .command(path.to_string_lossy().into_owned())
+        .args(["--auth-dir", &auth_dir(app)]))
 }
 
-/* ---------------- engine lifecycle ---------------- */
-
-/// Start the in-process WhatsApp engine (no-op when already running).
-/// Called automatically at boot; `wa_start` invokes it from Settings.
-pub fn start_engine(app: &AppHandle) -> Result<(), String> {
+/// Spawn the sidecar (no-op when already running) and start the reader loop.
+pub fn spawn_sidecar(app: &AppHandle) -> Result<(), String> {
     {
         let state = app.state::<WaState>();
-        if state.client.lock().unwrap().is_some() {
-            return Ok(()); // engine already live
-        }
-        // Guard against double-spawn while a boot attempt is in flight.
-        let busy = matches!(
-            state.status.lock().unwrap().as_str(),
-            "starting" | "pairing" | "waiting_scan" | "connected" | "reconnecting"
-        );
-        let live = state.rt.lock().unwrap().is_some();
-        if live && busy {
-            return Ok(());
+        let mut guard = state.child.lock().unwrap();
+        if guard.is_some() {
+            return Ok(()); // already connected / pairing
         }
     }
 
-    let rt = {
-        let mut guard = app.state::<WaState>().rt.lock().unwrap();
-        if guard.is_none() {
-            let runtime = tokio::runtime::Runtime::new()
-                .map_err(|e| format!("whatsapp runtime: {e}"))?;
-            *guard = Some(Arc::new(runtime));
-        }
-        guard.as_ref().unwrap().clone()
-    };
+    let cmd = resolve_command(app)?;
+    let (mut rx, child) = cmd.spawn().map_err(|e| format!("sidecar spawn failed: {e}"))?;
+    log_line("whatsapp-bot sidecar spawned");
 
-    set_status(app, "starting");
-    log_line("whatsapp engine starting (native, in-process)");
+    {
+        let state = app.state::<WaState>();
+        *state.child.lock().unwrap() = Some(child);
+        *state.status.lock().unwrap() = "starting".into();
+        let _ = app.emit("wa://event", serde_json::json!({ "type": "status", "value": "starting" }));
+    }
 
-    let app_for_task = app.clone();
-    rt.spawn(async move {
-        if let Err(e) = boot_bot(app_for_task).await {
-            log_line(&format!("whatsapp engine failed: {e}"));
-            set_status(&app_for_task, "stopped");
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            match event {
+                CommandEvent::Stdout(line) => handle_sidecar_line(&handle, &line),
+                CommandEvent::Stderr(line) => {
+                    let text = String::from_utf8_lossy(&line);
+                    log_line(&format!("wa-bot stderr: {}", text.trim()));
+                }
+                CommandEvent::Terminated(status) => {
+                    let _ = status;
+                    let state = handle.state::<WaState>();
+                    if let Some(c) = state.child.lock().unwrap().take() {
+                        let _ = c.kill();
+                    }
+                    drop(state);
+                    log_line("whatsapp-bot sidecar exited");
+                    set_status(&handle, "stopped");
+                    *handle.state::<WaState>().me.lock().unwrap() = None;
+                    break;
+                }
+                CommandEvent::Error(err) => {
+                    log_line(&format!("wa-bot error: {err}"));
+                }
+                _ => {}
+            }
         }
     });
+
     Ok(())
 }
 
-/// Build the bot on the dedicated runtime and keep its handle in state.
-/// The SQLite session store makes the QR scan a ONE-TIME setup.
-async fn boot_bot(app: AppHandle) -> Result<(), String> {
-    let dir = auth_dir(&app);
-    std::fs::create_dir_all(&dir).map_err(|e| format!("session dir: {e}"))?;
-    let store_path = format!("{}/wa-store.db", dir.trim_end_matches('/'));
-
-    let backend = SqliteStore::new(&store_path)
-        .await
-        .map_err(|e| format!("session store: {e}"))?;
-
-    let app_for_events = app.clone();
-    let bot = Bot::builder()
-        .with_backend(backend)
-        .with_transport_factory(TokioWebSocketTransportFactory::new())
-        .with_http_client(UreqHttpClient::new())
-        .with_runtime(TokioRuntime)
-        .on_event(move |event, client| {
-            let app = app_for_events.clone();
-            async move { handle_event(&app, &event, &client).await }
-        })
-        .build()
-        .await
-        .map_err(|e| format!("bot build: {e}"))?;
-
-    let handle = bot.spawn();
-    let client = handle.client();
-    {
-        let state = app.state::<WaState>();
-        *state.client.lock().unwrap() = Some(client.clone());
-        *state.handle.lock().unwrap() = Some(handle);
+/// Parse one NDJSON frame from the sidecar, update state and forward to UI.
+fn handle_sidecar_line(app: &AppHandle, raw: &[u8]) {
+    let text = String::from_utf8_lossy(raw).trim().to_string();
+    if text.is_empty() {
+        return;
     }
-
-    // If a saved session exists the Connected event fires on its own;
-    // otherwise the server sends pairing refs → PairingQrCode event.
-    if client.is_logged_in() {
-        set_status(&app, "pairing");
-        log_line("whatsapp engine running — saved session reconnecting");
-    } else {
-        log_line("whatsapp engine running — waiting for pairing (QR)");
-    }
-    Ok(())
-}
-
-/// Forward engine events to the UI (same payloads the old sidecar sent).
-async fn handle_event(app: &AppHandle, event: &Event, client: &Arc<Client>) {
-    match event {
-        Event::PairingQrCode(qr) => {
-            {
-                let state = app.state::<WaState>();
-                *state.qr.lock().unwrap() = Some(qr.code.clone());
-                *state.status.lock().unwrap() = "waiting_scan".into();
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else {
+        log_line(&format!("wa-bot unparsed: {}", &text[..text.len().min(160)]));
+        return;
+    };
+    let kind = v.get("type").and_then(|t| t.as_str()).unwrap_or("").to_string();
+    let state = app.state::<WaState>();
+    match kind.as_str() {
+        "status" => {
+            let s = v.get("value").and_then(|x| x.as_str()).unwrap_or("").to_string();
+            if !s.is_empty() {
+                *state.status.lock().unwrap() = s;
             }
+            let _ = app.emit("wa://event", v);
+        }
+        "qr" => {
+            let qr = v.get("value").and_then(|x| x.as_str()).map(|s| s.to_string());
+            *state.qr.lock().unwrap() = qr;
+            *state.status.lock().unwrap() = "waiting_scan".into();
             log_line("whatsapp pairing QR issued");
-            emit_wa(app, serde_json::json!({ "type": "qr", "value": qr.code }));
+            let _ = app.emit("wa://event", v);
         }
-        Event::PairSuccess(info) => {
-            log_line(&format!("whatsapp paired as {}", info.id));
+        "connected" => {
+            let jid = v.get("value").and_then(|x| x.as_str()).unwrap_or("").to_string();
+            let me = jid.split('@').next().unwrap_or("").to_string();
+            *state.me.lock().unwrap() = if me.is_empty() { None } else { Some(me) };
+            *state.qr.lock().unwrap() = None;
+            *state.status.lock().unwrap() = "connected".into();
+            log_line(&format!("whatsapp connected: {jid}"));
+            let _ = app.emit("wa://event", v);
         }
-        Event::Connected(_) => {
-            let me = client
-                .pn()
-                .map(|j| j.user.to_string())
-                .unwrap_or_default();
-            {
-                let state = app.state::<WaState>();
-                *state.me.lock().unwrap() = if me.is_empty() { None } else { Some(me.clone()) };
-                *state.qr.lock().unwrap() = None;
-                *state.status.lock().unwrap() = "connected".into();
-            }
-            log_line(&format!("whatsapp connected: {me}"));
-            emit_wa(app, serde_json::json!({ "type": "connected", "value": format!("{me}@s.whatsapp.net") }));
-            emit_wa(app, serde_json::json!({ "type": "status", "value": "connected" }));
+        "sent" | "send_error" => {
+            let _ = app.emit("wa://event", v);
         }
-        Event::Disconnected(_) => {
-            // The client auto-reconnects with backoff; the saved session
-            // survives, so this is transient unless the phone unlinks us.
-            set_status(app, "reconnecting");
-        }
-        Event::LoggedOut(_) => {
-            {
-                let state = app.state::<WaState>();
-                *state.me.lock().unwrap() = None;
-                *state.status.lock().unwrap() = "logged_out".into();
-            }
-            // Session is invalid — wipe it so the next start re-pairs cleanly.
-            let _ = std::fs::remove_dir_all(auth_dir(app));
-            log_line("whatsapp logged out on the phone — session wiped");
-        }
-        Event::StreamError(e) => {
-            log_line(&format!("whatsapp stream error: {e:?}"));
-        }
-        Event::ConnectFailure(e) => {
-            log_line(&format!("whatsapp connect failure: {e:?}"));
+        "log" => {
+            let msg = v.get("value").and_then(|x| x.as_str()).unwrap_or("");
+            log_line(&format!("wa-bot: {msg}"));
         }
         _ => {}
     }
-}
-
-/// Tear the engine down (app exit). Abort is intentional: the session
-/// saver persists continuously, so nothing is lost by not awaiting.
-pub fn shutdown_engine(app: &AppHandle) {
-    let state = app.state::<WaState>();
-    let handle = state.handle.lock().unwrap().take();
-    drop(state.client.lock().unwrap().take());
-    drop(state);
-    if let Some(h) = handle {
-        h.abort();
-    }
-    set_status(app, "stopped");
-    log_line("whatsapp engine stopped");
 }
 
 /* ---------------- frontend commands ---------------- */
@@ -268,78 +204,30 @@ pub fn wa_snapshot(state: State<'_, WaState>) -> WaSnapshot {
 
 #[tauri::command]
 pub async fn wa_start(app: AppHandle) -> Result<WaSnapshot, String> {
-    start_engine(&app)?;
+    spawn_sidecar(&app)?;
     let state = app.state::<WaState>();
     Ok(snapshot(&*state))
 }
 
-/// Normalise and validate a recipient: digits only, E.164-ish length.
-fn recipient_jid(to: &str) -> Result<Jid, String> {
-    let digits: String = to.chars().filter(|c| c.is_ascii_digit()).collect();
-    if digits.len() < 8 || digits.len() > 15 {
-        return Err("Invalid WhatsApp number — expected the full mobile number with country code".into());
-    }
-    format!("{digits}@s.whatsapp.net")
-        .parse::<Jid>()
-        .map_err(|e| format!("invalid JID: {e}"))
-}
-
-fn runtime(app: &AppHandle) -> Result<Arc<tokio::runtime::Runtime>, String> {
-    {
-        let state = app.state::<WaState>();
-        if let Some(rt) = state.rt.lock().unwrap().as_ref() {
-            return Ok(rt.clone());
-        }
-    }
-    // Engine never started — spin the runtime up so commands still work.
-    start_engine(app)?;
-    app.state::<WaState>()
-        .rt
-        .lock()
-        .unwrap()
-        .as_ref()
-        .cloned()
-        .ok_or_else(|| "whatsapp runtime unavailable".into())
-}
-
 #[tauri::command]
 pub async fn wa_send(app: AppHandle, to: String, text: String, id: Option<String>) -> Result<(), String> {
-    let client = {
-        let state = app.state::<WaState>();
-        state.client.lock().unwrap().clone()
+    let state = app.state::<WaState>();
+    let mut guard = state.child.lock().unwrap();
+    let Some(child) = guard.as_mut() else {
+        return Err("WhatsApp is not connected".into());
     };
-    let Some(client) = client else {
-        return Err("WhatsApp is not connected — link the academy WhatsApp in Settings first".into());
-    };
-    let jid = recipient_jid(&to)?;
-    // Hard cap the payload; WhatsApp itself rejects >65k chars.
-    let text: String = text.chars().take(4096).collect();
+    let digits: String = to.chars().filter(|c| c.is_ascii_digit()).collect();
     let frame_id = id.unwrap_or_else(|| format!("wa-{}", chrono::Local::now().timestamp_millis()));
-    let rt = runtime(&app)?;
-
-    let app_for_task = app.clone();
-    rt.spawn(async move {
-        match client.send_text(jid, text).await {
-            Ok(_) => {
-                log_line("whatsapp message sent");
-                emit_wa(&app_for_task, serde_json::json!({ "type": "sent", "id": frame_id }));
-            }
-            Err(e) => {
-                log_line(&format!("whatsapp send failed: {e}"));
-                emit_wa(
-                    &app_for_task,
-                    serde_json::json!({ "type": "send_error", "id": frame_id, "error": e.to_string() }),
-                );
-            }
-        }
-    });
-    Ok(())
+    let frame = serde_json::json!({ "type": "send", "id": frame_id, "to": digits, "text": text });
+    child
+        .write(format!("{frame}\n").as_bytes())
+        .map_err(|e| format!("failed to dispatch message: {e}"))
 }
 
-/// Send a PDF (or any document) — used for fee-receipt dispatch.
-/// The receipt is generated in the UI (A5, jsPDF) and handed over as
-/// base64; the engine uploads it to the WhatsApp CDN encrypted and
-/// delivers it as a document message, optionally with a caption.
+/// Send a PDF (or any document) — used for fee-receipt dispatch. The
+/// receipt is generated in the UI (true A5, jsPDF) and handed over as
+/// base64; the sidecar uploads it to the WhatsApp CDN encrypted and
+/// delivers it as a document message with an optional caption.
 #[tauri::command]
 pub async fn wa_send_document(
     app: AppHandle,
@@ -349,102 +237,81 @@ pub async fn wa_send_document(
     caption: Option<String>,
     id: Option<String>,
 ) -> Result<(), String> {
-    let client = {
-        let state = app.state::<WaState>();
-        state.client.lock().unwrap().clone()
+    let state = app.state::<WaState>();
+    let mut guard = state.child.lock().unwrap();
+    let Some(child) = guard.as_mut() else {
+        return Err("WhatsApp is not connected".into());
     };
-    let Some(client) = client else {
-        return Err("WhatsApp is not connected — link the academy WhatsApp in Settings first".into());
-    };
-    let jid = recipient_jid(&to)?;
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(data_base64.trim())
-        .map_err(|e| format!("invalid document payload: {e}"))?;
-    if bytes.is_empty() {
-        return Err("The receipt PDF is empty — generate it again".into());
+    let digits: String = to.chars().filter(|c| c.is_ascii_digit()).collect();
+    if digits.len() < 8 || digits.len() > 15 {
+        return Err("Invalid WhatsApp number — expected the full mobile number with country code".into());
     }
-    if bytes.len() > MAX_DOCUMENT_BYTES {
+    if data_base64.len() > 28 * 1024 * 1024 {
+        // ~27 MB base64 ≈ 20 MB decoded — reject before hitting the pipe.
         return Err("The receipt PDF exceeds the 20 MB WhatsApp document limit".into());
     }
+    let frame_id = id.unwrap_or_else(|| format!("wa-doc-{}", chrono::Local::now().timestamp_millis()));
     let file_name = if file_name.trim().is_empty() {
         "PS-AMS-Receipt.pdf".to_string()
     } else {
-        // Sanitise: keep the recipient-side filename path-free.
-        file_name
-            .trim()
-            .chars()
-            .map(|c| if c in ['/', '\\', ':', '*', '?', '"', '<', '>', '|'] { '-' } else { c })
-            .collect()
+        file_name.trim().to_string()
     };
-    let caption = caption
-        .unwrap_or_default()
-        .chars()
-        .take(1024)
-        .collect::<String>();
-    let caption = if caption.is_empty() { None } else { Some(caption) };
-    let frame_id = id.unwrap_or_else(|| format!("wa-doc-{}", chrono::Local::now().timestamp_millis()));
-    let rt = runtime(&app)?;
+    let frame = serde_json::json!({
+        "type": "send_document",
+        "id": frame_id,
+        "to": digits,
+        "data_base64": data_base64,
+        "file_name": file_name,
+        "caption": caption.unwrap_or_default(),
+    });
+    child
+        .write(format!("{frame}\n").as_bytes())
+        .map_err(|e| format!("failed to dispatch document: {e}"))
+}
 
-    let app_for_task = app.clone();
-    rt.spawn(async move {
-        let result = (async {
-            let upload = client
-                .upload(bytes, MediaType::Document, Default::default())
-                .await
-                .map_err(|e| format!("receipt upload failed: {e}"))?;
-            let message = media::document_message(
-                upload,
-                media::DocumentOptions {
-                    mimetype: Some("application/pdf".into()),
-                    file_name: Some(file_name),
-                    caption,
-                    ..Default::default()
-                },
-            );
-            client
-                .send_message(jid, message)
-                .await
-                .map_err(|e| format!("receipt delivery failed: {e}"))
-        })
-        .await;
-        match result {
-            Ok(_) => {
-                log_line("whatsapp receipt document sent");
-                emit_wa(&app_for_task, serde_json::json!({ "type": "sent", "id": frame_id }));
+#[tauri::command]
+pub async fn wa_logout(app: AppHandle) -> Result<(), String> {
+    let running = {
+        let state = app.state::<WaState>();
+        let mut guard = state.child.lock().unwrap();
+        match guard.as_mut() {
+            Some(child) => {
+                let _ = child.write(b"{\"type\":\"logout\"}\n");
+                true
             }
-            Err(e) => {
-                log_line(&format!("whatsapp document send failed: {e}"));
-                emit_wa(
-                    &app_for_task,
-                    serde_json::json!({ "type": "send_error", "id": frame_id, "error": e }),
-                );
-            }
+            None => false,
+        }
+    };
+    if !running {
+        // not running — just clear stale pairing data on disk
+        let dir = std::path::PathBuf::from(auth_dir(&app));
+        if dir.exists() {
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+        return Ok(());
+    }
+    // give the sidecar a moment to clean up, then make sure it is gone
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(2500));
+        let pending = handle.state::<WaState>().child.lock().unwrap().take();
+        if let Some(c) = pending {
+            log_line("wa-bot did not exit after logout — killing");
+            let _ = c.kill();
         }
     });
     Ok(())
 }
 
-#[tauri::command]
-pub async fn wa_logout(app: AppHandle) -> Result<(), String> {
-    let client = {
-        let state = app.state::<WaState>();
-        state.client.lock().unwrap().take()
-    };
-    if let Some(client) = client {
-        // Graceful deregistration with a hard timeout — never hang the UI.
-        let _ = tokio::time::timeout(std::time::Duration::from_secs(8), client.logout()).await;
+/// Kill the sidecar on app exit (no orphaned sockets).
+pub fn kill_sidecar(app: &AppHandle) {
+    let state = app.state::<WaState>();
+    let orphan = state.child.lock().unwrap().take();
+    if let Some(c) = orphan {
+        log_line("killing whatsapp-bot sidecar on exit");
+        let _ = c.kill();
     }
-    if let Some(h) = app.state::<WaState>().handle.lock().unwrap().take() {
-        h.abort();
-    }
-    let _ = std::fs::remove_dir_all(auth_dir(&app));
-    {
-        let state = app.state::<WaState>();
-        *state.me.lock().unwrap() = None;
-    }
-    set_status(&app, "stopped");
-    log_line("whatsapp unlinked — pairing session wiped");
-    Ok(())
+    set_status(app, "stopped");
 }
 
 fn log_line(msg: &str) {

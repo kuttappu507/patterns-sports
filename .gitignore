@@ -92,5 +92,3 @@ scripts/pr2.diff
 
 # WhatsApp sidecar (built per-target, never committed)
 src-tauri/binaries/
-src-tauri/sidecar/whatsapp-bot/node_modules/
-src-tauri/sidecar/whatsapp-bot/bun.lock
