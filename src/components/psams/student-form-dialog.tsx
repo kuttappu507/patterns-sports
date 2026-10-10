@@ -311,7 +311,6 @@ export function StudentFormDialog() {
                 value={form.mobile}
                 onChange={(e) => set("mobile", phoneDigits(e.target.value))}
                 placeholder="10-digit number"
-                maxLength={13}
               />
             </div>
             <div className="space-y-1">
@@ -322,7 +321,6 @@ export function StudentFormDialog() {
                 value={form.emergencyContact}
                 onChange={(e) => set("emergencyContact", phoneDigits(e.target.value))}
                 placeholder="10-digit number"
-                maxLength={13}
               />
             </div>
             <div className="space-y-1">

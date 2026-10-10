@@ -427,7 +427,7 @@ function CommitteeDialog({ open, onClose, editing, onSaved }: { open: boolean; o
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Phone number *</Label>
-                <Input className="h-8 text-xs" inputMode="numeric" value={form.phone} onChange={(e) => setForm({ ...form, phone: phoneDigits(e.target.value) })} placeholder="10-digit number" maxLength={13} />
+                <Input className="h-8 text-xs" inputMode="numeric" value={form.phone} onChange={(e) => setForm({ ...form, phone: phoneDigits(e.target.value) })} placeholder="10-digit number" />
               </div>
             </div>
           </div>
@@ -521,7 +521,7 @@ function AcademyProfile() {
         </div>
         <div className="space-y-1">
           <Label className="text-xs"><Phone className="mr-1 inline h-3 w-3" />Phone</Label>
-          <Input className="h-8 text-xs" inputMode="numeric" value={settings.phone} onChange={(e) => upd("phone", phoneDigits(e.target.value))} maxLength={13} />
+          <Input className="h-8 text-xs" inputMode="numeric" value={settings.phone} onChange={(e) => upd("phone", phoneDigits(e.target.value))} />
         </div>
         <div className="space-y-1">
           <Label className="text-xs"><Mail className="mr-1 inline h-3 w-3" />Email</Label>
