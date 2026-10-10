@@ -7,13 +7,24 @@
 // governed by @media print in globals.css.
 // ============================================================
 
+import { useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { FileText, Printer, X } from "lucide-react"
+import { FileText, Loader2, Printer, X } from "lucide-react"
 import { useAppStore } from "@/lib/psams/store"
+import { isTauri } from "@/lib/psams/api"
+import {
+  desktopDirectPrint,
+  desktopSavePdf,
+  paperForKind,
+  paperLabel,
+  setReceiptPaper,
+  type PrintPaper,
+} from "@/lib/psams/print-desktop"
 import type { AcademySettings, Achievement, FeePayment, PrintPayload, Student } from "@/lib/psams/types"
 import { computeAge, ageDetailed, computeBMI, formatDate, formatINR, monthLabel, parsePaidMonths, categoryBracket, ACADEMY_MAPS_URL } from "@/lib/psams/domain"
 import { mediaUrl } from "@/lib/psams/api"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
 
 const KIND_LABEL: Record<string, string> = {
   "profile-a4": "A4 portrait · 210 × 297 mm",
@@ -36,8 +47,10 @@ const PAGE_CLASS: Record<string, string> = {
 
 /** Render the paper document for a payload (used by both the print layer and the preview).
  *  Non-preview output is wrapped in the kind's named-page class so the OS print
- *  dialog preselects the correct paper size (A4 / A5 / 80 mm roll). */
-function PaperFor({ payload, preview }: { payload: PrintPayload; preview?: boolean }) {
+ *  pipeline picks the right paper size. `paperOverride` swaps the named page
+ *  (e.g. A6 receipt preset) so the CSS page box agrees with the native print
+ *  settings. */
+function PaperFor({ payload, preview, paperOverride }: { payload: PrintPayload; preview?: boolean; paperOverride?: string }) {
   let paper: React.ReactNode
   switch (payload.kind) {
     case "profile-a4":
@@ -60,17 +73,42 @@ function PaperFor({ payload, preview }: { payload: PrintPayload; preview?: boole
       paper = null
   }
   if (preview || !paper) return paper
-  return <div className={PAGE_CLASS[payload.kind] ?? ""}>{paper}</div>
+  return <div className={paperOverride ?? PAGE_CLASS[payload.kind] ?? ""}>{paper}</div>
 }
 
 export function PrintRoot() {
   const { printPayload, setPrint } = useAppStore()
-  const open = !!printPayload && printPayload.mode !== "direct"
+  const { toast } = useToast()
+  const open = !!printPayload && printPayload.mode !== "direct" && printPayload.mode !== "pdf"
+  const desktop = isTauri()
 
-  /** One-click print from the preview — swaps document.title so a
-   *  "Save as PDF" destination suggests a proper filename, then restores. */
+  // Paper preset is DERIVED from the payload kind on every render (receipts
+  // follow the saved academy preset, A6 by default) — never stale, and the
+  // print-root wrapper always agrees with the native print settings.
+  const [, bump] = useState(0)
+  const paper: PrintPaper = printPayload ? paperForKind(printPayload.kind) : "A4"
+  const [busy, setBusy] = useState<null | "print" | "pdf">(null)
+
+  function changeReceiptPaper(p: "A6" | "A5") {
+    setReceiptPaper(p)
+    bump((t) => t + 1)
+  }
+
+  /** Print — on the desktop this drives the NATIVE WebView2 print pipeline
+   *  (silent, default printer, exact preset size, zero margins — no dialog).
+   *  The browser preview keeps the regular window.print() flow. */
   function printNow() {
     if (!printPayload) return
+    if (desktop) {
+      setBusy("print")
+      void (async () => {
+        const res = await desktopDirectPrint(paper)
+        setBusy(null)
+        if (res.ok) toast({ title: "Sent to printer", description: `${res.message} — ${paperLabel(paper)}.` })
+        else toast({ title: "Print failed", description: res.message, variant: "destructive" })
+      })()
+      return
+    }
     const prev = document.title
     if (printPayload.title) document.title = printPayload.title
     try {
@@ -80,14 +118,37 @@ export function PrintRoot() {
     }
   }
 
+  /** Save PDF — desktop writes a TRUE single-page PDF at the preset size via
+   *  the WebView2 print engine; the browser offers print-to-PDF instead. */
+  function savePdfNow() {
+    if (!printPayload) return
+    if (desktop) {
+      setBusy("pdf")
+      void (async () => {
+        const res = await desktopSavePdf(paper, printPayload.title || "PS-AMS-document")
+        setBusy(null)
+        if (res.saved && res.path) toast({ title: "PDF saved", description: `${paperLabel(paper)} document written to ${res.path}` })
+        else if (res.message) toast({ title: "PDF export failed", description: res.message, variant: "destructive" })
+        else toast({ title: "PDF not saved", description: "The save dialog was closed without choosing a file." })
+      })()
+      return
+    }
+    printNow()
+  }
+
   return (
     <>
       {/* ---------- Isolated print layer (invisible on screen, only paper) ---------- */}
       <div id="psams-print-root" aria-hidden>
-        {printPayload && <PaperFor payload={printPayload} />}
+        {printPayload && (
+          <PaperFor
+            payload={printPayload}
+            paperOverride={printPayload.kind === "receipt-a5" && paper === "A6" ? "print-page-a6" : undefined}
+          />
+        )}
       </div>
 
-      {/* ---------- On-screen preview overlay (never prints; direct mode skips it) ---------- */}
+      {/* ---------- On-screen preview overlay (never prints; direct/pdf modes skip it) ---------- */}
       <AnimatePresence>
         {open && printPayload && (
           <motion.div
@@ -105,14 +166,30 @@ export function PrintRoot() {
               </div>
               <div className="min-w-0">
                 <div className="truncate text-[13.5px] font-semibold">{printPayload.title || "Print preview"}</div>
-                <div className="text-[11px] text-slate-400">{KIND_LABEL[printPayload.kind] ?? "Document"} · zero margins — no headers or footers on paper</div>
+                <div className="text-[11px] text-slate-400">
+                  {printPayload.kind === "receipt-a5" ? `Receipt · ${paperLabel(paper)}` : KIND_LABEL[printPayload.kind] ?? "Document"} · zero margins — no headers or footers on paper
+                </div>
               </div>
               <div className="ml-auto flex items-center gap-2">
-                <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={printNow} title="Send straight to the printer — no page headers or footers">
-                  <Printer className="h-3.5 w-3.5" /> Print
+                {desktop && printPayload.kind === "receipt-a5" && (
+                  <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                    Paper
+                    <select
+                      value={paper}
+                      onChange={(e) => changeReceiptPaper(e.target.value as "A6" | "A5")}
+                      className="h-8 rounded-md border border-white/15 bg-slate-800 px-2 text-xs text-slate-100 outline-none"
+                      title="Receipt paper preset — saved for every future receipt print"
+                    >
+                      <option value="A6">A6 · 105×148</option>
+                      <option value="A5">A5 · 148×210</option>
+                    </select>
+                  </label>
+                )}
+                <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={printNow} disabled={busy !== null} title={desktop ? "Send straight to the default printer at the preset size — no dialog, no headers or footers" : "Open the browser print dialog"}>
+                  {busy === "print" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Printer className="h-3.5 w-3.5" />} Print
                 </Button>
-                <Button size="sm" variant="outline" className="h-8 gap-1.5 border-white/20 bg-white/5 text-xs text-slate-100 hover:bg-white/10" onClick={printNow} title="Choose 'Save as PDF' as the printer destination">
-                  <FileText className="h-3.5 w-3.5" /> Save PDF
+                <Button size="sm" variant="outline" className="h-8 gap-1.5 border-white/20 bg-white/5 text-xs text-slate-100 hover:bg-white/10" onClick={savePdfNow} disabled={busy !== null} title={desktop ? "Save a true single-page PDF at the preset size" : "Choose 'Save as PDF' as the printer destination"}>
+                  {busy === "pdf" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} Save PDF
                 </Button>
                 <button
                   aria-label="Close preview"
@@ -133,7 +210,9 @@ export function PrintRoot() {
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 className="mx-auto w-fit origin-top rounded-[3px] bg-white shadow-[0_34px_90px_-24px_rgba(0,0,0,0.85)] ring-1 ring-black/25"
               >
-                <PaperFor payload={printPayload} preview />
+                <div style={printPayload.kind === "receipt-a5" && paper === "A6" ? { width: "105mm" } : undefined}>
+                  <PaperFor payload={printPayload} preview />
+                </div>
               </motion.div>
             </div>
           </motion.div>

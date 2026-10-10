@@ -183,8 +183,11 @@ export interface PrintPayload {
   title?: string
   data?: unknown
   /** "preview" (default) opens the on-screen preview overlay first;
-   *  "direct" skips the preview and fires window.print() immediately —
-   *  the OS print dialog lands on the default printer with zero page
-   *  margins, so no automatic headers/footers/time stamps are drawn. */
-  mode?: "preview" | "direct"
+   *  "direct" skips the preview and prints immediately — on the desktop
+   *  this drives the native WebView2 print pipeline (silent, default
+   *  printer, in-app paper preset, zero margins — no dialog, no headers
+   *  or footers); in the browser it falls back to window.print().
+   *  "pdf" renders the document and asks where to save a true-to-paper
+   *  PDF (desktop only; the browser preview offers print-to-PDF instead). */
+  mode?: "preview" | "direct" | "pdf"
 }

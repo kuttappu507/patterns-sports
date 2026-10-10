@@ -2,9 +2,10 @@
 
 // ============================================================
 // PS-AMS :: dedicated splash WINDOW (desktop boot stage)
-// The splash lives in its own small transparent frameless window
+// The splash lives in its own small OPAQUE frameless window
 // (see tauri.conf.json → windows[0], url ?boot=splash) that floats
-// dead-center on the desktop. The window BOOTS HIDDEN — it reveals
+// dead-center on the desktop — solid background, no transparency,
+// so no dim rectangle can ever appear around the boot card. The window BOOTS HIDDEN — it reveals
 // itself only after the first painted frame, so the user never
 // sees a blank white rectangle before the branded card appears.
 // The MAIN window stays hidden until:

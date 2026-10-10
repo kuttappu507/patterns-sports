@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
+import { APP_VERSION } from "@/lib/psams/version"
 
 const STATUS_LINES = [
   "Warming up the court…",
@@ -159,7 +160,7 @@ export function Splash({ error }: { error: string | null }) {
 
         {/* footer line */}
         <div className="relative z-10 mt-5 text-[9.5px] font-semibold uppercase tracking-[0.24em] text-rose-200/40">
-          PS-AMS v1.5.0 · Offline-first
+          PS-AMS v{APP_VERSION} · Offline-first
         </div>
       </motion.div>
     </motion.div>

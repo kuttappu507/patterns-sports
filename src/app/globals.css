@@ -638,15 +638,27 @@
 }
 
 /* dedicated desktop splash WINDOW (tauri.conf windows[0], ?boot=splash):
-   the whole page must be see-through so the user's desktop shows around
-   the floating boot card — no theme background, no scrollbars. */
+   the window is OPAQUE (transparent:false + backgroundColor #04222d) so no
+   translucent rectangle can ever flash around the boot card on Windows.
+   The card therefore fills the window edge-to-edge: no border radius, no
+   drop shadow, no see-through margins — the window IS the splash card. */
 html.splash-window,
 html.splash-window body {
-  background: transparent !important;
+  background: #04222d !important;
   overflow: hidden;
 }
 html.splash-window body::-webkit-scrollbar {
   display: none;
+}
+html.splash-window .splash-overlay {
+  background: #04222d;
+}
+html.splash-window .splash {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 /* the borderless boot card */
@@ -792,6 +804,10 @@ html.splash-window body::-webkit-scrollbar {
     size: A5 portrait;
     margin: 6mm;
   }
+  @page receiptA6 {
+    size: 105mm 148mm;
+    margin: 0;
+  }
   @page thermal80 {
     size: 80mm auto;
     margin: 2mm;
@@ -806,12 +822,17 @@ html.splash-window body::-webkit-scrollbar {
 }
 
 /* named-page binding — puts each document on its proper paper size
-   (supported in evergreen Chromium / WebView2) */
+   (supported in evergreen Chromium / WebView2). print-page-a6 is selected
+   dynamically when the receipt paper preset is A6 so the CSS page box
+   always agrees with the native print settings. */
 .print-page-a4 {
   page: profileA4;
 }
 .print-page-a5 {
   page: receiptA5;
+}
+.print-page-a6 {
+  page: receiptA6;
 }
 .print-page-thermal {
   page: thermal80;

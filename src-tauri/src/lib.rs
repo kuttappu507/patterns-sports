@@ -14,6 +14,8 @@
 //    or a remembered USB drive when present)
 // ============================================================
 
+mod printing;
+mod updates;
 mod whatsapp;
 
 use serde::Serialize;
@@ -375,6 +377,11 @@ pub fn run() {
             restart_app,
             schema_sql,
             finish_boot,
+            printing::print_direct,
+            printing::print_to_pdf,
+            updates::check_update,
+            updates::download_update,
+            updates::install_update,
             whatsapp::wa_snapshot,
             whatsapp::wa_start,
             whatsapp::wa_send,

@@ -85,14 +85,14 @@ export function StudentsView() {
             />
           </div>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className={`${FILTER_TRIGGER} w-[140px]`}><SelectValue /></SelectTrigger>
+            <SelectTrigger className={`${FILTER_TRIGGER} min-w-[132px]`}><SelectValue /></SelectTrigger>
             <SelectContent className="border-border bg-popover">
               <SelectItem value="all" className="text-xs">All categories</SelectItem>
               {AGE_CATEGORIES.map((c) => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={batch} onValueChange={setBatch}>
-            <SelectTrigger className={`${FILTER_TRIGGER} w-[130px]`}><SelectValue /></SelectTrigger>
+            <SelectTrigger className={`${FILTER_TRIGGER} min-w-[120px]`}><SelectValue /></SelectTrigger>
             <SelectContent className="border-border bg-popover">
               <SelectItem value="all" className="text-xs">All batches</SelectItem>
               <SelectItem value="Morning" className="text-xs">Morning</SelectItem>
@@ -100,14 +100,14 @@ export function StudentsView() {
             </SelectContent>
           </Select>
           <Select value={gender} onValueChange={setGender}>
-            <SelectTrigger className={`${FILTER_TRIGGER} w-[118px]`}><SelectValue /></SelectTrigger>
+            <SelectTrigger className={`${FILTER_TRIGGER} min-w-[108px]`}><SelectValue /></SelectTrigger>
             <SelectContent className="border-border bg-popover">
               <SelectItem value="all" className="text-xs">All genders</SelectItem>
               {GENDERS.map((g) => <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className={`${FILTER_TRIGGER} w-[120px]`}><SelectValue /></SelectTrigger>
+            <SelectTrigger className={`${FILTER_TRIGGER} min-w-[110px]`}><SelectValue /></SelectTrigger>
             <SelectContent className="border-border bg-popover">
               {["Active", "Inactive", "Alumni", "all"].map((s) => (
                 <SelectItem key={s} value={s} className="text-xs">{s === "all" ? "All statuses" : s}</SelectItem>

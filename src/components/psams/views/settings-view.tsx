@@ -26,6 +26,11 @@ import {
   MessageCircle,
   QrCode,
   Unlink,
+  RefreshCw,
+  Search,
+  CheckCircle2,
+  ArrowDownToLine,
+  Rocket,
 } from "lucide-react"
 import {
   fetchCommittee,
@@ -45,7 +50,8 @@ import {
   type DataLocationInfo,
 } from "@/lib/psams/api"
 import { COMMITTEE_ROLES, type CommitteeMember, type AcademySettings } from "@/lib/psams/types"
-import { ACADEMY_MAPS_URL } from "@/lib/psams/domain"
+import { ACADEMY_MAPS_URL, phoneDigits, intOnly } from "@/lib/psams/domain"
+import { APP_VERSION } from "@/lib/psams/version"
 import { openExternal, useWaStore, renderQrDataUrl, type WaStatus } from "@/lib/psams/whatsapp"
 import { useAppStore } from "@/lib/psams/store"
 import { MediaUpload } from "@/components/psams/media-upload"
@@ -66,6 +72,7 @@ export function SettingsView() {
       <div className="space-y-5">
         <AcademyProfile />
         <WhatsAppCard />
+        <UpdatesCard />
         <DataSafety />
         <DemoDataCard />
       </div>
@@ -420,7 +427,7 @@ function CommitteeDialog({ open, onClose, editing, onSaved }: { open: boolean; o
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Phone number *</Label>
-                <Input className="h-8 text-xs" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                <Input className="h-8 text-xs" inputMode="numeric" value={form.phone} onChange={(e) => setForm({ ...form, phone: phoneDigits(e.target.value) })} placeholder="10-digit number" maxLength={13} />
               </div>
             </div>
           </div>
@@ -514,7 +521,7 @@ function AcademyProfile() {
         </div>
         <div className="space-y-1">
           <Label className="text-xs"><Phone className="mr-1 inline h-3 w-3" />Phone</Label>
-          <Input className="h-8 text-xs" value={settings.phone} onChange={(e) => upd("phone", e.target.value)} />
+          <Input className="h-8 text-xs" inputMode="numeric" value={settings.phone} onChange={(e) => upd("phone", phoneDigits(e.target.value))} maxLength={13} />
         </div>
         <div className="space-y-1">
           <Label className="text-xs"><Mail className="mr-1 inline h-3 w-3" />Email</Label>
@@ -522,9 +529,9 @@ function AcademyProfile() {
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Default monthly fee (₹)</Label>
-          <Input className="h-8 text-xs" type="number" min="0" value={settings.defaultMonthlyFee} onChange={(e) => {
-            const n = Number(e.target.value)
-            upd("defaultMonthlyFee", Number.isFinite(n) && n >= 0 ? n : 0) // never persist NaN
+          <Input className="h-8 text-xs" inputMode="numeric" value={String(settings.defaultMonthlyFee)} onChange={(e) => {
+            const digits = intOnly(e.target.value, 5)
+            upd("defaultMonthlyFee", digits === "" ? 0 : Number(digits)) // never persist NaN
           }} />
         </div>
         <div className="space-y-1">
@@ -634,6 +641,156 @@ function DemoDataCard() {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  )
+}
+
+/* ---------------- Updates ---------------- */
+
+interface ReleaseInfo {
+  current: string
+  available: boolean
+  tag: string
+  name: string
+  notes: string
+  published_at: string
+  asset_name: string
+  asset_url: string
+  asset_size: number
+}
+
+function UpdatesCard() {
+  const { toast } = useToast()
+  const desktop = isTauri()
+  const [checking, setChecking] = useState(false)
+  const [info, setInfo] = useState<ReleaseInfo | null>(null)
+  const [downloading, setDownloading] = useState(false)
+  const [progress, setProgress] = useState<{ received: number; total: number } | null>(null)
+  const [installerPath, setInstallerPath] = useState<string | null>(null)
+
+  // listen to download progress emitted by the Rust side
+  useEffect(() => {
+    if (!desktop) return
+    let stop: (() => void) | null = null
+    void (async () => {
+      try {
+        const { listen } = await import("@tauri-apps/api/event")
+        const un = await listen<{ received: number; total: number }>("update://progress", (e) => {
+          setProgress(e.payload)
+        })
+        stop = un
+      } catch {
+        /* progress simply won't stream */
+      }
+    })()
+    return () => {
+      stop?.()
+    }
+  }, [desktop])
+
+  async function check() {
+    setChecking(true)
+    setInfo(null)
+    setInstallerPath(null)
+    setProgress(null)
+    try {
+      const { invoke } = await import("@tauri-apps/api/core")
+      const res = await invoke<ReleaseInfo>("check_update")
+      setInfo(res)
+    } catch (e) {
+      toast({ title: "Update check failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  async function download() {
+    if (!info?.asset_url || !info?.asset_name) return
+    setDownloading(true)
+    setProgress({ received: 0, total: info.asset_size || 0 })
+    try {
+      const { invoke } = await import("@tauri-apps/api/core")
+      const path = await invoke<string>("download_update", { url: info.asset_url, name: info.asset_name })
+      setInstallerPath(path)
+      toast({ title: "Installer downloaded", description: path })
+    } catch (e) {
+      toast({ title: "Download failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  async function install() {
+    if (!installerPath) return
+    try {
+      const { invoke } = await import("@tauri-apps/api/core")
+      const msg = await invoke<string>("install_update", { path: installerPath })
+      toast({ title: "Update starting", description: msg })
+    } catch (e) {
+      toast({ title: "Could not launch the installer", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    }
+  }
+
+  const pct = progress && progress.total > 0 ? Math.min(100, Math.round((progress.received / progress.total) * 100)) : null
+
+  return (
+    <div className="glass rounded-2xl p-4">
+      <div className="mb-2 flex items-center gap-2">
+        <RefreshCw className="h-4 w-4 text-primary" />
+        <span className="text-sm font-semibold">Updates</span>
+      </div>
+      {desktop ? (
+        <>
+          <p className="text-[15.5px] leading-relaxed text-muted-foreground">
+            Running <b className="text-foreground">v{APP_VERSION}</b>. Check the academy&apos;s GitHub releases for a newer version — if one exists you can download the official installer and update without leaving the app.
+          </p>
+          {!info && (
+            <Button size="sm" className="mt-3 h-8 gap-1.5 text-xs" disabled={checking} onClick={check}>
+              {checking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />} Check for updates
+            </Button>
+          )}
+          {info && !info.available && (
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-700 dark:text-emerald-300">
+              <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />
+              You are on the latest release{info.tag ? ` (v${info.tag.replace(/^v/, "")})` : ""} — nothing to update.
+            </div>
+          )}
+          {info?.available && (
+            <div className="mt-3 space-y-2 rounded-lg border border-primary/30 bg-primary/[0.06] p-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                <ArrowDownToLine className="h-3.5 w-3.5 text-primary" />
+                PS-AMS v{info.tag.replace(/^v/, "")} is available — you are on v{info.current}
+              </div>
+              {info.notes && (
+                <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-md border bg-card/70 p-2 text-[11.5px] leading-relaxed text-muted-foreground">{info.notes.slice(0, 2000)}</pre>
+              )}
+              {!installerPath ? (
+                <Button size="sm" className="h-8 gap-1.5 text-xs" disabled={downloading} onClick={download}>
+                  {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  {downloading ? (pct !== null ? `Downloading… ${pct}%` : "Downloading…") : "Download update"}
+                </Button>
+              ) : (
+                <div className="space-y-1.5">
+                  <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-500" onClick={install}>
+                    <Rocket className="h-3.5 w-3.5" /> Run installer
+                  </Button>
+                  <div className="break-all font-mono text-[10.5px] text-muted-foreground">{installerPath}</div>
+                  <div className="text-[11px] text-muted-foreground">The installer closes PS-AMS when it needs to — reopen the app after it finishes.</div>
+                </div>
+              )}
+              {downloading && pct !== null && (
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      ) : (
+        <p className="text-[15.5px] leading-relaxed text-muted-foreground">
+          Running the web preview (v{APP_VERSION}). Updates ship with the desktop app — it checks GitHub releases right from this screen.
+        </p>
+      )}
+    </div>
   )
 }
 

@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Search, Filter, Printer, FileSpreadsheet, FileText, Loader2, RotateCcw } from "lucide-react"
 import { fetchStudents, fetchSettings, mediaUrl } from "@/lib/psams/api"
-import { computeAge, computeBMI, CATEGORY_COLORS, formatINR } from "@/lib/psams/domain"
+import { computeAge, computeBMI, CATEGORY_COLORS, formatINR, intOnly } from "@/lib/psams/domain"
 import { SPORTS, SPORT_POSITIONS, type Student, type AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { useToast } from "@/hooks/use-toast"
@@ -157,10 +157,10 @@ export function ReportsView() {
             </SelectContent>
           </Select>
           <div className="flex gap-1">
-            <Input type="number" placeholder="Min age" className="h-8 border-border bg-card text-xs" value={filters.minAge} onChange={(e) => setFilters({ ...filters, minAge: e.target.value })} />
-            <Input type="number" placeholder="Max age" className="h-8 border-border bg-card text-xs" value={filters.maxAge} onChange={(e) => setFilters({ ...filters, maxAge: e.target.value })} />
+            <Input inputMode="numeric" placeholder="Min age" className="h-8 border-border bg-card text-xs" value={filters.minAge} onChange={(e) => setFilters({ ...filters, minAge: intOnly(e.target.value, 2) })} />
+            <Input inputMode="numeric" placeholder="Max age" className="h-8 border-border bg-card text-xs" value={filters.maxAge} onChange={(e) => setFilters({ ...filters, maxAge: intOnly(e.target.value, 2) })} />
           </div>
-          <Input type="number" placeholder="Height > (cm)" className="h-8 border-border bg-card text-xs" value={filters.minHeight} onChange={(e) => setFilters({ ...filters, minHeight: e.target.value })} />
+          <Input inputMode="numeric" placeholder="Height > (cm)" className="h-8 border-border bg-card text-xs" value={filters.minHeight} onChange={(e) => setFilters({ ...filters, minHeight: intOnly(e.target.value, 3) })} />
           <Select value={filters.school} onValueChange={(v) => setFilters({ ...filters, school: v })}>
             <SelectTrigger className="h-8 border-border bg-card text-xs"><SelectValue placeholder="School" /></SelectTrigger>
             <SelectContent>

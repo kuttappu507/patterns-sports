@@ -24,6 +24,7 @@ import {
   monthLabel,
   formatINR,
   parsePaidMonths,
+  intOnly,
   CATEGORY_COLORS,
 } from "@/lib/psams/domain"
 import { PAYMENT_MODES, type FeePayment, type Student, type AcademySettings } from "@/lib/psams/types"
@@ -283,7 +284,7 @@ export function CollectFeeDialog() {
                       </div>
                       <div className="space-y-1">
                         <div className="text-xs font-medium text-muted-foreground">Collected amount (₹)</div>
-                        <Input className="h-8 text-xs font-semibold" type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                        <Input className="h-8 text-xs font-semibold" inputMode="numeric" value={amount} onChange={(e) => setAmount(intOnly(e.target.value, 6))} />
                       </div>
                       <div className="space-y-1">
                         <div className="text-xs font-medium text-muted-foreground">Remarks</div>

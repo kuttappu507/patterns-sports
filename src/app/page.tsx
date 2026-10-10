@@ -27,6 +27,8 @@ import { ReportsView } from "@/components/psams/views/reports-view"
 import { AttendanceView } from "@/components/psams/views/attendance-view"
 import { SettingsView } from "@/components/psams/views/settings-view"
 import { initBackend, isTauri } from "@/lib/psams/api"
+import { desktopDirectPrint, desktopSavePdf, paperForKind, paperLabel, type PrintPaper } from "@/lib/psams/print-desktop"
+import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 
 /* ---------- last-resort error boundary (no white screens) ---------- */
@@ -95,6 +97,7 @@ export default function Home() {
   const [bootError, setBootError] = useState<string | null>(null)
   const [minSplashDone, setMinSplashDone] = useState(false)
   const [splashGone, setSplashGone] = useState(false)
+  const { toast } = useToast()
   // "boot" = window kind not yet resolved · "splash" = dedicated boot
   // window (small transparent card on the desktop) · "app" = main app.
   // The main window stays hidden until the splash window finishes the
@@ -161,28 +164,72 @@ export default function Home() {
 
   // Direct-print pipeline — a payload flagged mode:"direct" skips the
   // preview overlay entirely: the paper renders into the hidden print
-  // root, then window.print() fires straight away. The OS dialog opens
-  // on the default printer and, because every @page margin is zero,
-  // Chromium/WebView2 draws NO automatic headers, footers or time stamps.
-  // document.title is swapped so "Save as PDF" suggests a proper filename.
+  // root, then printing fires straight away.
+  //  · DESKTOP — the native WebView2 print pipeline prints SILENTLY to the
+  //    default printer at the in-app paper preset (A6 receipts / A4 rosters
+  //    / 80 mm slip): no browser-style dialog, zero margins, no headers,
+  //    footers or time stamps. Every document carries its own padding.
+  //  · BROWSER — falls back to window.print() (the OS dialog is the only
+  //    option there). document.title is swapped so "Save as PDF" suggests
+  //    a proper filename.
   const directPayload = printPayload && printPayload.mode === "direct" ? printPayload : null
+  const directPaper = directPayload ? paperForKind(directPayload.kind) : null
   useEffect(() => {
-    if (!directPayload) return
+    if (!directPayload || !directPaper) return
     const prevTitle = document.title
     if (directPayload.title) document.title = directPayload.title
     const t = setTimeout(() => {
-      try {
-        window.print()
-      } finally {
-        document.title = prevTitle
-        useAppStore.getState().setPrint(null)
-      }
-    }, 120)
+      void (async () => {
+        try {
+          if (isTauri()) {
+            const res = await desktopDirectPrint(directPaper)
+            if (res.ok) {
+              toast({ title: "Sent to printer", description: `${res.message} — ${paperLabel(directPaper)}, no headers or footers.` })
+            } else {
+              toast({ title: "Print failed", description: res.message, variant: "destructive" })
+            }
+          } else {
+            window.print()
+          }
+        } finally {
+          document.title = prevTitle
+          useAppStore.getState().setPrint(null)
+        }
+      })()
+    }, 150)
     return () => {
       clearTimeout(t)
       document.title = prevTitle
     }
-  }, [directPayload])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directPayload, directPaper])
+
+  // PDF pipeline (desktop) — a payload flagged mode:"pdf" renders into the
+  // print root, then a native save dialog picks the destination and the
+  // WebView2 print engine writes a TRUE single-page PDF at the preset size.
+  const pdfPayload = printPayload && printPayload.mode === "pdf" ? printPayload : null
+  useEffect(() => {
+    if (!pdfPayload || !isTauri()) return
+    const t = setTimeout(() => {
+      void (async () => {
+        const paper: PrintPaper = paperForKind(pdfPayload.kind)
+        try {
+          const res = await desktopSavePdf(paper, pdfPayload.title || "PS-AMS-document")
+          if (res.saved && res.path) {
+            toast({ title: "PDF saved", description: `${paperLabel(paper)} document written to ${res.path}` })
+          } else if (res.message) {
+            toast({ title: "PDF export failed", description: res.message, variant: "destructive" })
+          } else {
+            toast({ title: "PDF not saved", description: "The save dialog was closed without choosing a file." })
+          }
+        } finally {
+          useAppStore.getState().setPrint(null)
+        }
+      })()
+    }, 150)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdfPayload])
 
   // Web preview keeps the in-app splash overlay. On desktop the splash is
   // its own window (SplashWindow) — the main window renders straight away,

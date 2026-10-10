@@ -19,7 +19,7 @@ import {
   SPORT_POSITIONS,
   TRAINING_BATCHES,
 } from "@/lib/psams/types"
-import { computeAge, suggestAgeCategory, computeBMI, bmiBand, ageDetailed } from "@/lib/psams/domain"
+import { computeAge, suggestAgeCategory, computeBMI, bmiBand, ageDetailed, phoneDigits, intOnly, decimalOnly } from "@/lib/psams/domain"
 import { useAppStore } from "@/lib/psams/store"
 import { MediaUpload } from "@/components/psams/media-upload"
 import { Input } from "@/components/ui/input"
@@ -183,9 +183,9 @@ export function StudentFormDialog() {
       return
     }
     const digits = form.mobile.replace(/\D/g, "")
-    const mobileOk = digits.length === 10 || (digits.length === 12 && digits.startsWith("91")) || (digits.length === 11 && digits.startsWith("0"))
+    const mobileOk = digits.length === 10
     if (!mobileOk) {
-      toast({ title: "Invalid mobile number", description: "Enter a 10-digit mobile number (with country code or leading 0 also accepted).", variant: "destructive" })
+      toast({ title: "Invalid mobile number", description: "Enter the 10-digit mobile number — the field blocks every extra digit or letter.", variant: "destructive" })
       return
     }
     const fee = Number(form.monthlyFee)
@@ -305,11 +305,25 @@ export function StudentFormDialog() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Primary mobile *</Label>
-              <Input className="h-8 text-xs" inputMode="tel" value={form.mobile} onChange={(e) => set("mobile", e.target.value)} placeholder="10-digit number" />
+              <Input
+                className="h-8 text-xs"
+                inputMode="numeric"
+                value={form.mobile}
+                onChange={(e) => set("mobile", phoneDigits(e.target.value))}
+                placeholder="10-digit number"
+                maxLength={13}
+              />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Emergency contact</Label>
-              <Input className="h-8 text-xs" inputMode="tel" value={form.emergencyContact} onChange={(e) => set("emergencyContact", e.target.value)} />
+              <Input
+                className="h-8 text-xs"
+                inputMode="numeric"
+                value={form.emergencyContact}
+                onChange={(e) => set("emergencyContact", phoneDigits(e.target.value))}
+                placeholder="10-digit number"
+                maxLength={13}
+              />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Blood group</Label>
@@ -353,11 +367,11 @@ export function StudentFormDialog() {
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Height (cm)</Label>
-              <Input className="h-8 text-xs" type="number" min="0" value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} />
+              <Input className="h-8 text-xs" inputMode="numeric" value={form.heightCm} onChange={(e) => set("heightCm", intOnly(e.target.value, 3))} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Weight (kg)</Label>
-              <Input className="h-8 text-xs" type="number" min="0" value={form.weightKg} onChange={(e) => set("weightKg", e.target.value)} />
+              <Input className="h-8 text-xs" inputMode="decimal" value={form.weightKg} onChange={(e) => set("weightKg", decimalOnly(e.target.value, 3))} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">BMI — auto</Label>
@@ -368,15 +382,15 @@ export function StudentFormDialog() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Standing reach (cm)</Label>
-              <Input className="h-8 text-xs" type="number" min="0" value={form.standingReachCm} onChange={(e) => set("standingReachCm", e.target.value)} />
+              <Input className="h-8 text-xs" inputMode="numeric" value={form.standingReachCm} onChange={(e) => set("standingReachCm", intOnly(e.target.value, 3))} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Spike reach (cm)</Label>
-              <Input className="h-8 text-xs" type="number" min="0" value={form.spikeReachCm} onChange={(e) => set("spikeReachCm", e.target.value)} />
+              <Input className="h-8 text-xs" inputMode="numeric" value={form.spikeReachCm} onChange={(e) => set("spikeReachCm", intOnly(e.target.value, 3))} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Jump reach (cm)</Label>
-              <Input className="h-8 text-xs" type="number" min="0" value={form.jumpReachCm} onChange={(e) => set("jumpReachCm", e.target.value)} />
+              <Input className="h-8 text-xs" inputMode="numeric" value={form.jumpReachCm} onChange={(e) => set("jumpReachCm", intOnly(e.target.value, 3))} />
             </div>
             {jumpGain !== null && jumpGain > 0 && (
               <div className="col-span-3 rounded-md bg-emerald-500/10 px-3 py-1.5 text-[15px] text-emerald-700 dark:text-emerald-300">
@@ -432,7 +446,7 @@ export function StudentFormDialog() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Monthly fee (₹)</Label>
-              <Input className="h-8 text-xs" type="number" min="0" value={form.monthlyFee} onChange={(e) => set("monthlyFee", e.target.value)} placeholder="e.g. 500" />
+              <Input className="h-8 text-xs" inputMode="numeric" value={form.monthlyFee} onChange={(e) => set("monthlyFee", intOnly(e.target.value, 5))} placeholder="e.g. 500" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Status</Label>

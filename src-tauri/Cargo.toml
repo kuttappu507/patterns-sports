@@ -1,6 +1,6 @@
 [package]
 name = "ps-ams"
-version = "1.6.1"
+version = "1.6.2"
 description = "Pattern Sports Academy Management System — offline-first academy suite"
 authors = ["Pattern Sports Academy"]
 edition = "2021"
@@ -29,6 +29,15 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = "0.4"
 dirs = "5"
+ureq = { version = "2", default-features = false, features = ["tls"] }
+
+# Native printing (WebView2 print pipeline). These MUST stay version-aligned
+# with the webview2-com / windows-core versions tauri + wry resolve to
+# (tauri 2.12 → wry 0.57 → webview2-com 0.39 / windows-core 0.62) so the
+# COM interface types unify into one crate instance.
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows-core = "0.62"
 
 [profile.release]
 codegen-units = 1

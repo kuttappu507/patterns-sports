@@ -17,6 +17,9 @@ import {
   nextReceiptNo,
   parsePaidMonths,
   sanitizeFileName,
+  phoneDigits,
+  intOnly,
+  decimalOnly,
   verticalJumpRating,
   spikeClearance,
   reachRatio,
@@ -476,5 +479,50 @@ describe("academy letterhead defaults", () => {
 
   it("the demo dataset letterhead matches the empty-database default", () => {
     expect(DEMO_SETTINGS.address).toBe(ACADEMY_ADDRESS)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// v1.6.2 — input-field sanitizers (10-digit phones, digits-only numbers)
+// ---------------------------------------------------------------------------
+
+describe("phoneDigits", () => {
+  it("keeps at most 10 digits", () => {
+    expect(phoneDigits("9876543210")).toBe("9876543210")
+    expect(phoneDigits("98765432101234")).toBe("9876543210")
+    expect(phoneDigits("98765")).toBe("98765")
+  })
+
+  it("collapses +91 / 0 prefixes from a paste into the bare 10-digit number", () => {
+    expect(phoneDigits("+91 98765 43210")).toBe("9876543210")
+    expect(phoneDigits("09876543210")).toBe("9876543210")
+    expect(phoneDigits("919876543210")).toBe("9876543210")
+  })
+
+  it("strips every non-digit character", () => {
+    expect(phoneDigits("98-76a5b.c4321")).toBe("987654321")
+    expect(phoneDigits("")).toBe("")
+  })
+})
+
+describe("intOnly", () => {
+  it("keeps digits only and respects the cap", () => {
+    expect(intOnly("12ab34", 6)).toBe("1234")
+    expect(intOnly("123456789", 3)).toBe("123")
+    expect(intOnly("500", 5)).toBe("500")
+    expect(intOnly("", 5)).toBe("")
+  })
+})
+
+describe("decimalOnly", () => {
+  it("allows one decimal point with two fraction digits", () => {
+    expect(decimalOnly("45.5", 3)).toBe("45.5")
+    expect(decimalOnly("45.579", 3)).toBe("45.57")
+    expect(decimalOnly("4..5", 3)).toBe("4.5")
+  })
+
+  it("strips letters and symbols", () => {
+    expect(decimalOnly("ab4c5", 3)).toBe("45")
+    expect(decimalOnly("-12", 3)).toBe("12")
   })
 })

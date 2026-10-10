@@ -151,7 +151,7 @@ export function AttendanceView() {
             />
           </div>
           <Select value={segment} onValueChange={setSegment}>
-            <SelectTrigger className="h-8 w-[190px] rounded-lg border-border bg-card text-xs hover:border-primary/30"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 min-w-[176px] rounded-lg border-border bg-card text-xs hover:border-primary/30"><SelectValue /></SelectTrigger>
             <SelectContent className="border-border bg-popover">
               <SelectItem value="all" className="text-xs">Whole academy ({students.length})</SelectItem>
               <SelectItem value="Morning" className="text-xs">Morning batch</SelectItem>

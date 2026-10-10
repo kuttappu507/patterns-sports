@@ -27,12 +27,16 @@ import {
   fetchStudents,
 } from "@/lib/psams/api"
 import {
+  monthKey,
   monthLabel,
   formatINR,
   formatDate,
   parsePaidMonths,
+  hasPaidCurrentMonth,
   CATEGORY_COLORS,
 } from "@/lib/psams/domain"
+import { isTauri } from "@/lib/psams/api"
+import { getReceiptPaper, paperLabel } from "@/lib/psams/print-desktop"
 import { AGE_CATEGORIES, GENDERS, type FeePayment, type StudentFeeStatus, type AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { exportExcel, exportPDF, buildReceiptPdfA5, receiptPdfA5 } from "@/lib/psams/export"
@@ -66,48 +70,176 @@ export function FeesView() {
 /* ============================ COLLECT ============================ */
 
 function CollectTab() {
-  const { openCollectFee } = useAppStore()
+  const { openCollectFee, navigate, dataVersion } = useAppStore()
+  const { toast } = useToast()
+  const [statuses, setStatuses] = useState<StudentFeeStatus[]>([])
+  const [payments, setPayments] = useState<(FeePayment & { studentName: string; admissionNo: string })[]>([])
+  const [settings, setSettings] = useState<AcademySettings | null>(null)
+  const [loading, setLoading] = useState(true)
+  const { setPrint } = useAppStore()
+
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        const [st, pays, cfg] = await Promise.all([fetchFeeStatuses(), fetchPayments({ limit: 120 }), fetchSettings()])
+        if (!alive) return
+        setStatuses(st)
+        setPayments(pays)
+        setSettings(cfg)
+      } catch (e) {
+        if (alive) toast({ title: "Could not load the fee overview", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [toast, dataVersion])
+
+  const thisMonth = monthKey(new Date())
+  const active = statuses.filter((s) => s.student.status === "Active")
+  const collectedThisMonth = payments
+    .filter((p) => (p.paymentDate || "").slice(0, 7) === thisMonth)
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+  const receiptsThisMonth = payments.filter((p) => (p.paymentDate || "").slice(0, 7) === thisMonth).length
+  const outstanding = active.reduce((sum, s) => sum + s.dueAmount, 0)
+  const defaulterCount = active.filter((s) => s.isDefaulter).length
+  const settledCount = active.filter((s) => hasPaidCurrentMonth(s.paidMonths)).length
+
+  // top dues first — the counter works its way down this list
+  const readyToCollect = active
+    .filter((s) => s.dueAmount > 0)
+    .sort((a, b) => Number(b.isDefaulter) - Number(a.isDefaulter) || b.dueAmount - a.dueAmount)
+    .slice(0, 6)
+  const recentReceipts = payments.slice(0, 6)
 
   return (
-    <div className="glass relative overflow-hidden rounded-2xl p-8">
-      <div className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 rounded-full bg-primary/[0.06] blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-14 right-40 h-44 w-44 rounded-full bg-yellow-400/[0.09] blur-3xl" />
-
-      <div className="relative mx-auto max-w-xl text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-[0_0_28px_-8px_rgba(239,71,111,0.55)] dark:shadow-[0_0_28px_-8px_rgba(255,107,141,0.6)]">
-          <BadgeIndianRupee className="h-7 w-7" />
+    <div className="space-y-4">
+      {/* header + primary action */}
+      <div className="glass relative flex flex-wrap items-center gap-4 overflow-hidden rounded-2xl p-5">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-primary/[0.07] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-14 right-40 h-40 w-40 rounded-full bg-yellow-400/[0.09] blur-3xl" />
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-[0_0_28px_-8px_rgba(239,71,111,0.55)] dark:shadow-[0_0_28px_-8px_rgba(255,107,141,0.6)]">
+          <BadgeIndianRupee className="h-6 w-6" />
         </div>
-        <h3 className="mt-4 font-display text-lg font-extrabold">Fee Collection Counter</h3>
-        <p className="mx-auto mt-1.5 max-w-md text-[15px] leading-relaxed text-muted-foreground">
-          The POS flow now opens in a focused popup — pick the player, tick the billing months to settle and the amount
-          auto-fills. A printable A5 / thermal receipt is generated the moment the payment is recorded.
-        </p>
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-          <Button
-            size="lg"
-            className="btn-sheen h-11 gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_14px_30px_-12px_rgba(239,71,111,0.7)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_22px_-4px_rgba(255,107,141,0.6)]"
-            onClick={() => openCollectFee()}
-          >
-            <Receipt className="h-4.5 w-4.5" strokeWidth={2.4} /> Start Fee Collection
-          </Button>
+        <div className="relative min-w-0">
+          <h3 className="font-display text-lg font-extrabold leading-tight">Fee Collection Counter</h3>
+          <p className="text-[15px] text-muted-foreground">
+            Billing month <b className="text-foreground">{monthLabel(thisMonth)}</b>
+            {settledCount > 0 && <> · {settledCount} of {active.length} active players settled</>}
+          </p>
         </div>
-        <div className="mt-6 grid grid-cols-1 gap-2 text-left sm:grid-cols-3">
-          {[
-            { step: "1", text: "Search & select the player" },
-            { step: "2", text: "Tick months — amount auto-fills" },
-            { step: "3", text: "Confirm → printable receipt" },
-          ].map((s) => (
-            <div key={s.step} className="rounded-xl border border-border bg-card/60 px-3 py-2.5">
-              <span className="font-display text-sm font-extrabold text-primary">{s.step}</span>
-              <span className="ml-2 text-[15px] text-muted-foreground">{s.text}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 text-[15px] text-muted-foreground">
-          Tip — the same popup opens straight from the <b className="text-foreground">Collect Fee</b> button in the top bar,
-          or from any defaulter row in the monitor tab.
-        </p>
+        <Button
+          size="lg"
+          className="btn-sheen relative ml-auto h-11 gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_14px_30px_-12px_rgba(239,71,111,0.7)] transition-all hover:brightness-110 active:scale-[0.97] dark:shadow-[0_0_22px_-4px_rgba(255,107,141,0.6)]"
+          onClick={() => openCollectFee()}
+        >
+          <Receipt className="h-4.5 w-4.5" strokeWidth={2.4} /> Start Fee Collection
+        </Button>
       </div>
+
+      {/* live numbers */}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatTile label={`Collected · ${monthLabel(thisMonth).split(" ")[0]}`} value={loading ? null : formatINR(collectedThisMonth)} hint={`${receiptsThisMonth} receipt${receiptsThisMonth === 1 ? "" : "s"} issued`} icon={<BadgeIndianRupee className="h-4 w-4" />} tone="text-emerald-600 dark:text-emerald-300 bg-emerald-500/10" />
+        <StatTile label="Outstanding dues" value={loading ? null : formatINR(outstanding)} hint={"across all active players"} icon={<AlertTriangle className="h-4 w-4" />} tone="text-amber-600 dark:text-amber-300 bg-amber-500/10" />
+        <StatTile label="Defaulters" value={loading ? null : String(defaulterCount)} hint={"overdue by more than one month"} icon={<AlertTriangle className="h-4 w-4" />} tone="text-rose-600 dark:text-rose-300 bg-rose-500/10" />
+        <StatTile label="Settled this month" value={loading ? null : `${settledCount} / ${active.length}`} hint={"paid the current billing month"} icon={<CheckCircle2 className="h-4 w-4" />} tone="text-sky-600 dark:text-sky-300 bg-sky-500/10" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {/* ready to collect */}
+        <div className="glass rounded-2xl p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Receipt className="h-4 w-4 text-primary" /> Ready to collect
+            </div>
+            <span className="rounded-full border border-border bg-card/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+              {loading ? "…" : `${active.filter((s) => s.dueAmount > 0).length} player(s)`}
+            </span>
+          </div>
+          <div className="divide-y divide-border/60">
+            {loading && <div className="py-6 text-center text-xs text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading the ledger…</div>}
+            {!loading && readyToCollect.length === 0 && (
+              <div className="py-6 text-center text-xs text-emerald-600 dark:text-emerald-300">Excellent — every active player is fully settled.</div>
+            )}
+            {readyToCollect.map((s) => (
+              <div key={s.student.id} className="flex items-center gap-3 py-2">
+                <button className="min-w-0 flex-1 text-left" onClick={() => navigate("student-detail", s.student.id)} title="Open player profile">
+                  <div className="truncate text-xs font-semibold hover:text-primary hover:underline">{s.student.fullName}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-[14.5px] text-muted-foreground">
+                    <span className="font-mono">{s.student.admissionNo}</span>
+                    <span className={cn("rounded-full border px-1.5 text-[10.5px] font-medium", CATEGORY_COLORS[s.student.ageCategory] || "")}>{s.student.ageCategory}</span>
+                    {s.isDefaulter ? (
+                      <span className="text-rose-600 dark:text-rose-300">{s.overdueMonths.length} mo overdue</span>
+                    ) : (
+                      <span>{s.pendingMonths.length} month{s.pendingMonths.length === 1 ? "" : "s"} pending</span>
+                    )}
+                  </div>
+                </button>
+                <div className="text-right">
+                  <div className="text-xs font-bold tabular-nums text-rose-600 dark:text-rose-300">{formatINR(s.dueAmount)}</div>
+                </div>
+                <Button size="sm" className="h-7 gap-1 rounded-lg bg-primary text-[11px] font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.97]" onClick={() => openCollectFee(s.student.id)}>
+                  <BadgeIndianRupee className="h-3 w-3" /> Collect
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* recent receipts */}
+        <div className="glass rounded-2xl p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <History className="h-4 w-4 text-primary" /> Recent receipts
+            </div>
+            <span className="text-[11px] text-muted-foreground">silent print · preset paper</span>
+          </div>
+          <div className="divide-y divide-border/60">
+            {loading && <div className="py-6 text-center text-xs text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading receipts…</div>}
+            {!loading && recentReceipts.length === 0 && (
+              <div className="py-6 text-center text-xs text-muted-foreground">No receipts yet — start the first collection above.</div>
+            )}
+            {recentReceipts.map((p) => (
+              <div key={p.id} className="flex items-center gap-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-xs font-semibold"><span className="font-mono text-muted-foreground">{p.receiptNo}</span> · {p.studentName}</div>
+                  <div className="mt-0.5 text-[14.5px] text-muted-foreground">{formatDate(p.paymentDate)} · {parsePaidMonths(p.months).map(monthLabel).join(", ")}</div>
+                </div>
+                <div className="text-xs font-bold tabular-nums">{formatINR(p.amount)}</div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 w-7 border-border bg-card p-0 text-muted-foreground hover:bg-muted"
+                  title="Reprint silently at the receipt preset"
+                  onClick={() => setPrint({ kind: "receipt-a5", title: `PS-AMS-Receipt-${p.receiptNo}`, data: { receipt: p, settings }, mode: "direct" })}
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <p className="text-[15px] text-muted-foreground">
+        Tip — the collection popup also opens from the <b className="text-foreground">Collect Fee</b> button in the top bar, from any row above and from any defaulter in the monitor tab. Receipts print silently at the preset paper size (A6 by default — change it inside any print preview).
+      </p>
+    </div>
+  )
+}
+
+function StatTile({ label, value, hint, icon, tone }: { label: string; value: string | null; hint: string; icon: React.ReactNode; tone: string }) {
+  return (
+    <div className="glass rounded-2xl p-4">
+      <div className="flex items-center gap-2">
+        <span className={cn("flex h-7 w-7 items-center justify-center rounded-lg", tone)}>{icon}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+      </div>
+      <div className="mt-2 font-display text-xl font-extrabold tabular-nums">{value ?? "…"}</div>
+      <div className="text-[14.5px] text-muted-foreground">{hint}</div>
     </div>
   )
 }
@@ -138,14 +270,14 @@ export function FeeFilterBar({
         <Input className="h-8 w-56 pl-8 text-xs" placeholder={placeholder} value={q} onChange={(e) => onQ(e.target.value)} />
       </div>
       <Select value={category} onValueChange={onCategory}>
-        <SelectTrigger className="h-8 w-[132px] text-xs"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="h-8 min-w-[128px] text-xs"><SelectValue /></SelectTrigger>
         <SelectContent className="border-border bg-popover">
           <SelectItem value="all" className="text-xs">All categories</SelectItem>
           {AGE_CATEGORIES.map((c) => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
         </SelectContent>
       </Select>
       <Select value={gender} onValueChange={onGender}>
-        <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="h-8 min-w-[104px] text-xs"><SelectValue /></SelectTrigger>
         <SelectContent className="border-border bg-popover">
           <SelectItem value="all" className="text-xs">All genders</SelectItem>
           {GENDERS.map((g) => <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>)}
@@ -177,13 +309,26 @@ export function ReceiptDialog({
   const { toast } = useToast()
   const [waBusy, setWaBusy] = useState(false)
   const [pdfBusy, setPdfBusy] = useState(false)
+  const desktop = isTauri()
+  const receiptPaper = getReceiptPaper()
 
   async function savePdf() {
     if (!receipt) return
     setPdfBusy(true)
     try {
-      await receiptPdfA5(receipt, settings)
-      toast({ title: "A5 receipt PDF downloaded", description: `Saved as PS-AMS-Receipt-${receipt.receiptNo}.pdf — true A5 paper size (148 × 210 mm).` })
+      if (desktop) {
+        // Desktop: render the receipt exactly as it prints and write a TRUE
+        // single-page PDF at the saved receipt paper preset (A6 by default).
+        setPrint({
+          kind: "receipt-a5",
+          title: `PS-AMS-Receipt-${receipt.receiptNo}`,
+          data: { receipt, settings },
+          mode: "pdf",
+        })
+      } else {
+        await receiptPdfA5(receipt, settings)
+        toast({ title: "Receipt PDF downloaded", description: `Saved as PS-AMS-Receipt-${receipt.receiptNo}.pdf — true A5 paper size (148 × 210 mm).` })
+      }
     } catch (e) {
       toast({ title: "PDF export failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     } finally {
@@ -255,9 +400,9 @@ export function ReceiptDialog({
             size="sm"
             className="h-9 gap-1.5 text-xs"
             onClick={() => setPrint({ kind: "receipt-a5", title: `PS-AMS-Receipt-${receipt.receiptNo}`, data: { receipt, settings }, mode: "direct" })}
-            title="Straight to the default printer — zero page margins, no headers or footers"
+            title={`Straight to the default printer — ${paperLabel(receiptPaper)} preset, zero page margins, no headers or footers, no print dialog`}
           >
-            <Printer className="h-3.5 w-3.5" /> Print A5
+            <Printer className="h-3.5 w-3.5" /> Print receipt
           </Button>
           <Button
             size="sm"
@@ -265,7 +410,7 @@ export function ReceiptDialog({
             className="h-9 gap-1.5 border-border bg-card text-xs hover:bg-muted"
             disabled={pdfBusy}
             onClick={savePdf}
-            title="Downloads a true A5-size PDF (148 × 210 mm) of this receipt"
+            title="Saves a true-to-paper PDF of this receipt at the receipt paper preset"
           >
             {pdfBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} Save PDF
           </Button>
@@ -284,7 +429,7 @@ export function ReceiptDialog({
         </div>
         <div className="flex items-center justify-between">
           <p className="text-[15px] text-muted-foreground">
-            <b>Print A5 / 80mm Slip</b> go straight to the printer with no automatic headers or time stamps; <b>Save PDF</b> downloads a true A5-size PDF file. The <b>WhatsApp</b> button delivers the itemised message <b>together with the A5 PDF receipt</b> through the academy’s linked WhatsApp device — one click, straight to the parent’s chat.
+            <b>Print receipt / 80mm Slip</b> print silently straight to your default printer at the preset paper size (receipts default to A6 — change the preset inside any print preview) with no automatic headers or time stamps; <b>Save PDF</b> writes a true-to-paper PDF file. The <b>WhatsApp</b> button delivers the itemised message <b>together with the PDF receipt</b> through the academy’s linked WhatsApp device — one click, straight to the parent’s chat.
           </p>
           <Button
             size="sm"
@@ -543,7 +688,7 @@ function HistoryTab() {
   )
   const filteredTotal = filtered.reduce((sum, p) => sum + Number(p.amount || 0), 0)
 
-  /** Reprint straight to the printer — A5 zero-margin paper. */
+  /** Reprint straight to the printer — preset receipt paper, zero margins. */
   function reprint(p: FeePayment & { studentName: string; admissionNo: string }) {
     setPrint({ kind: "receipt-a5", title: `PS-AMS-Receipt-${p.receiptNo}`, data: { receipt: p, settings }, mode: "direct" })
   }
@@ -622,14 +767,14 @@ function HistoryTab() {
                 <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatINR(p.amount)}</td>
                 <td className="px-3 py-2">
                   <div className="flex justify-end gap-1">
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" title="Straight to the default printer" onClick={() => reprint(p)}>A5</Button>
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" title="Straight to the default printer at the receipt preset" onClick={() => reprint(p)}>Receipt</Button>
                     <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" title="Direct thermal print — 80 mm roll" onClick={() => setPrint({ kind: "receipt-thermal", title: `PS-AMS-Slip-${p.receiptNo}`, data: { receipt: p, settings }, mode: "direct" })}>Thermal</Button>
                     <Button
                       size="sm"
                       variant="outline"
                       disabled={sendingId === p.id}
                       className="h-6 gap-1 border-emerald-500/30 bg-emerald-500/10 px-2 text-[14.5px] text-emerald-700 hover:bg-emerald-500/20 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300"
-                      title="Sends the itemised message plus the A5 PDF receipt via the linked device"
+                      title="Sends the itemised message plus the PDF receipt via the linked device"
                       onClick={() => resend(p)}
                     >
                       {sendingId === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <MessageCircle className="h-3 w-3" />} Send

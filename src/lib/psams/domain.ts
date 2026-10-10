@@ -266,6 +266,39 @@ export const MONTH_KEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/
 /** Indian mobile: 10 digits, optional leading 0 or 91 prefix. */
 export const MOBILE_DIGITS_RE = /^(\d{10}|0\d{10}|91\d{10})$/
 
+// ---------- Input-field sanitizers (every form control uses these in onChange) ----------
+
+/**
+ * Normalize any phone keystroke/paste into at most 10 digits. A pasted
+ * "+91 98765 43210" or "09876543210" collapses to the bare 10-digit local
+ * number, so the field can never hold more than 10 digits.
+ */
+export function phoneDigits(value: string): string {
+  let d = value.replace(/\D/g, "")
+  if (d.length > 10 && d.startsWith("91")) d = d.slice(2)
+  if (d.length > 10 && d.startsWith("0")) d = d.slice(1)
+  return d.slice(0, 10)
+}
+
+/** Digits only, capped — for whole-number fields (age, height, fee, amount). */
+export function intOnly(value: string, maxDigits = 6): string {
+  return value.replace(/\D/g, "").slice(0, maxDigits)
+}
+
+/**
+ * Digits with at most one decimal point and two fraction digits — for
+ * measurements like weight (kg). Strips every other character, so text
+ * can never enter a numeric field.
+ */
+export function decimalOnly(value: string, maxDigits = 5): string {
+  const cleaned = value.replace(/[^\d.]/g, "")
+  const dot = cleaned.indexOf(".")
+  if (dot === -1) return cleaned.slice(0, maxDigits)
+  const int = cleaned.slice(0, dot).slice(0, maxDigits)
+  const frac = cleaned.slice(dot + 1).replace(/\./g, "").slice(0, 2)
+  return `${int}.${frac}`
+}
+
 /**
  * Sanity guards for a student record — mirrored by the web POST /api/students
  * route and the desktop createStudent. Throws with a user-facing message.

@@ -25,6 +25,7 @@ import { useAppStore, type ViewKey } from "@/lib/psams/store"
 import { isTauri } from "@/lib/psams/api"
 import { openExternal, initWaBridge } from "@/lib/psams/whatsapp"
 import { ACADEMY_MAPS_URL } from "@/lib/psams/domain"
+import { APP_VERSION } from "@/lib/psams/version"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -184,7 +185,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* footer — version marker only (status text intentionally removed) */}
           <div className="relative z-10 pb-4 text-center">
             <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-sky-200/30">
-              {collapsed ? "v1.6.0" : "PS-AMS · v1.6.0"}
+              {collapsed ? `v${APP_VERSION}` : `PS-AMS · v${APP_VERSION}`}
             </span>
           </div>
         </motion.aside>
@@ -310,7 +311,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : null}
             <span className="font-semibold text-muted-foreground">Pattern Sports Volleyball Academy</span>
             <span className="text-border">·</span>
-            <span className="tnum">PS-AMS v1.6.1</span>
+            <span className="tnum">PS-AMS v{APP_VERSION}</span>
             <button
               type="button"
               className="hidden items-center gap-1 rounded-full border border-border bg-card/60 px-2.5 py-0.5 text-[11.5px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground md:inline-flex"
