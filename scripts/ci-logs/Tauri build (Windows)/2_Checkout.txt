@@ -1,0 +1,76 @@
+﻿2026-10-09T06:24:46.1833987Z ##[group]Run actions/checkout@v4
+2026-10-09T06:24:46.1835077Z with:
+2026-10-09T06:24:46.1835549Z   repository: kuttappu507/patterns-sports
+2026-10-09T06:24:46.1839582Z   token: ***
+2026-10-09T06:24:46.1840448Z   ssh-strict: true
+2026-10-09T06:24:46.1840880Z   ssh-user: git
+2026-10-09T06:24:46.1841310Z   persist-credentials: true
+2026-10-09T06:24:46.1841773Z   clean: true
+2026-10-09T06:24:46.1842194Z   sparse-checkout-cone-mode: true
+2026-10-09T06:24:46.1842718Z   fetch-depth: 1
+2026-10-09T06:24:46.1843131Z   fetch-tags: false
+2026-10-09T06:24:46.1843546Z   show-progress: true
+2026-10-09T06:24:46.1843976Z   lfs: false
+2026-10-09T06:24:46.1844354Z   submodules: false
+2026-10-09T06:24:46.1844769Z   set-safe-directory: true
+2026-10-09T06:24:46.1845248Z   allow-unsafe-pr-checkout: false
+2026-10-09T06:24:46.1846030Z ##[endgroup]
+2026-10-09T06:24:46.3292472Z Syncing repository: kuttappu507/patterns-sports
+2026-10-09T06:24:46.3295133Z ##[group]Getting Git version info
+2026-10-09T06:24:46.3296216Z Working directory is 'D:\a\patterns-sports\patterns-sports'
+2026-10-09T06:24:46.4287560Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-10-09T06:24:46.7802977Z git version 2.55.0.windows.5
+2026-10-09T06:24:46.7852409Z ##[endgroup]
+2026-10-09T06:24:46.7871725Z Temporarily overriding HOME='D:\a\_temp\d4c7334f-5b84-4fae-924a-3bdfb6da1263' before making global git config changes
+2026-10-09T06:24:46.7873083Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-09T06:24:46.7882848Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\patterns-sports\patterns-sports
+2026-10-09T06:24:46.8501444Z Deleting the contents of 'D:\a\patterns-sports\patterns-sports'
+2026-10-09T06:24:46.8507233Z ##[group]Initializing the repository
+2026-10-09T06:24:46.8515701Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\patterns-sports\patterns-sports
+2026-10-09T06:24:46.9351365Z Initialized empty Git repository in D:/a/patterns-sports/patterns-sports/.git/
+2026-10-09T06:24:46.9398225Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/kuttappu507/patterns-sports
+2026-10-09T06:24:46.9982129Z ##[endgroup]
+2026-10-09T06:24:46.9983006Z ##[group]Disabling automatic garbage collection
+2026-10-09T06:24:46.9991246Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-10-09T06:24:47.0287820Z ##[endgroup]
+2026-10-09T06:24:47.0288638Z ##[group]Setting up auth
+2026-10-09T06:24:47.0300948Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-10-09T06:24:47.0631373Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-10-09T06:24:48.4953981Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-09T06:24:48.5318692Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-10-09T06:24:49.0666427Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-09T06:24:49.0986700Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-10-09T06:24:49.6436775Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-10-09T06:24:49.6739830Z ##[endgroup]
+2026-10-09T06:24:49.6740466Z ##[group]Fetching the repository
+2026-10-09T06:24:49.6752754Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7363c3059fb5cc6fbbac3d98754927de8be902e6:refs/tags/v1.3.0
+2026-10-09T06:24:50.9617134Z From https://github.com/kuttappu507/patterns-sports
+2026-10-09T06:24:50.9618185Z  * [new ref]         7363c3059fb5cc6fbbac3d98754927de8be902e6 -> v1.3.0
+2026-10-09T06:24:50.9660258Z ##[endgroup]
+2026-10-09T06:24:50.9660976Z ##[group]Determining the checkout info
+2026-10-09T06:24:50.9664204Z ##[endgroup]
+2026-10-09T06:24:50.9674758Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-10-09T06:24:51.0138047Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-10-09T06:24:51.0466370Z ##[group]Checking out the ref
+2026-10-09T06:24:51.0467320Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force refs/tags/v1.3.0
+2026-10-09T06:24:51.2030462Z Note: switching to 'refs/tags/v1.3.0'.
+2026-10-09T06:24:51.2031121Z 
+2026-10-09T06:24:51.2031336Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-09T06:24:51.2031838Z changes and commit them, and you can discard any commits you make in this
+2026-10-09T06:24:51.2032371Z state without impacting any branches by switching back to a branch.
+2026-10-09T06:24:51.2032674Z 
+2026-10-09T06:24:51.2032957Z If you want to create a new branch to retain commits you create, you may
+2026-10-09T06:24:51.2034021Z do so (now or later) by using -c with the switch command. Example:
+2026-10-09T06:24:51.2034350Z 
+2026-10-09T06:24:51.2034480Z   git switch -c <new-branch-name>
+2026-10-09T06:24:51.2035586Z 
+2026-10-09T06:24:51.2035721Z Or undo this operation with:
+2026-10-09T06:24:51.2035944Z 
+2026-10-09T06:24:51.2036043Z   git switch -
+2026-10-09T06:24:51.2036182Z 
+2026-10-09T06:24:51.2036406Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-09T06:24:51.2036746Z 
+2026-10-09T06:24:51.2037320Z HEAD is now at 7363c30 v1.3.0 — Volley Arena sports theme, Poppins, fluid motion
+2026-10-09T06:24:51.2152986Z ##[endgroup]
+2026-10-09T06:24:51.2626964Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-10-09T06:24:51.2901878Z 7363c3059fb5cc6fbbac3d98754927de8be902e6

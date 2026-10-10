@@ -1,0 +1,67 @@
+﻿2026-10-09T06:26:25.0555040Z ##[group]Run bun run tauri build
+2026-10-09T06:26:25.0555520Z [36;1mbun run tauri build[0m
+2026-10-09T06:26:25.0632736Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-09T06:26:25.0633166Z env:
+2026-10-09T06:26:25.0633428Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:26:25.0633785Z   CARGO_INCREMENTAL: 0
+2026-10-09T06:26:25.0634059Z   CARGO_TERM_COLOR: always
+2026-10-09T06:26:25.0634337Z   CACHE_ON_FAILURE: false
+2026-10-09T06:26:25.0634679Z ##[endgroup]
+2026-10-09T06:26:25.3395884Z $ tauri build
+2026-10-09T06:26:27.6892814Z         Info Looking up installed tauri packages to check mismatched versions...
+2026-10-09T06:26:32.6918731Z      Running beforeBuildCommand `npm run build:tauri`
+2026-10-09T06:26:33.0697098Z 
+2026-10-09T06:26:33.0697704Z > ps-ams@1.3.0 build:tauri
+2026-10-09T06:26:33.0698373Z > node scripts/build-tauri-frontend.mjs
+2026-10-09T06:26:33.0698798Z 
+2026-10-09T06:26:33.1841237Z [build-tauri] stashed src/app/api for static export
+2026-10-09T06:26:35.7457719Z ⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+2026-10-09T06:26:35.7560339Z Attention: Next.js now collects completely anonymous telemetry regarding usage.
+2026-10-09T06:26:35.7561538Z This information is used to shape Next.js' roadmap and prioritize features.
+2026-10-09T06:26:35.7563310Z You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+2026-10-09T06:26:35.7564581Z https://nextjs.org/telemetry
+2026-10-09T06:26:35.7566320Z 
+2026-10-09T06:26:35.7726258Z ▲ Next.js 16.1.3 (Turbopack)
+2026-10-09T06:26:35.7727689Z 
+2026-10-09T06:26:35.8059391Z   Creating an optimized production build ...
+2026-10-09T06:26:47.6113351Z ✓ Compiled successfully in 10.9s
+2026-10-09T06:26:47.6392446Z   Running TypeScript ...
+2026-10-09T06:26:55.1420911Z Failed to compile.
+2026-10-09T06:26:55.1421372Z 
+2026-10-09T06:26:55.1421909Z ./scripts/seed.ts:2:10
+2026-10-09T06:26:55.1425090Z Type error: Module '"@prisma/client"' has no exported member 'PrismaClient'.
+2026-10-09T06:26:55.1425747Z 
+2026-10-09T06:26:55.1426585Z [0m [90m 1 |[39m [90m// PS-AMS demo data seeder — populates a realistic academy dataset[39m
+2026-10-09T06:26:55.1427991Z [31m[1m>[22m[39m[90m 2 |[39m [36mimport[39m { [33mPrismaClient[39m } [36mfrom[39m [32m"@prisma/client"[39m
+2026-10-09T06:26:55.1429149Z  [90m   |[39m          [31m[1m^[22m[39m
+2026-10-09T06:26:55.1430838Z  [90m 3 |[39m [36mimport[39m { nextAdmissionNo[33m,[39m nextReceiptNo } [36mfrom[39m [32m"../src/lib/psams/domain"[39m
+2026-10-09T06:26:55.1431911Z  [90m 4 |[39m
+2026-10-09T06:26:55.1432688Z  [90m 5 |[39m [36mconst[39m db [33m=[39m [36mnew[39m [33mPrismaClient[39m()[0m
+2026-10-09T06:26:55.1845573Z Next.js build worker exited with code: 1 and signal: null
+2026-10-09T06:26:55.2870175Z [build-tauri] restored src/app/api
+2026-10-09T06:26:55.2884609Z node:internal/errors:983
+2026-10-09T06:26:55.2885321Z   const err = new Error(message);
+2026-10-09T06:26:55.2885832Z               ^
+2026-10-09T06:26:55.2886121Z 
+2026-10-09T06:26:55.2886307Z Error: Command failed: npx next build
+2026-10-09T06:26:55.2886850Z     at genericNodeError (node:internal/errors:983:15)
+2026-10-09T06:26:55.2887572Z     at wrappedFn (node:internal/errors:537:14)
+2026-10-09T06:26:55.2888234Z     at checkExecSyncError (node:child_process:916:11)
+2026-10-09T06:26:55.2888827Z     at execSync (node:child_process:988:15)
+2026-10-09T06:26:55.2890133Z     at file:///D:/a/patterns-sports/patterns-sports/scripts/build-tauri-frontend.mjs:27:3
+2026-10-09T06:26:55.2893320Z     at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+2026-10-09T06:26:55.2896551Z     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+2026-10-09T06:26:55.2901578Z     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+2026-10-09T06:26:55.2902365Z   status: 1,
+2026-10-09T06:26:55.2911617Z   signal: null,
+2026-10-09T06:26:55.2912657Z   output: [ null, null, null ],
+2026-10-09T06:26:55.2913147Z   pid: 2688,
+2026-10-09T06:26:55.2913541Z   stdout: null,
+2026-10-09T06:26:55.2913986Z   stderr: null
+2026-10-09T06:26:55.2914359Z }
+2026-10-09T06:26:55.2914573Z 
+2026-10-09T06:26:55.2914754Z Node.js v22.23.3
+2026-10-09T06:26:55.3118273Z beforeBuildCommand `npm run build:tauri` failed with exit code 1
+2026-10-09T06:26:55.3122301Z        Error beforeBuildCommand `npm run build:tauri` failed with exit code 1
+2026-10-09T06:26:55.3241385Z error: script "tauri" exited with code 1
+2026-10-09T06:26:55.4283098Z ##[error]Process completed with exit code 1.

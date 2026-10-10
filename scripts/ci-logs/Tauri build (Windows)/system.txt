@@ -1,0 +1,8 @@
+2026-10-09T06:24:42.6220000Z Evaluating build.if
+2026-10-09T06:24:42.6220000Z Evaluating: success()
+2026-10-09T06:24:42.6220000Z Result: true
+2026-10-09T06:24:42.6260000Z Requested labels: windows-latest
+2026-10-09T06:24:42.6260000Z Job defined at: kuttappu507/patterns-sports/.github/workflows/build-exe.yml@refs/tags/v1.3.0
+2026-10-09T06:24:42.6260000Z Waiting for a runner to pick up this job...
+2026-10-09T06:24:42.9410000Z Job is waiting for a hosted runner to come online.
+2026-10-09T06:24:42.9410000Z Job is about to start running on the hosted runner: GitHub Actions 1000003194

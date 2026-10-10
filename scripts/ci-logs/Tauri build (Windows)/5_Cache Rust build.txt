@@ -1,0 +1,59 @@
+﻿2026-10-09T06:25:12.8762830Z ##[group]Run swatinem/rust-cache@v2
+2026-10-09T06:25:12.8763154Z with:
+2026-10-09T06:25:12.8763335Z   workspaces: src-tauri
+2026-10-09T06:25:12.8763543Z   prefix-key: v0-rust
+2026-10-09T06:25:12.8763736Z   add-job-id-key: true
+2026-10-09T06:25:12.8763948Z   add-rust-environment-hash-key: true
+2026-10-09T06:25:12.8764191Z   cache-targets: true
+2026-10-09T06:25:12.8764381Z   cache-all-crates: false
+2026-10-09T06:25:12.8764596Z   cache-workspace-crates: false
+2026-10-09T06:25:12.8764806Z   save-if: true
+2026-10-09T06:25:12.8764980Z   cache-provider: github
+2026-10-09T06:25:12.8765171Z   cache-bin: true
+2026-10-09T06:25:12.8765343Z   lookup-only: false
+2026-10-09T06:25:12.8765521Z   cmd-format: {0}
+2026-10-09T06:25:12.8765686Z env:
+2026-10-09T06:25:12.8765859Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:25:12.8766101Z   CARGO_INCREMENTAL: 0
+2026-10-09T06:25:12.8766288Z   CARGO_TERM_COLOR: always
+2026-10-09T06:25:12.8766482Z ##[endgroup]
+2026-10-09T06:25:14.0834133Z ##[group]Cache Configuration
+2026-10-09T06:25:14.0835327Z Cache Provider:
+2026-10-09T06:25:14.0835971Z     github
+2026-10-09T06:25:14.0836209Z Workspaces:
+2026-10-09T06:25:14.0836531Z     D:\a\patterns-sports\patterns-sports\src-tauri
+2026-10-09T06:25:14.0836954Z Cache Paths:
+2026-10-09T06:25:14.0837495Z     C:\Users\runneradmin\.cargo\bin
+2026-10-09T06:25:14.0837973Z     C:\Users\runneradmin\.cargo\.crates.toml
+2026-10-09T06:25:14.0838687Z     C:\Users\runneradmin\.cargo\.crates2.json
+2026-10-09T06:25:14.0839311Z     C:\Users\runneradmin\.cargo\registry
+2026-10-09T06:25:14.0839848Z     C:\Users\runneradmin\.cargo\git
+2026-10-09T06:25:14.0840521Z     D:\a\patterns-sports\patterns-sports\src-tauri\target
+2026-10-09T06:25:14.0841228Z Restore Key:
+2026-10-09T06:25:14.0841778Z     v0-rust-build-Windows_NT-x64-63f58d45
+2026-10-09T06:25:14.0842683Z Cache Key:
+2026-10-09T06:25:14.0843129Z     v0-rust-build-Windows_NT-x64-63f58d45-e831443e
+2026-10-09T06:25:14.0843807Z .. Prefix:
+2026-10-09T06:25:14.0844577Z   - v0-rust-build-Windows_NT-x64
+2026-10-09T06:25:14.0845068Z .. Environment considered:
+2026-10-09T06:25:14.0845456Z   - Rust Versions:
+2026-10-09T06:25:14.0845988Z     - 1.99.0 x86_64-pc-windows-msvc b940084d7eb6a299eb4bfeb8e34901bc051e7ac4
+2026-10-09T06:25:14.0846645Z   - CARGO_HOME
+2026-10-09T06:25:14.0846959Z   - CARGO_INCREMENTAL
+2026-10-09T06:25:14.0847289Z   - CARGO_TERM_COLOR
+2026-10-09T06:25:14.0847630Z .. Lockfiles considered:
+2026-10-09T06:25:14.0848166Z   - D:\a\patterns-sports\patterns-sports\src-tauri\.cargo\config.toml
+2026-10-09T06:25:14.0848941Z   - D:\a\patterns-sports\patterns-sports\src-tauri\Cargo.toml
+2026-10-09T06:25:14.0849785Z ##[endgroup]
+2026-10-09T06:25:14.0849968Z 
+2026-10-09T06:25:14.0850098Z ... Restoring cache ...
+2026-10-09T06:25:14.2916906Z Cache hit for: v0-rust-build-Windows_NT-x64-63f58d45-e831443e
+2026-10-09T06:25:15.3327751Z Received 205520896 of 862472633 (23.8%), 193.7 MBs/sec
+2026-10-09T06:25:16.3350163Z Received 402653184 of 862472633 (46.7%), 190.7 MBs/sec
+2026-10-09T06:25:17.3375222Z Received 641728512 of 862472633 (74.4%), 202.9 MBs/sec
+2026-10-09T06:25:18.3420918Z Received 826277888 of 862472633 (95.8%), 196.0 MBs/sec
+2026-10-09T06:25:18.5349021Z Received 862472633 of 862472633 (100.0%), 195.2 MBs/sec
+2026-10-09T06:25:18.5353173Z Cache Size: ~823 MB (862472633 B)
+2026-10-09T06:25:18.5416323Z [command]"C:\Program Files\Git\usr\bin\tar.exe" -xf D:/a/_temp/738db7bf-4488-46f6-a1a0-661df772bb19/cache.tzst -P -C D:/a/patterns-sports/patterns-sports --force-local --use-compress-program "zstd -d"
+2026-10-09T06:25:36.2545006Z Cache restored successfully
+2026-10-09T06:25:36.3037235Z Restored from cache key "v0-rust-build-Windows_NT-x64-63f58d45-e831443e" full match: true.

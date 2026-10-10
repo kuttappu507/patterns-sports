@@ -1,0 +1,540 @@
+﻿2026-10-09T06:24:44.5897517Z Current runner version: '2.337.0'
+2026-10-09T06:24:44.5935983Z ##[group]Runner Image Provisioner
+2026-10-09T06:24:44.5937251Z Hosted Compute Agent
+2026-10-09T06:24:44.5938216Z Version: 20260901.588
+2026-10-09T06:24:44.5939273Z Commit: f88ec8081b781fac6c440065ac7ff9e710ce3d0b
+2026-10-09T06:24:44.5940592Z Build Date: 2026-09-01T19:56:44Z
+2026-10-09T06:24:44.5941713Z Worker ID: {9ddd38ef-ba2a-42b7-816e-e7fc6b873710}
+2026-10-09T06:24:44.5942957Z Azure Region: eastus2
+2026-10-09T06:24:44.5943987Z ##[endgroup]
+2026-10-09T06:24:44.5946394Z ##[group]Operating System
+2026-10-09T06:24:44.5947530Z Microsoft Windows Server 2025
+2026-10-09T06:24:44.5948940Z 10.0.26100
+2026-10-09T06:24:44.5949797Z Datacenter
+2026-10-09T06:24:44.5950723Z ##[endgroup]
+2026-10-09T06:24:44.5951676Z ##[group]Runner Image
+2026-10-09T06:24:44.5952681Z Image: windows-2025-vs2026
+2026-10-09T06:24:44.5954854Z Version: 20260925.250.1
+2026-10-09T06:24:44.5956980Z Included Software: https://github.com/actions/runner-images/blob/win25-vs2026/20260925.250/images/windows/Windows2025-VS2026-Readme.md
+2026-10-09T06:24:44.5958657Z Image Release: https://github.com/actions/runner-images/releases/tag/win25-vs2026%2F20260925.250
+2026-10-09T06:24:44.5959621Z ##[endgroup]
+2026-10-09T06:24:44.5960721Z ##[group]GITHUB_TOKEN Permissions
+2026-10-09T06:24:44.5962572Z Contents: write
+2026-10-09T06:24:44.5963128Z Metadata: read
+2026-10-09T06:24:44.5963661Z ##[endgroup]
+2026-10-09T06:24:44.5966319Z Secret source: Actions
+2026-10-09T06:24:44.5967196Z Cache mode: write
+2026-10-09T06:24:44.5967921Z Prepare workflow directory
+2026-10-09T06:24:44.6421823Z Prepare all required actions
+2026-10-09T06:24:44.6495709Z Getting action download info
+2026-10-09T06:24:44.8395708Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-09T06:24:44.9776057Z Download action repository 'oven-sh/setup-bun@v2' (SHA:0c5077e51419868618aeaa5fe8019c62421857d6)
+2026-10-09T06:24:45.1530219Z Download action repository 'dtolnay/rust-toolchain@stable' (SHA:686976e191b89faba57d3206551f0f330d8cb249)
+2026-10-09T06:24:45.2405349Z Download action repository 'swatinem/rust-cache@v2' (SHA:6323deb102c322ba6fcbdcafc7e3dddab59af2b6)
+2026-10-09T06:24:45.4260992Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-10-09T06:24:45.6489022Z Download action repository 'softprops/action-gh-release@v2' (SHA:3bb12739c298aeb8a4eeaf626c5b8d85266b0e65)
+2026-10-09T06:24:45.9992532Z Complete job name: Tauri build (Windows)
+2026-10-09T06:24:46.1834040Z ##[group]Run actions/checkout@v4
+2026-10-09T06:24:46.1835088Z with:
+2026-10-09T06:24:46.1835554Z   repository: kuttappu507/patterns-sports
+2026-10-09T06:24:46.1839587Z   token: ***
+2026-10-09T06:24:46.1840458Z   ssh-strict: true
+2026-10-09T06:24:46.1840885Z   ssh-user: git
+2026-10-09T06:24:46.1841314Z   persist-credentials: true
+2026-10-09T06:24:46.1841777Z   clean: true
+2026-10-09T06:24:46.1842204Z   sparse-checkout-cone-mode: true
+2026-10-09T06:24:46.1842723Z   fetch-depth: 1
+2026-10-09T06:24:46.1843135Z   fetch-tags: false
+2026-10-09T06:24:46.1843556Z   show-progress: true
+2026-10-09T06:24:46.1843981Z   lfs: false
+2026-10-09T06:24:46.1844358Z   submodules: false
+2026-10-09T06:24:46.1844773Z   set-safe-directory: true
+2026-10-09T06:24:46.1845252Z   allow-unsafe-pr-checkout: false
+2026-10-09T06:24:46.1846039Z ##[endgroup]
+2026-10-09T06:24:46.3292546Z Syncing repository: kuttappu507/patterns-sports
+2026-10-09T06:24:46.3295166Z ##[group]Getting Git version info
+2026-10-09T06:24:46.3296323Z Working directory is 'D:\a\patterns-sports\patterns-sports'
+2026-10-09T06:24:46.4287639Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-10-09T06:24:46.7803052Z git version 2.55.0.windows.5
+2026-10-09T06:24:46.7852447Z ##[endgroup]
+2026-10-09T06:24:46.7871760Z Temporarily overriding HOME='D:\a\_temp\d4c7334f-5b84-4fae-924a-3bdfb6da1263' before making global git config changes
+2026-10-09T06:24:46.7873090Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-09T06:24:46.7882887Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\patterns-sports\patterns-sports
+2026-10-09T06:24:46.8501505Z Deleting the contents of 'D:\a\patterns-sports\patterns-sports'
+2026-10-09T06:24:46.8507255Z ##[group]Initializing the repository
+2026-10-09T06:24:46.8515734Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\patterns-sports\patterns-sports
+2026-10-09T06:24:46.9351539Z Initialized empty Git repository in D:/a/patterns-sports/patterns-sports/.git/
+2026-10-09T06:24:46.9398279Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/kuttappu507/patterns-sports
+2026-10-09T06:24:46.9982202Z ##[endgroup]
+2026-10-09T06:24:46.9983012Z ##[group]Disabling automatic garbage collection
+2026-10-09T06:24:46.9991277Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-10-09T06:24:47.0287877Z ##[endgroup]
+2026-10-09T06:24:47.0288644Z ##[group]Setting up auth
+2026-10-09T06:24:47.0300976Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-10-09T06:24:47.0631445Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-10-09T06:24:48.4954139Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-09T06:24:48.5318754Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-10-09T06:24:49.0666493Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-09T06:24:49.0986759Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-10-09T06:24:49.6436832Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-10-09T06:24:49.6739879Z ##[endgroup]
+2026-10-09T06:24:49.6740472Z ##[group]Fetching the repository
+2026-10-09T06:24:49.6754982Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7363c3059fb5cc6fbbac3d98754927de8be902e6:refs/tags/v1.3.0
+2026-10-09T06:24:50.9617217Z From https://github.com/kuttappu507/patterns-sports
+2026-10-09T06:24:50.9618200Z  * [new ref]         7363c3059fb5cc6fbbac3d98754927de8be902e6 -> v1.3.0
+2026-10-09T06:24:50.9660316Z ##[endgroup]
+2026-10-09T06:24:50.9660990Z ##[group]Determining the checkout info
+2026-10-09T06:24:50.9664234Z ##[endgroup]
+2026-10-09T06:24:50.9674791Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-10-09T06:24:51.0138119Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-10-09T06:24:51.0466410Z ##[group]Checking out the ref
+2026-10-09T06:24:51.0467330Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force refs/tags/v1.3.0
+2026-10-09T06:24:51.2030504Z Note: switching to 'refs/tags/v1.3.0'.
+2026-10-09T06:24:51.2031129Z 
+2026-10-09T06:24:51.2031340Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-09T06:24:51.2031907Z changes and commit them, and you can discard any commits you make in this
+2026-10-09T06:24:51.2032383Z state without impacting any branches by switching back to a branch.
+2026-10-09T06:24:51.2032685Z 
+2026-10-09T06:24:51.2032963Z If you want to create a new branch to retain commits you create, you may
+2026-10-09T06:24:51.2034039Z do so (now or later) by using -c with the switch command. Example:
+2026-10-09T06:24:51.2034354Z 
+2026-10-09T06:24:51.2034484Z   git switch -c <new-branch-name>
+2026-10-09T06:24:51.2035613Z 
+2026-10-09T06:24:51.2035725Z Or undo this operation with:
+2026-10-09T06:24:51.2035947Z 
+2026-10-09T06:24:51.2036046Z   git switch -
+2026-10-09T06:24:51.2036185Z 
+2026-10-09T06:24:51.2036409Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-09T06:24:51.2036748Z 
+2026-10-09T06:24:51.2037325Z HEAD is now at 7363c30 v1.3.0 — Volley Arena sports theme, Poppins, fluid motion
+2026-10-09T06:24:51.2153000Z ##[endgroup]
+2026-10-09T06:24:51.2627096Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-10-09T06:24:51.2901922Z 7363c3059fb5cc6fbbac3d98754927de8be902e6
+2026-10-09T06:24:51.3368457Z ##[group]Run oven-sh/setup-bun@v2
+2026-10-09T06:24:51.3368801Z with:
+2026-10-09T06:24:51.3368999Z   no-cache: false
+2026-10-09T06:24:51.3371653Z   token: ***
+2026-10-09T06:24:51.3372221Z ##[endgroup]
+2026-10-09T06:24:51.9130627Z Downloading a new version of Bun: https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-windows-x64.zip
+2026-10-09T06:24:52.3878752Z [command]"C:\Program Files\PowerShell\7\pwsh.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "$ErrorActionPreference = 'Stop' ; try { Add-Type -AssemblyName System.IO.Compression.ZipFile } catch { } ; try { [System.IO.Compression.ZipFile]::ExtractToDirectory('D:\a\_temp\5d4e0034-436c-4f9b-83e3-ea5d5d8c14ca.zip', 'D:\a\_temp\59a9d1d7-ca09-44ff-a68c-ccd32984dad3', $true) } catch { if (($_.Exception.GetType().FullName -eq 'System.Management.Automation.MethodException') -or ($_.Exception.GetType().FullName -eq 'System.Management.Automation.RuntimeException') ){ Expand-Archive -LiteralPath 'D:\a\_temp\5d4e0034-436c-4f9b-83e3-ea5d5d8c14ca.zip' -DestinationPath 'D:\a\_temp\59a9d1d7-ca09-44ff-a68c-ccd32984dad3' -Force } else { throw $_ } } ;"
+2026-10-09T06:24:53.1039729Z [command]C:\Users\runneradmin\.bun\bin\bun.exe --revision
+2026-10-09T06:24:53.5710403Z 1.4.2+744846f84
+2026-10-09T06:24:53.6169545Z ##[group]Run dtolnay/rust-toolchain@stable
+2026-10-09T06:24:53.6169900Z with:
+2026-10-09T06:24:53.6170084Z   toolchain: stable
+2026-10-09T06:24:53.6170272Z ##[endgroup]
+2026-10-09T06:24:53.6247521Z ##[start-action display=Parse toolchain version;id=__dtolnay_rust-toolchain.parse]
+2026-10-09T06:24:53.6427570Z ##[group]Run if [[ -z $toolchain ]]; then
+2026-10-09T06:24:53.6427931Z [36;1mif [[ -z $toolchain ]]; then[0m
+2026-10-09T06:24:53.6428450Z [36;1m  # GitHub does not enforce `required: true` inputs itself. https://github.com/actions/runner/issues/1070[0m
+2026-10-09T06:24:53.6429007Z [36;1m  echo "'toolchain' is a required input" >&2[0m
+2026-10-09T06:24:53.6429292Z [36;1m  exit 1[0m
+2026-10-09T06:24:53.6429612Z [36;1melif [[ $toolchain =~ ^stable' '[0-9]+' '(year|month|week|day)s?' 'ago$ ]]; then[0m
+2026-10-09T06:24:53.6430014Z [36;1m  if [[ Windows == macOS ]]; then[0m
+2026-10-09T06:24:53.6430569Z [36;1m    echo "toolchain=1.$((($(date -v-$(sed 's/stable \([0-9]*\) \(.\).*/\1\2/' <<< $toolchain) +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-10-09T06:24:53.6431084Z [36;1m  else[0m
+2026-10-09T06:24:53.6431463Z [36;1m    echo "toolchain=1.$((($(date --date "${toolchain#stable }" +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-10-09T06:24:53.6431915Z [36;1m  fi[0m
+2026-10-09T06:24:53.6432191Z [36;1melif [[ $toolchain =~ ^stable' 'minus' '[0-9]+' 'releases?$ ]]; then[0m
+2026-10-09T06:24:53.6432711Z [36;1m  echo "toolchain=1.$((($(date +%s)/60/60/24-16569)/7/6-${toolchain//[^0-9]/}))" >> $GITHUB_OUTPUT[0m
+2026-10-09T06:24:53.6433164Z [36;1melif [[ $toolchain =~ ^1\.[0-9]+$ ]]; then[0m
+2026-10-09T06:24:53.6433666Z [36;1m  echo "toolchain=1.$((i=${toolchain#1.}, c=($(date +%s)/60/60/24-16569)/7/6, i+9*i*(10*i<=c)+90*i*(100*i<=c)))" >> $GITHUB_OUTPUT[0m
+2026-10-09T06:24:53.6434145Z [36;1melse[0m
+2026-10-09T06:24:53.6434318Z [36;1m  delimiter=EOF[0m
+2026-10-09T06:24:53.6434605Z [36;1m  while [[ $toolchain == *$delimiter* ]]; do delimiter+=_; done[0m
+2026-10-09T06:24:53.6435338Z [36;1m  printf 'toolchain<<%s\n%s\n%s\n' "$delimiter" "$toolchain" "$delimiter" >> $GITHUB_OUTPUT[0m
+2026-10-09T06:24:53.6435736Z [36;1mfi[0m
+2026-10-09T06:24:53.6461925Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-09T06:24:53.6462325Z env:
+2026-10-09T06:24:53.6462490Z   toolchain: stable
+2026-10-09T06:24:53.6462673Z ##[endgroup]
+2026-10-09T06:24:53.8048153Z ##[end-action id=__dtolnay_rust-toolchain.parse;outcome=success;conclusion=success;duration_ms=179]
+2026-10-09T06:24:53.8052624Z ##[start-action display=Set $CARGO_HOME;id=__dtolnay_rust-toolchain.__run]
+2026-10-09T06:24:53.8183643Z ##[group]Run echo CARGO_HOME=${CARGO_HOME:-"$USERPROFILE\.cargo"} >> $GITHUB_ENV
+2026-10-09T06:24:53.8184139Z [36;1mecho CARGO_HOME=${CARGO_HOME:-"$USERPROFILE\.cargo"} >> $GITHUB_ENV[0m
+2026-10-09T06:24:53.8199830Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-09T06:24:53.8200249Z ##[endgroup]
+2026-10-09T06:24:53.8629047Z ##[end-action id=__dtolnay_rust-toolchain.__run;outcome=success;conclusion=success;duration_ms=57]
+2026-10-09T06:24:53.8631377Z ##[start-action display=Install rustup if needed;id=__dtolnay_rust-toolchain.__run_2]
+2026-10-09T06:24:53.8640764Z ##[end-action id=__dtolnay_rust-toolchain.__run_2;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-09T06:24:53.8642876Z ##[start-action display=Install rustup if needed on windows;id=__dtolnay_rust-toolchain.__run_3]
+2026-10-09T06:24:53.8770012Z ##[group]Run if ! command -v rustup &>/dev/null; then
+2026-10-09T06:24:53.8770358Z [36;1mif ! command -v rustup &>/dev/null; then[0m
+2026-10-09T06:24:53.8771117Z [36;1m  curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://win.rustup.rs/x86_64 --output 'D:\a\_temp\rustup-init.exe'[0m
+2026-10-09T06:24:53.8771984Z [36;1m  'D:\a\_temp\rustup-init.exe' --default-toolchain none --no-modify-path -y[0m
+2026-10-09T06:24:53.8774073Z [36;1m  echo "$CARGO_HOME\bin" >> $GITHUB_PATH[0m
+2026-10-09T06:24:53.8774414Z [36;1mfi[0m
+2026-10-09T06:24:53.8790425Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-09T06:24:53.8790812Z env:
+2026-10-09T06:24:53.8790997Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:24:53.8791248Z ##[endgroup]
+2026-10-09T06:24:53.9311420Z ##[end-action id=__dtolnay_rust-toolchain.__run_3;outcome=success;conclusion=success;duration_ms=66]
+2026-10-09T06:24:53.9325711Z ##[start-action display=rustup toolchain install stable;id=__dtolnay_rust-toolchain.__run_4]
+2026-10-09T06:24:53.9462982Z ##[group]Run set -f  # split targets and components on commas and whitespace, without glob expansion
+2026-10-09T06:24:53.9463631Z [36;1mset -f  # split targets and components on commas and whitespace, without glob expansion[0m
+2026-10-09T06:24:53.9464053Z [36;1mflags=()[0m
+2026-10-09T06:24:53.9464315Z [36;1mfor t in ${targets//,/ }; do flags+=(--target "$t"); done[0m
+2026-10-09T06:24:53.9464720Z [36;1mfor c in ${components//,/ }; do flags+=(--component "$c"); done[0m
+2026-10-09T06:24:53.9465197Z [36;1mif [[ $toolchain == nightly && -n $components ]]; then flags+=(--allow-downgrade); fi[0m
+2026-10-09T06:24:53.9465595Z [36;1mlog=$(mktemp)[0m
+2026-10-09T06:24:53.9465809Z [36;1mtrap 'rm -f "$log"' EXIT[0m
+2026-10-09T06:24:53.9466044Z [36;1mfor attempt in 1 2 3 4 5; do[0m
+2026-10-09T06:24:53.9466603Z [36;1m  if rustup toolchain install "$toolchain" "${flags[@]}" --profile minimal --no-self-update --force-non-host 2>&1 | tee "$log"; then[0m
+2026-10-09T06:24:53.9467180Z [36;1m    break[0m
+2026-10-09T06:24:53.9467357Z [36;1m  else[0m
+2026-10-09T06:24:53.9467529Z [36;1m    status=$?[0m
+2026-10-09T06:24:53.9467714Z [36;1m  fi[0m
+2026-10-09T06:24:53.9467984Z [36;1m  if [[ $attempt == 5 ]] || ! grep -Fq 'checksum failed for ' "$log" \[0m
+2026-10-09T06:24:53.9468543Z [36;1m      || ! grep -Fq 'this is likely due to an ongoing update of the official release server' "$log"; then[0m
+2026-10-09T06:24:53.9469144Z [36;1m    exit "$status"[0m
+2026-10-09T06:24:53.9469345Z [36;1m  fi[0m
+2026-10-09T06:24:53.9469676Z [36;1m  echo "Retrying rustup toolchain install in 30 seconds (retry $attempt of 4)" >&2[0m
+2026-10-09T06:24:53.9470076Z [36;1m  sleep 30[0m
+2026-10-09T06:24:53.9470251Z [36;1mdone[0m
+2026-10-09T06:24:53.9486339Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-09T06:24:53.9486720Z env:
+2026-10-09T06:24:53.9486902Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:24:53.9487141Z   toolchain: stable
+2026-10-09T06:24:53.9487320Z   targets: 
+2026-10-09T06:24:53.9487474Z   components: 
+2026-10-09T06:24:53.9487650Z   RUSTUP_PERMIT_COPY_RENAME: 1
+2026-10-09T06:24:53.9487856Z ##[endgroup]
+2026-10-09T06:24:56.8901398Z info: syncing channel updates for stable-x86_64-pc-windows-msvc
+2026-10-09T06:24:57.4765443Z info: latest update on 2026-10-01 for version 1.99.0 (b940084d7 2026-09-28)
+2026-10-09T06:24:57.5081125Z info: removing previous version of component rustfmt
+2026-10-09T06:24:57.5239699Z info: removing previous version of component clippy
+2026-10-09T06:24:57.5556588Z info: removing previous version of component rust-std for target x86_64-pc-windows-gnu
+2026-10-09T06:24:57.6664661Z info: removing previous version of component rust-std for target i686-pc-windows-msvc
+2026-10-09T06:24:57.7299132Z info: removing previous version of component cargo
+2026-10-09T06:24:57.8111260Z info: removing previous version of component rust-std
+2026-10-09T06:24:57.9040358Z info: removing previous version of component rustc
+2026-10-09T06:24:58.0149678Z info: downloading 7 components
+2026-10-09T06:25:11.2060910Z 
+2026-10-09T06:25:11.2379127Z   stable-x86_64-pc-windows-msvc updated - rustc 1.99.0 (b940084d7 2026-09-28) (from rustc 1.98.1 (48a229cea 2026-09-01))
+2026-10-09T06:25:11.2379638Z 
+2026-10-09T06:25:11.2731552Z ##[end-action id=__dtolnay_rust-toolchain.__run_4;outcome=success;conclusion=success;duration_ms=17340]
+2026-10-09T06:25:11.2738556Z ##[start-action display=rustup default stable;id=__dtolnay_rust-toolchain.__run_5]
+2026-10-09T06:25:11.2879746Z ##[group]Run rustup default "$toolchain" --force-non-host
+2026-10-09T06:25:11.2880135Z [36;1mrustup default "$toolchain" --force-non-host[0m
+2026-10-09T06:25:11.2896737Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-09T06:25:11.2897125Z env:
+2026-10-09T06:25:11.2897319Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:25:11.2897577Z   toolchain: stable
+2026-10-09T06:25:11.2897756Z ##[endgroup]
+2026-10-09T06:25:11.3818876Z info: using existing install for stable-x86_64-pc-windows-msvc
+2026-10-09T06:25:11.3870131Z info: default toolchain set to stable-x86_64-pc-windows-msvc
+2026-10-09T06:25:11.3909573Z 
+2026-10-09T06:25:11.4138938Z   stable-x86_64-pc-windows-msvc unchanged - rustc 1.99.0 (b940084d7 2026-09-28)
+2026-10-09T06:25:11.4139517Z 
+2026-10-09T06:25:11.4224528Z ##[end-action id=__dtolnay_rust-toolchain.__run_5;outcome=success;conclusion=success;duration_ms=148]
+2026-10-09T06:25:11.4228060Z ##[start-action display=Create cachekey;id=__dtolnay_rust-toolchain.rustc-version]
+2026-10-09T06:25:11.4362723Z ##[group]Run DATE=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')
+2026-10-09T06:25:11.4363573Z [36;1mDATE=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')[0m
+2026-10-09T06:25:11.4364248Z [36;1mHASH=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-hash: //p')[0m
+2026-10-09T06:25:11.4364750Z [36;1mecho "cachekey=$(echo $DATE$HASH | head -c12)" >> $GITHUB_OUTPUT[0m
+2026-10-09T06:25:11.4381184Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-09T06:25:11.4381567Z env:
+2026-10-09T06:25:11.4381754Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:25:11.4382028Z   toolchain: stable
+2026-10-09T06:25:11.4383023Z ##[endgroup]
+2026-10-09T06:25:12.1779070Z ##[end-action id=__dtolnay_rust-toolchain.rustc-version;outcome=success;conclusion=success;duration_ms=754]
+2026-10-09T06:25:12.1781676Z ##[start-action display=Disable incremental compilation;id=__dtolnay_rust-toolchain.__run_6]
+2026-10-09T06:25:12.1911935Z ##[group]Run if [ -z "${CARGO_INCREMENTAL+set}" ]; then
+2026-10-09T06:25:12.1912285Z [36;1mif [ -z "${CARGO_INCREMENTAL+set}" ]; then[0m
+2026-10-09T06:25:12.1912583Z [36;1m  echo CARGO_INCREMENTAL=0 >> $GITHUB_ENV[0m
+2026-10-09T06:25:12.1912837Z [36;1mfi[0m
+2026-10-09T06:25:12.1928380Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-09T06:25:12.1928770Z env:
+2026-10-09T06:25:12.1928960Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:25:12.1929212Z ##[endgroup]
+2026-10-09T06:25:12.2338216Z ##[end-action id=__dtolnay_rust-toolchain.__run_6;outcome=success;conclusion=success;duration_ms=55]
+2026-10-09T06:25:12.2340552Z ##[start-action display=Enable colors in Cargo output;id=__dtolnay_rust-toolchain.__run_7]
+2026-10-09T06:25:12.2465668Z ##[group]Run if [ -z "${CARGO_TERM_COLOR+set}" ]; then
+2026-10-09T06:25:12.2466027Z [36;1mif [ -z "${CARGO_TERM_COLOR+set}" ]; then[0m
+2026-10-09T06:25:12.2466354Z [36;1m  echo CARGO_TERM_COLOR=always >> $GITHUB_ENV[0m
+2026-10-09T06:25:12.2466626Z [36;1mfi[0m
+2026-10-09T06:25:12.2484117Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-09T06:25:12.2484506Z env:
+2026-10-09T06:25:12.2484705Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:25:12.2484969Z   CARGO_INCREMENTAL: 0
+2026-10-09T06:25:12.2485160Z ##[endgroup]
+2026-10-09T06:25:12.2882089Z ##[end-action id=__dtolnay_rust-toolchain.__run_7;outcome=success;conclusion=success;duration_ms=54]
+2026-10-09T06:25:12.2885963Z ##[start-action display=Enable Cargo sparse registry;id=__dtolnay_rust-toolchain.__run_8]
+2026-10-09T06:25:12.3030024Z ##[group]Run # implemented in 1.66, stabilized in 1.68, made default in 1.70
+2026-10-09T06:25:12.3030570Z [36;1m# implemented in 1.66, stabilized in 1.68, made default in 1.70[0m
+2026-10-09T06:25:12.3031690Z [36;1mif [ -z "${CARGO_REGISTRIES_CRATES_IO_PROTOCOL+set}" -o -f "D:\a\_temp"/.implicit_cargo_registries_crates_io_protocol ]; then[0m
+2026-10-09T06:25:12.3032397Z [36;1m  if rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.6[89]\.'; then[0m
+2026-10-09T06:25:12.3032927Z [36;1m    touch "D:\a\_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-10-09T06:25:12.3033405Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse >> $GITHUB_ENV[0m
+2026-10-09T06:25:12.3033917Z [36;1m  elif rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.6[67]\.'; then[0m
+2026-10-09T06:25:12.3034435Z [36;1m    touch "D:\a\_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-10-09T06:25:12.3034894Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=git >> $GITHUB_ENV[0m
+2026-10-09T06:25:12.3035222Z [36;1m  fi[0m
+2026-10-09T06:25:12.3035392Z [36;1mfi[0m
+2026-10-09T06:25:12.3050245Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-09T06:25:12.3050726Z env:
+2026-10-09T06:25:12.3050933Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:25:12.3051199Z   CARGO_INCREMENTAL: 0
+2026-10-09T06:25:12.3051850Z   CARGO_TERM_COLOR: always
+2026-10-09T06:25:12.3052064Z   toolchain: stable
+2026-10-09T06:25:12.3052250Z ##[endgroup]
+2026-10-09T06:25:12.6176151Z ##[end-action id=__dtolnay_rust-toolchain.__run_8;outcome=success;conclusion=success;duration_ms=328]
+2026-10-09T06:25:12.6179823Z ##[start-action display=Work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain.__run_9]
+2026-10-09T06:25:12.6316619Z ##[group]Run # https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation
+2026-10-09T06:25:12.6317402Z [36;1m# https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation[0m
+2026-10-09T06:25:12.6318199Z [36;1mif rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.7[01]\.'; then[0m
+2026-10-09T06:25:12.6318657Z [36;1m  echo CARGO_HTTP_MULTIPLEXING=false >> $GITHUB_ENV[0m
+2026-10-09T06:25:12.6319626Z [36;1mfi[0m
+2026-10-09T06:25:12.6335507Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-09T06:25:12.6335884Z env:
+2026-10-09T06:25:12.6336067Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:25:12.6336317Z   CARGO_INCREMENTAL: 0
+2026-10-09T06:25:12.6336505Z   CARGO_TERM_COLOR: always
+2026-10-09T06:25:12.6336701Z   toolchain: stable
+2026-10-09T06:25:12.6336874Z ##[endgroup]
+2026-10-09T06:25:12.7450772Z ##[end-action id=__dtolnay_rust-toolchain.__run_9;outcome=success;conclusion=success;duration_ms=126]
+2026-10-09T06:25:12.7456585Z ##[start-action display=rustc +stable --version --verbose;id=__dtolnay_rust-toolchain.__run_10]
+2026-10-09T06:25:12.7594026Z ##[group]Run rustc +"$toolchain" --version --verbose
+2026-10-09T06:25:12.7594386Z [36;1mrustc +"$toolchain" --version --verbose[0m
+2026-10-09T06:25:12.7609522Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-09T06:25:12.7609903Z env:
+2026-10-09T06:25:12.7610090Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:25:12.7610337Z   CARGO_INCREMENTAL: 0
+2026-10-09T06:25:12.7610535Z   CARGO_TERM_COLOR: always
+2026-10-09T06:25:12.7610733Z   toolchain: stable
+2026-10-09T06:25:12.7610913Z ##[endgroup]
+2026-10-09T06:25:12.8429960Z rustc 1.99.0 (b940084d7 2026-09-28)
+2026-10-09T06:25:12.8430468Z binary: rustc
+2026-10-09T06:25:12.8430964Z commit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4
+2026-10-09T06:25:12.8431500Z commit-date: 2026-09-28
+2026-10-09T06:25:12.8432214Z host: x86_64-pc-windows-msvc
+2026-10-09T06:25:12.8432823Z release: 1.99.0
+2026-10-09T06:25:12.8433175Z LLVM version: 23.1.1
+2026-10-09T06:25:12.8560297Z ##[end-action id=__dtolnay_rust-toolchain.__run_10;outcome=success;conclusion=success;duration_ms=110]
+2026-10-09T06:25:12.8762847Z ##[group]Run swatinem/rust-cache@v2
+2026-10-09T06:25:12.8763157Z with:
+2026-10-09T06:25:12.8763337Z   workspaces: src-tauri
+2026-10-09T06:25:12.8763545Z   prefix-key: v0-rust
+2026-10-09T06:25:12.8763738Z   add-job-id-key: true
+2026-10-09T06:25:12.8763950Z   add-rust-environment-hash-key: true
+2026-10-09T06:25:12.8764193Z   cache-targets: true
+2026-10-09T06:25:12.8764382Z   cache-all-crates: false
+2026-10-09T06:25:12.8764598Z   cache-workspace-crates: false
+2026-10-09T06:25:12.8764808Z   save-if: true
+2026-10-09T06:25:12.8764981Z   cache-provider: github
+2026-10-09T06:25:12.8765173Z   cache-bin: true
+2026-10-09T06:25:12.8765345Z   lookup-only: false
+2026-10-09T06:25:12.8765523Z   cmd-format: {0}
+2026-10-09T06:25:12.8765688Z env:
+2026-10-09T06:25:12.8765862Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:25:12.8766103Z   CARGO_INCREMENTAL: 0
+2026-10-09T06:25:12.8766290Z   CARGO_TERM_COLOR: always
+2026-10-09T06:25:12.8766483Z ##[endgroup]
+2026-10-09T06:25:14.0834467Z ##[group]Cache Configuration
+2026-10-09T06:25:14.0835336Z Cache Provider:
+2026-10-09T06:25:14.0835979Z     github
+2026-10-09T06:25:14.0836212Z Workspaces:
+2026-10-09T06:25:14.0836536Z     D:\a\patterns-sports\patterns-sports\src-tauri
+2026-10-09T06:25:14.0836958Z Cache Paths:
+2026-10-09T06:25:14.0837509Z     C:\Users\runneradmin\.cargo\bin
+2026-10-09T06:25:14.0837979Z     C:\Users\runneradmin\.cargo\.crates.toml
+2026-10-09T06:25:14.0838704Z     C:\Users\runneradmin\.cargo\.crates2.json
+2026-10-09T06:25:14.0839317Z     C:\Users\runneradmin\.cargo\registry
+2026-10-09T06:25:14.0839855Z     C:\Users\runneradmin\.cargo\git
+2026-10-09T06:25:14.0840530Z     D:\a\patterns-sports\patterns-sports\src-tauri\target
+2026-10-09T06:25:14.0841236Z Restore Key:
+2026-10-09T06:25:14.0841783Z     v0-rust-build-Windows_NT-x64-63f58d45
+2026-10-09T06:25:14.0842690Z Cache Key:
+2026-10-09T06:25:14.0843133Z     v0-rust-build-Windows_NT-x64-63f58d45-e831443e
+2026-10-09T06:25:14.0843818Z .. Prefix:
+2026-10-09T06:25:14.0844592Z   - v0-rust-build-Windows_NT-x64
+2026-10-09T06:25:14.0845076Z .. Environment considered:
+2026-10-09T06:25:14.0845463Z   - Rust Versions:
+2026-10-09T06:25:14.0845997Z     - 1.99.0 x86_64-pc-windows-msvc b940084d7eb6a299eb4bfeb8e34901bc051e7ac4
+2026-10-09T06:25:14.0846652Z   - CARGO_HOME
+2026-10-09T06:25:14.0846966Z   - CARGO_INCREMENTAL
+2026-10-09T06:25:14.0847294Z   - CARGO_TERM_COLOR
+2026-10-09T06:25:14.0847635Z .. Lockfiles considered:
+2026-10-09T06:25:14.0848172Z   - D:\a\patterns-sports\patterns-sports\src-tauri\.cargo\config.toml
+2026-10-09T06:25:14.0848951Z   - D:\a\patterns-sports\patterns-sports\src-tauri\Cargo.toml
+2026-10-09T06:25:14.0849792Z ##[endgroup]
+2026-10-09T06:25:14.0849973Z 
+2026-10-09T06:25:14.0850103Z ... Restoring cache ...
+2026-10-09T06:25:14.2916934Z Cache hit for: v0-rust-build-Windows_NT-x64-63f58d45-e831443e
+2026-10-09T06:25:15.3327790Z Received 205520896 of 862472633 (23.8%), 193.7 MBs/sec
+2026-10-09T06:25:16.3350232Z Received 402653184 of 862472633 (46.7%), 190.7 MBs/sec
+2026-10-09T06:25:17.3375274Z Received 641728512 of 862472633 (74.4%), 202.9 MBs/sec
+2026-10-09T06:25:18.3420967Z Received 826277888 of 862472633 (95.8%), 196.0 MBs/sec
+2026-10-09T06:25:18.5349053Z Received 862472633 of 862472633 (100.0%), 195.2 MBs/sec
+2026-10-09T06:25:18.5353182Z Cache Size: ~823 MB (862472633 B)
+2026-10-09T06:25:18.5416345Z [command]"C:\Program Files\Git\usr\bin\tar.exe" -xf D:/a/_temp/738db7bf-4488-46f6-a1a0-661df772bb19/cache.tzst -P -C D:/a/patterns-sports/patterns-sports --force-local --use-compress-program "zstd -d"
+2026-10-09T06:25:36.2545047Z Cache restored successfully
+2026-10-09T06:25:36.3037278Z Restored from cache key "v0-rust-build-Windows_NT-x64-63f58d45-e831443e" full match: true.
+2026-10-09T06:25:36.3355363Z ##[group]Run bun install
+2026-10-09T06:25:36.3355829Z [36;1mbun install[0m
+2026-10-09T06:25:36.3846712Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-09T06:25:36.3847164Z env:
+2026-10-09T06:25:36.3847440Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:25:36.3847788Z   CARGO_INCREMENTAL: 0
+2026-10-09T06:25:36.3848065Z   CARGO_TERM_COLOR: always
+2026-10-09T06:25:36.3848344Z   CACHE_ON_FAILURE: false
+2026-10-09T06:25:36.3848620Z ##[endgroup]
+2026-10-09T06:25:36.6811307Z bun install v1.4.2 (744846f84)
+2026-10-09T06:26:24.9172453Z 
+2026-10-09T06:26:24.9172971Z + @tailwindcss/postcss@4.1.18
+2026-10-09T06:26:24.9173494Z + @tauri-apps/cli@2.12.1
+2026-10-09T06:26:24.9174855Z + @types/file-saver@2.0.7
+2026-10-09T06:26:24.9175653Z + @types/papaparse@5.5.2
+2026-10-09T06:26:24.9176063Z + @types/react@19.2.8
+2026-10-09T06:26:24.9176433Z + @types/react-dom@19.2.3
+2026-10-09T06:26:24.9176752Z + bun-types@1.3.6
+2026-10-09T06:26:24.9177123Z + eslint@9.39.2
+2026-10-09T06:26:24.9177426Z + eslint-config-next@16.1.3
+2026-10-09T06:26:24.9177783Z + tailwindcss@4.1.18
+2026-10-09T06:26:24.9178115Z + tw-animate-css@1.4.0
+2026-10-09T06:26:24.9178487Z + typescript@5.9.3
+2026-10-09T06:26:24.9178828Z + vitest@5.0.3
+2026-10-09T06:26:24.9179178Z + @fontsource/poppins@5.3.0
+2026-10-09T06:26:24.9179557Z + @prisma/client@6.19.2
+2026-10-09T06:26:24.9179918Z + @radix-ui/react-accordion@1.2.12
+2026-10-09T06:26:24.9180339Z + @radix-ui/react-alert-dialog@1.1.15
+2026-10-09T06:26:24.9180777Z + @radix-ui/react-aspect-ratio@1.1.8
+2026-10-09T06:26:24.9181082Z + @radix-ui/react-avatar@1.1.11
+2026-10-09T06:26:24.9181344Z + @radix-ui/react-checkbox@1.3.3
+2026-10-09T06:26:24.9181608Z + @radix-ui/react-collapsible@1.1.12
+2026-10-09T06:26:24.9181885Z + @radix-ui/react-context-menu@2.2.16
+2026-10-09T06:26:24.9182147Z + @radix-ui/react-dialog@1.1.15
+2026-10-09T06:26:24.9182399Z + @radix-ui/react-dropdown-menu@2.1.16
+2026-10-09T06:26:24.9182678Z + @radix-ui/react-hover-card@1.1.15
+2026-10-09T06:26:24.9182943Z + @radix-ui/react-label@2.1.8
+2026-10-09T06:26:24.9183188Z + @radix-ui/react-menubar@1.1.16
+2026-10-09T06:26:24.9183450Z + @radix-ui/react-navigation-menu@1.2.14
+2026-10-09T06:26:24.9183718Z + @radix-ui/react-popover@1.1.15
+2026-10-09T06:26:24.9184241Z + @radix-ui/react-progress@1.1.8
+2026-10-09T06:26:24.9184494Z + @radix-ui/react-radio-group@1.3.8
+2026-10-09T06:26:24.9185428Z + @radix-ui/react-scroll-area@1.2.10
+2026-10-09T06:26:24.9186183Z + @radix-ui/react-select@2.2.6
+2026-10-09T06:26:24.9186688Z + @radix-ui/react-separator@1.1.8
+2026-10-09T06:26:24.9187141Z + @radix-ui/react-slider@1.3.6
+2026-10-09T06:26:24.9187562Z + @radix-ui/react-slot@1.2.4
+2026-10-09T06:26:24.9188516Z + @radix-ui/react-switch@1.2.6
+2026-10-09T06:26:24.9188890Z + @radix-ui/react-tabs@1.1.13
+2026-10-09T06:26:24.9189234Z + @radix-ui/react-toast@1.2.15
+2026-10-09T06:26:24.9189615Z + @radix-ui/react-toggle@1.1.10
+2026-10-09T06:26:24.9190265Z + @radix-ui/react-toggle-group@1.1.11
+2026-10-09T06:26:24.9190754Z + @radix-ui/react-tooltip@1.2.8
+2026-10-09T06:26:24.9191333Z + @tauri-apps/api@2.12.1
+2026-10-09T06:26:24.9191855Z + @tauri-apps/plugin-dialog@2.8.1
+2026-10-09T06:26:24.9192430Z + @tauri-apps/plugin-fs@2.6.0
+2026-10-09T06:26:24.9193028Z + @tauri-apps/plugin-sql@2.5.0
+2026-10-09T06:26:24.9193453Z + class-variance-authority@0.7.1
+2026-10-09T06:26:24.9193858Z + clsx@2.1.1
+2026-10-09T06:26:24.9194148Z + cmdk@1.1.1
+2026-10-09T06:26:24.9194762Z + embla-carousel-react@8.6.0
+2026-10-09T06:26:24.9195153Z + exceljs@4.4.0
+2026-10-09T06:26:24.9195446Z + file-saver@2.0.5
+2026-10-09T06:26:24.9195768Z + framer-motion@12.26.2
+2026-10-09T06:26:24.9196283Z + input-otp@1.4.2
+2026-10-09T06:26:24.9196605Z + jspdf@4.2.1
+2026-10-09T06:26:24.9197071Z + jspdf-autotable@5.0.8
+2026-10-09T06:26:24.9197436Z + lucide-react@0.525.0
+2026-10-09T06:26:24.9198048Z + next@16.1.3
+2026-10-09T06:26:24.9198363Z + next-themes@0.4.6
+2026-10-09T06:26:24.9198678Z + papaparse@5.7.0
+2026-10-09T06:26:24.9201761Z + prisma@6.19.2
+2026-10-09T06:26:24.9202129Z + react@19.2.3
+2026-10-09T06:26:24.9202624Z + react-day-picker@9.13.0
+2026-10-09T06:26:24.9203028Z + react-dom@19.2.3
+2026-10-09T06:26:24.9203516Z + react-hook-form@7.71.1
+2026-10-09T06:26:24.9203941Z + react-resizable-panels@3.0.6
+2026-10-09T06:26:24.9204381Z + recharts@2.15.4
+2026-10-09T06:26:24.9204699Z + sharp@0.34.5
+2026-10-09T06:26:24.9205007Z + sonner@2.0.7
+2026-10-09T06:26:24.9205293Z + tailwind-merge@3.4.0
+2026-10-09T06:26:24.9205629Z + vaul@1.1.2
+2026-10-09T06:26:24.9205931Z + zustand@5.0.10
+2026-10-09T06:26:24.9206592Z 
+2026-10-09T06:26:24.9206769Z 659 packages installed [48.24s]
+2026-10-09T06:26:25.0555062Z ##[group]Run bun run tauri build
+2026-10-09T06:26:25.0555523Z [36;1mbun run tauri build[0m
+2026-10-09T06:26:25.0632745Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-09T06:26:25.0633168Z env:
+2026-10-09T06:26:25.0633431Z   CARGO_HOME: C:\Users\runneradmin\.cargo
+2026-10-09T06:26:25.0633788Z   CARGO_INCREMENTAL: 0
+2026-10-09T06:26:25.0634061Z   CARGO_TERM_COLOR: always
+2026-10-09T06:26:25.0634339Z   CACHE_ON_FAILURE: false
+2026-10-09T06:26:25.0634684Z ##[endgroup]
+2026-10-09T06:26:25.3395931Z $ tauri build
+2026-10-09T06:26:27.6892858Z         Info Looking up installed tauri packages to check mismatched versions...
+2026-10-09T06:26:32.6918778Z      Running beforeBuildCommand `npm run build:tauri`
+2026-10-09T06:26:33.0697150Z 
+2026-10-09T06:26:33.0697711Z > ps-ams@1.3.0 build:tauri
+2026-10-09T06:26:33.0698381Z > node scripts/build-tauri-frontend.mjs
+2026-10-09T06:26:33.0698849Z 
+2026-10-09T06:26:33.1841436Z [build-tauri] stashed src/app/api for static export
+2026-10-09T06:26:35.7457763Z ⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+2026-10-09T06:26:35.7560358Z Attention: Next.js now collects completely anonymous telemetry regarding usage.
+2026-10-09T06:26:35.7561548Z This information is used to shape Next.js' roadmap and prioritize features.
+2026-10-09T06:26:35.7563325Z You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+2026-10-09T06:26:35.7564591Z https://nextjs.org/telemetry
+2026-10-09T06:26:35.7566330Z 
+2026-10-09T06:26:35.7726277Z ▲ Next.js 16.1.3 (Turbopack)
+2026-10-09T06:26:35.7727700Z 
+2026-10-09T06:26:35.8059420Z   Creating an optimized production build ...
+2026-10-09T06:26:47.6113414Z ✓ Compiled successfully in 10.9s
+2026-10-09T06:26:47.6392490Z   Running TypeScript ...
+2026-10-09T06:26:55.1420968Z Failed to compile.
+2026-10-09T06:26:55.1421378Z 
+2026-10-09T06:26:55.1421973Z ./scripts/seed.ts:2:10
+2026-10-09T06:26:55.1425102Z Type error: Module '"@prisma/client"' has no exported member 'PrismaClient'.
+2026-10-09T06:26:55.1425752Z 
+2026-10-09T06:26:55.1426592Z [0m [90m 1 |[39m [90m// PS-AMS demo data seeder — populates a realistic academy dataset[39m
+2026-10-09T06:26:55.1427998Z [31m[1m>[22m[39m[90m 2 |[39m [36mimport[39m { [33mPrismaClient[39m } [36mfrom[39m [32m"@prisma/client"[39m
+2026-10-09T06:26:55.1429158Z  [90m   |[39m          [31m[1m^[22m[39m
+2026-10-09T06:26:55.1430849Z  [90m 3 |[39m [36mimport[39m { nextAdmissionNo[33m,[39m nextReceiptNo } [36mfrom[39m [32m"../src/lib/psams/domain"[39m
+2026-10-09T06:26:55.1431917Z  [90m 4 |[39m
+2026-10-09T06:26:55.1432696Z  [90m 5 |[39m [36mconst[39m db [33m=[39m [36mnew[39m [33mPrismaClient[39m()[0m
+2026-10-09T06:26:55.1845607Z Next.js build worker exited with code: 1 and signal: null
+2026-10-09T06:26:55.2870224Z [build-tauri] restored src/app/api
+2026-10-09T06:26:55.2884674Z node:internal/errors:983
+2026-10-09T06:26:55.2885327Z   const err = new Error(message);
+2026-10-09T06:26:55.2885838Z               ^
+2026-10-09T06:26:55.2886127Z 
+2026-10-09T06:26:55.2886312Z Error: Command failed: npx next build
+2026-10-09T06:26:55.2886896Z     at genericNodeError (node:internal/errors:983:15)
+2026-10-09T06:26:55.2887580Z     at wrappedFn (node:internal/errors:537:14)
+2026-10-09T06:26:55.2888240Z     at checkExecSyncError (node:child_process:916:11)
+2026-10-09T06:26:55.2888831Z     at execSync (node:child_process:988:15)
+2026-10-09T06:26:55.2890176Z     at file:///D:/a/patterns-sports/patterns-sports/scripts/build-tauri-frontend.mjs:27:3
+2026-10-09T06:26:55.2893337Z     at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+2026-10-09T06:26:55.2896568Z     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+2026-10-09T06:26:55.2901596Z     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+2026-10-09T06:26:55.2911108Z   status: 1,
+2026-10-09T06:26:55.2911623Z   signal: null,
+2026-10-09T06:26:55.2912667Z   output: [ null, null, null ],
+2026-10-09T06:26:55.2913151Z   pid: 2688,
+2026-10-09T06:26:55.2913547Z   stdout: null,
+2026-10-09T06:26:55.2913989Z   stderr: null
+2026-10-09T06:26:55.2914364Z }
+2026-10-09T06:26:55.2914577Z 
+2026-10-09T06:26:55.2914758Z Node.js v22.23.3
+2026-10-09T06:26:55.3118308Z beforeBuildCommand `npm run build:tauri` failed with exit code 1
+2026-10-09T06:26:55.3122320Z        Error beforeBuildCommand `npm run build:tauri` failed with exit code 1
+2026-10-09T06:26:55.3241400Z error: script "tauri" exited with code 1
+2026-10-09T06:26:55.4283181Z ##[error]Process completed with exit code 1.
+2026-10-09T06:26:55.4551334Z Post job cleanup.
+2026-10-09T06:26:55.6585068Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-10-09T06:26:55.6853428Z git version 2.55.0.windows.5
+2026-10-09T06:26:55.6924878Z Temporarily overriding HOME='D:\a\_temp\c943f227-b16f-4d25-a790-1cafb55b9cd0' before making global git config changes
+2026-10-09T06:26:55.6926035Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-09T06:26:55.6936030Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\patterns-sports\patterns-sports
+2026-10-09T06:26:55.7234212Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-10-09T06:26:55.7523122Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-10-09T06:26:56.2986365Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-09T06:26:56.3237666Z http.https://github.com/.extraheader
+2026-10-09T06:26:56.3280350Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all http.https://github.com/.extraheader
+2026-10-09T06:26:56.3580057Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-10-09T06:26:56.8781713Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-09T06:26:56.9074829Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-10-09T06:26:57.4410000Z Cleaning up orphan processes
+2026-10-09T06:26:57.4590607Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

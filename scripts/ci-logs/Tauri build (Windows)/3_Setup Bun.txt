@@ -1,0 +1,9 @@
+﻿2026-10-09T06:24:51.3368437Z ##[group]Run oven-sh/setup-bun@v2
+2026-10-09T06:24:51.3368797Z with:
+2026-10-09T06:24:51.3368995Z   no-cache: false
+2026-10-09T06:24:51.3371650Z   token: ***
+2026-10-09T06:24:51.3372212Z ##[endgroup]
+2026-10-09T06:24:51.9130582Z Downloading a new version of Bun: https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-windows-x64.zip
+2026-10-09T06:24:52.3878628Z [command]"C:\Program Files\PowerShell\7\pwsh.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "$ErrorActionPreference = 'Stop' ; try { Add-Type -AssemblyName System.IO.Compression.ZipFile } catch { } ; try { [System.IO.Compression.ZipFile]::ExtractToDirectory('D:\a\_temp\5d4e0034-436c-4f9b-83e3-ea5d5d8c14ca.zip', 'D:\a\_temp\59a9d1d7-ca09-44ff-a68c-ccd32984dad3', $true) } catch { if (($_.Exception.GetType().FullName -eq 'System.Management.Automation.MethodException') -or ($_.Exception.GetType().FullName -eq 'System.Management.Automation.RuntimeException') ){ Expand-Archive -LiteralPath 'D:\a\_temp\5d4e0034-436c-4f9b-83e3-ea5d5d8c14ca.zip' -DestinationPath 'D:\a\_temp\59a9d1d7-ca09-44ff-a68c-ccd32984dad3' -Force } else { throw $_ } } ;"
+2026-10-09T06:24:53.1039688Z [command]C:\Users\runneradmin\.bun\bin\bun.exe --revision
+2026-10-09T06:24:53.5710347Z 1.4.2+744846f84
