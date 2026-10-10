@@ -121,7 +121,7 @@ pub fn spawn_sidecar(app: &AppHandle) -> Result<(), String> {
                 CommandEvent::Terminated(status) => {
                     let _ = status;
                     let state = handle.state::<WaState>();
-                    if let Some(mut c) = state.child.lock().unwrap().take() {
+                    if let Some(c) = state.child.lock().unwrap().take() {
                         let _ = c.kill();
                     }
                     drop(state);
@@ -242,8 +242,8 @@ pub async fn wa_logout(app: AppHandle) -> Result<(), String> {
     let handle = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(2500));
-        let state = handle.state::<WaState>();
-        if let Some(mut c) = state.child.lock().unwrap().take() {
+        let pending = handle.state::<WaState>().child.lock().unwrap().take();
+        if let Some(c) = pending {
             log_line("wa-bot did not exit after logout — killing");
             let _ = c.kill();
         }
@@ -254,7 +254,8 @@ pub async fn wa_logout(app: AppHandle) -> Result<(), String> {
 /// Kill the sidecar on app exit (no orphaned sockets).
 pub fn kill_sidecar(app: &AppHandle) {
     let state = app.state::<WaState>();
-    if let Some(mut c) = state.child.lock().unwrap().take() {
+    let orphan = state.child.lock().unwrap().take();
+    if let Some(c) = orphan {
         log_line("killing whatsapp-bot sidecar on exit");
         let _ = c.kill();
     }
