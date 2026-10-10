@@ -44,18 +44,9 @@ jobs:
       - name: Generate Prisma client
         run: bunx prisma generate
 
-      # Standalone Baileys linked-device binary (scan-once WhatsApp bridge).
-      # Must exist before `tauri build` because tauri.conf.json lists it in
-      # bundle.externalBin — the installers then ship it next to PS-AMS.exe.
-      - name: Build WhatsApp sidecar binary
-        shell: bash
-        run: |
-          cd src-tauri/sidecar/whatsapp-bot
-          bun install
-          mkdir -p ../../binaries
-          bun build --compile --minify \
-            --external jimp --external sharp --external qrcode-terminal \
-            index.ts --outfile ../../binaries/whatsapp-bot-x86_64-pc-windows-msvc.exe
+      # WhatsApp linked devices run natively in-process since v1.6.0
+      # (whatsapp-rust crate) — no Node sidecar build, ~40 MB smaller
+      # installers and faster cold start.
 
       - name: Build Tauri app (static export + NSIS/MSI)
         run: bun run tauri build
@@ -66,7 +57,6 @@ jobs:
           $stage = "portable-stage/PS-AMS-Portable"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item "src-tauri/target/release/ps-ams.exe" "$stage/PS-AMS.exe"
-          Copy-Item "src-tauri/binaries/whatsapp-bot-x86_64-pc-windows-msvc.exe" "$stage/whatsapp-bot.exe"
           New-Item -ItemType File -Force -Path "$stage/portable.flag" | Out-Null
           Copy-Item "docs/README-portable.txt" "$stage/README.txt"
           $zip = if ($env:GITHUB_REF_NAME -like "v*") { "PS-AMS_${env:GITHUB_REF_NAME}_portable_x64.zip" } else { "PS-AMS_portable_x64.zip" }

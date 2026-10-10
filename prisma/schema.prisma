@@ -32,6 +32,7 @@ model Student {
   classGrade String?
   division   String?
   bloodGroup String?
+  gender     String  @default("") // Male | Female | Other ("" = unspecified)
 
   // Athletic & biometric parameters
   heightCm        Float?

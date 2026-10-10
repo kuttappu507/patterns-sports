@@ -35,6 +35,9 @@ export const SPORTS = Object.keys(SPORT_POSITIONS)
 
 export const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"] as const
 
+/** Gender options on the player profile (blank = not specified). */
+export const GENDERS = ["Male", "Female", "Other"] as const
+
 // ---- API entity shapes (dates serialize as ISO strings over the wire) ----
 
 export interface Student {
@@ -51,6 +54,7 @@ export interface Student {
   classGrade?: string | null
   division?: string | null
   bloodGroup?: string | null
+  gender?: string | null
   heightCm?: number | null
   weightKg?: number | null
   standingReachCm?: number | null

@@ -106,8 +106,28 @@ async function ensureSchema(db: DB): Promise<void> {
         console.warn("[PS-AMS] schema statement failed:", e instanceof Error ? e.message : e, "→", stmt.slice(0, 90))
       }
     }
+    await runMigrations(db)
   } catch (e) {
     console.warn("[PS-AMS] schema bootstrap unavailable:", e instanceof Error ? e.message : e)
+  }
+}
+
+/**
+ * Column migrations for databases created by older versions.
+ * CREATE TABLE IF NOT EXISTS cannot add columns to an existing table,
+ * so each migration is guarded by a PRAGMA table_info lookup.
+ */
+async function runMigrations(db: DB): Promise<void> {
+  try {
+    const cols = await db.select<{ name: string }[]>("PRAGMA table_info(Student)", [])
+    const names = new Set(cols.map((c) => c.name))
+    // v1.6.0 — gender selection on the player profile
+    if (!names.has("gender")) {
+      await db.execute("ALTER TABLE Student ADD COLUMN gender TEXT NOT NULL DEFAULT ''", [])
+      console.warn("[PS-AMS] migrated: Student.gender added")
+    }
+  } catch (e) {
+    console.warn("[PS-AMS] migration check failed:", e instanceof Error ? e.message : e)
   }
 }
 
@@ -272,11 +292,11 @@ export async function createStudent(input: Partial<StudentInput>): Promise<Stude
   await db.execute(
     `INSERT INTO Student (
       id, admissionNo, registrationDate, fullName, dateOfBirth, parentName, mobile,
-      emergencyContact, address, schoolName, classGrade, division, bloodGroup,
+      emergencyContact, address, schoolName, classGrade, division, bloodGroup, gender,
       heightCm, weightKg, standingReachCm, spikeReachCm, jumpReachCm,
       primarySport, playingPosition, ageCategory, trainingBatch, monthlyFee,
       photoPath, birthCertPath, idCardPath, status, createdAt, updatedAt
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)`,
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)`,
     [
       id,
       admissionNo,
@@ -291,6 +311,7 @@ export async function createStudent(input: Partial<StudentInput>): Promise<Stude
       input.classGrade || null,
       input.division || null,
       input.bloodGroup || null,
+      input.gender || "",
       input.heightCm ?? null,
       input.weightKg ?? null,
       input.standingReachCm ?? null,
@@ -319,12 +340,13 @@ export async function updateStudent(id: string, input: Partial<StudentInput>): P
   const body = input as Record<string, unknown>
   const strFields = [
     "fullName", "parentName", "mobile", "emergencyContact", "address", "schoolName",
-    "classGrade", "division", "bloodGroup", "primarySport", "playingPosition",
+    "classGrade", "division", "bloodGroup", "gender", "primarySport", "playingPosition",
     "ageCategory", "trainingBatch", "photoPath", "birthCertPath", "idCardPath", "status",
   ]
   for (const f of strFields) {
     if (f in body) {
-      params.push(body[f] === "" ? null : body[f])
+      // gender is NOT NULL DEFAULT '' — keep the empty string instead of NULL
+      params.push(f === "gender" ? String(body[f] ?? "") : body[f] === "" ? null : body[f])
       sets.push(`${f} = $${params.length}`)
     }
   }
@@ -496,7 +518,7 @@ export async function fetchPayments(
   let rows = await db.select<FeePaymentWithStudent[]>(
     `SELECT p.*, s.fullName AS studentName, s.admissionNo
      FROM FeePayment p JOIN Student s ON s.id = p.studentId
-     ORDER BY p.paymentDate DESC`,
+     ORDER BY p.paymentDate DESC, p.createdAt DESC, p.receiptNo DESC`,
     []
   )
   if (params.studentId) rows = rows.filter((p) => p.studentId === params.studentId)
@@ -861,11 +883,11 @@ export async function loadDemoData(): Promise<{ students: number; committee: num
     await db.execute(
       `INSERT INTO Student (
         id, admissionNo, registrationDate, fullName, dateOfBirth, parentName, mobile,
-        emergencyContact, address, schoolName, classGrade, division, bloodGroup,
+        emergencyContact, address, schoolName, classGrade, division, bloodGroup, gender,
         heightCm, weightKg, standingReachCm, spikeReachCm, jumpReachCm,
         primarySport, playingPosition, ageCategory, trainingBatch, monthlyFee,
         photoPath, birthCertPath, idCardPath, status, createdAt, updatedAt
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,NULL,NULL,NULL,'Active',$24,$24)`,
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NULL,NULL,NULL,'Active',$25,$25)`,
       [
         id,
         admissionNo,
@@ -880,6 +902,7 @@ export async function loadDemoData(): Promise<{ students: number; committee: num
         s.classGrade,
         s.division,
         s.bloodGroup,
+        s.gender || "",
         s.heightCm ?? null,
         s.weightKg ?? null,
         s.standingReachCm ?? null,

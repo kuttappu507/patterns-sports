@@ -14,6 +14,7 @@ import { createStudent, updateStudent, fetchSettings } from "@/lib/psams/api"
 import {
   AGE_CATEGORIES,
   BLOOD_GROUPS,
+  GENDERS,
   SPORTS,
   SPORT_POSITIONS,
   TRAINING_BATCHES,
@@ -28,6 +29,16 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 
 export function StudentFormDialog() {
@@ -50,6 +61,7 @@ export function StudentFormDialog() {
     classGrade: "",
     division: "",
     bloodGroup: "",
+    gender: "",
     heightCm: "",
     weightKg: "",
     standingReachCm: "",
@@ -70,6 +82,13 @@ export function StudentFormDialog() {
   type FormState = typeof blank
 
   const [form, setForm] = useState<FormState>(blank)
+  // ---- security / UX guard: never lose a half-filled registration ----
+  // Snapshot of the form as it stood when the dialog (re)opened. Any drift
+  // from it marks the dialog dirty, and a close attempt then asks for
+  // confirmation instead of silently discarding the typed data.
+  const [baseline, setBaseline] = useState<FormState>(blank)
+  const [confirmClose, setConfirmClose] = useState(false)
+  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(baseline), [form, baseline])
 
   // Reset the form when the dialog opens (or the edited student changes).
   // Adjusting state during render (guarded by the previous values) instead
@@ -78,8 +97,9 @@ export function StudentFormDialog() {
   if (prevOpenState.open !== open || prevOpenState.editing !== editing) {
     setPrevOpenState({ open, editing })
     if (open) {
+      setConfirmClose(false)
       if (editing) {
-        setForm({
+        const populated: FormState = {
           fullName: editing.fullName,
           dateOfBirth: editing.dateOfBirth.slice(0, 10),
           registrationDate: editing.registrationDate.slice(0, 10),
@@ -91,6 +111,7 @@ export function StudentFormDialog() {
           classGrade: editing.classGrade || "",
           division: editing.division || "",
           bloodGroup: editing.bloodGroup || "",
+          gender: editing.gender || "",
           heightCm: editing.heightCm != null ? String(editing.heightCm) : "",
           weightKg: editing.weightKg != null ? String(editing.weightKg) : "",
           standingReachCm: editing.standingReachCm != null ? String(editing.standingReachCm) : "",
@@ -106,13 +127,27 @@ export function StudentFormDialog() {
           birthCertPath: editing.birthCertPath || null,
           idCardPath: editing.idCardPath || null,
           status: editing.status || "Active",
-        })
+        }
+        setForm(populated)
+        setBaseline(populated)
       } else {
-        setForm({ ...blank, monthlyFee: "" })
-        // prefill the suggested monthly fee from the academy profile
+        const fresh = { ...blank, monthlyFee: "" }
+        setForm(fresh)
+        setBaseline(fresh)
+        // prefill the suggested monthly fee from the academy profile —
+        // the baseline is pre-filled too so the dialog does not turn "dirty"
+        // merely because the suggestion arrived
         fetchSettings()
-          .then((st) => setForm((f) => (f.monthlyFee === "" ? { ...f, monthlyFee: String(st.defaultMonthlyFee ?? 500) } : f)))
-          .catch(() => setForm((f) => (f.monthlyFee === "" ? { ...f, monthlyFee: "500" } : f)))
+          .then((st) => {
+            const fee = String(st.defaultMonthlyFee ?? 500)
+            setForm((f) => (f.monthlyFee === "" ? { ...f, monthlyFee: fee } : f))
+            setBaseline((b) => (b.monthlyFee === "" ? { ...b, monthlyFee: fee } : b))
+          })
+          .catch(() => {
+            const fee = "500"
+            setForm((f) => (f.monthlyFee === "" ? { ...f, monthlyFee: fee } : f))
+            setBaseline((b) => (b.monthlyFee === "" ? { ...b, monthlyFee: fee } : b))
+          })
       }
     }
   }
@@ -172,6 +207,7 @@ export function StudentFormDialog() {
         classGrade: form.classGrade || null,
         division: form.division || null,
         bloodGroup: form.bloodGroup || null,
+        gender: form.gender || "",
         heightCm: form.heightCm ? Number(form.heightCm) : null,
         weightKg: form.weightKg ? Number(form.weightKg) : null,
         standingReachCm: form.standingReachCm ? Number(form.standingReachCm) : null,
@@ -198,8 +234,18 @@ export function StudentFormDialog() {
     }
   }
 
+  /** Close attempt: dirty forms ask before discarding (security guard). */
+  function requestClose() {
+    if (dirty && !saving) {
+      setConfirmClose(true)
+      return
+    }
+    onClose()
+  }
+
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <>
+    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
       <DialogContent
         className="flex max-h-[92vh] w-[min(58rem,calc(100vw-2rem))] flex-col overflow-hidden gap-0 rounded-2xl border-border p-0 sm:max-w-[min(58rem,calc(100vw-2rem))]"
       >
@@ -270,6 +316,15 @@ export function StudentFormDialog() {
               <Select value={form.bloodGroup} onValueChange={(v) => set("bloodGroup", v)}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>{BLOOD_GROUPS.map((b) => <SelectItem key={b} value={b} className="text-xs">{b}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Gender</Label>
+              <Select value={form.gender} onValueChange={(v) => set("gender", v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent>
+                  {GENDERS.map((g) => <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>)}
+                </SelectContent>
               </Select>
             </div>
             <div className="col-span-2 space-y-1">
@@ -407,11 +462,37 @@ export function StudentFormDialog() {
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {editing ? "Save changes" : "Register student"}
           </Button>
-          <Button variant="ghost" className="h-9 text-xs" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" className="h-9 text-xs" onClick={requestClose}>Cancel</Button>
           <span className="ml-auto text-[15px] text-muted-foreground">* required fields</span>
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* unsaved-changes confirmation — a mis-tap on Esc / overlay / Cancel
+        must never silently throw away a half-filled player record */}
+    <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+          <AlertDialogDescription>
+            The player form has been edited but not saved. Closing now will lose every change typed since the dialog opened.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep editing</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-white hover:bg-destructive/90"
+            onClick={() => {
+              setConfirmClose(false)
+              onClose()
+            }}
+          >
+            Discard changes
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
 

@@ -26,6 +26,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       "ageCategory", "trainingBatch", "photoPath", "birthCertPath", "idCardPath", "status",
     ]
     for (const f of strFields) if (f in body) data[f] = body[f] === "" ? null : body[f]
+    if ("gender" in body) data.gender = String(body.gender ?? "")
     if ("dateOfBirth" in body) data.dateOfBirth = new Date(body.dateOfBirth)
     if ("registrationDate" in body && body.registrationDate) data.registrationDate = new Date(body.registrationDate)
     if ("monthlyFee" in body) data.monthlyFee = Number(body.monthlyFee ?? 0)

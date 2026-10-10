@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   if (studentId) where.studentId = studentId
   if (month) {
     // payments whose JSON months array contains the given "YYYY-MM"
-    const all = await db.feePayment.findMany({ where: studentId ? { studentId } : {}, include: { student: true }, orderBy: { paymentDate: "desc" } })
+    const all = await db.feePayment.findMany({ where: studentId ? { studentId } : {}, include: { student: true }, orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }] })
     const filtered = all.filter((p) => parsePaidMonths(p.months).includes(month))
     return NextResponse.json(filtered.map(toWirePaymentWithStudent))
   }
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   const rows = await db.feePayment.findMany({
     where,
     include: { student: true },
-    orderBy: { paymentDate: "desc" },
+    orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
     ...(limit ? { take: limit } : {}),
   })
   return NextResponse.json(rows.map(toWirePaymentWithStudent))

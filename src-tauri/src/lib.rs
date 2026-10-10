@@ -259,6 +259,7 @@ pub fn run() {
             whatsapp::wa_snapshot,
             whatsapp::wa_start,
             whatsapp::wa_send,
+            whatsapp::wa_send_document,
             whatsapp::wa_logout
         ])
         .manage(whatsapp::WaState::default())
@@ -282,15 +283,22 @@ pub fn run() {
             }
             log_line(&format!("data root ready: {}", paths.app_data));
 
-            // WhatsApp linked-device sidecar: auto-connect at boot when a
-            // saved pairing session exists (scan-once, send-always). Failure
-            // is non-fatal — the Settings page can retry manually.
+            // The main window boots hidden AND not yet maximized — the
+            // "maximized" config flag forces a brief blank flash on Windows
+            // before the splash can gate it. Maximize it NOW while it is
+            // still invisible, so first start appears full screen instantly.
+            if let Some(main_win) = app.get_webview_window("main") {
+                let _ = main_win.maximize();
+            }
+
+            // WhatsApp linked-device engine (native, in-process — no
+            // sidecar): auto-connects at boot when a saved pairing session
+            // exists (scan-once, send-always). Failure is non-fatal — the
+            // Settings page can retry manually.
             let wa_handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) = whatsapp::spawn_sidecar(&wa_handle) {
-                    log_line(&format!("whatsapp sidecar autostart: {e}"));
-                }
-            });
+            if let Err(e) = whatsapp::start_engine(&wa_handle) {
+                log_line(&format!("whatsapp engine autostart: {e}"));
+            }
 
             // Hard failsafe: if the splash window never completes the boot
             // handshake (webview crash, JS error), reveal the main window
@@ -320,8 +328,8 @@ pub fn run() {
     app.run(|_app_handle, event| match event {
         // ---- Automated data backup on exit ----
         RunEvent::Exit { .. } => {
-            log_line("exit — killing whatsapp sidecar + running backup routine");
-            whatsapp::kill_sidecar(_app_handle);
+            log_line("exit — stopping whatsapp engine + running backup routine");
+            whatsapp::shutdown_engine(_app_handle);
             let _ = run_exit_backup(_app_handle);
             log_line("backup routine done");
         }

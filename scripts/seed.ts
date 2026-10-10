@@ -53,6 +53,7 @@ async function main() {
         classGrade: s.classGrade,
         division: s.division,
         bloodGroup: s.bloodGroup,
+        gender: s.gender,
         heightCm: s.heightCm ?? null,
         weightKg: s.weightKg ?? null,
         standingReachCm: s.standingReachCm ?? null,

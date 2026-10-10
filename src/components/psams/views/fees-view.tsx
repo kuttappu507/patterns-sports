@@ -5,7 +5,7 @@
 // defaulters monitoring & export pipelines.
 // ============================================================
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Receipt,
   AlertTriangle,
@@ -18,6 +18,7 @@ import {
   BadgeIndianRupee,
   Phone,
   History,
+  Search,
 } from "lucide-react"
 import {
   fetchFeeStatuses,
@@ -32,14 +33,16 @@ import {
   parsePaidMonths,
   CATEGORY_COLORS,
 } from "@/lib/psams/domain"
-import { type FeePayment, type StudentFeeStatus, type AcademySettings } from "@/lib/psams/types"
+import { AGE_CATEGORIES, GENDERS, type FeePayment, type StudentFeeStatus, type AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
-import { exportExcel, exportPDF } from "@/lib/psams/export"
-import { toIntlPhone, receiptWaMessage, reminderWaMessage, dispatchWa } from "@/lib/psams/whatsapp"
+import { exportExcel, exportPDF, buildReceiptPdfA5, receiptPdfA5 } from "@/lib/psams/export"
+import { toIntlPhone, receiptWaMessage, reminderWaMessage, dispatchWa, dispatchWaReceipt } from "@/lib/psams/whatsapp"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -109,6 +112,56 @@ function CollectTab() {
   )
 }
 
+/* =================== shared filter bar (search + category + gender) =================== */
+
+export function FeeFilterBar({
+  q,
+  onQ,
+  category,
+  onCategory,
+  gender,
+  onGender,
+  placeholder,
+}: {
+  q: string
+  onQ: (v: string) => void
+  category: string
+  onCategory: (v: string) => void
+  gender: string
+  onGender: (v: string) => void
+  placeholder: string
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input className="h-8 w-56 pl-8 text-xs" placeholder={placeholder} value={q} onChange={(e) => onQ(e.target.value)} />
+      </div>
+      <Select value={category} onValueChange={onCategory}>
+        <SelectTrigger className="h-8 w-[132px] text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent className="border-border bg-popover">
+          <SelectItem value="all" className="text-xs">All categories</SelectItem>
+          {AGE_CATEGORIES.map((c) => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Select value={gender} onValueChange={onGender}>
+        <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent className="border-border bg-popover">
+          <SelectItem value="all" className="text-xs">All genders</SelectItem>
+          {GENDERS.map((g) => <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+/** Generic matcher: student name / admission no / mobile / parent / receipt no. */
+export function feeRowMatches(haystacks: (string | null | undefined)[], needle: string): boolean {
+  if (!needle.trim()) return true
+  const q = needle.trim().toLowerCase()
+  return haystacks.some((h) => (h || "").toLowerCase().includes(q))
+}
+
 /* ==================== RECEIPT DIALOG (dual format + WhatsApp) ==================== */
 
 export function ReceiptDialog({
@@ -123,12 +176,26 @@ export function ReceiptDialog({
   const { setPrint } = useAppStore()
   const { toast } = useToast()
   const [waBusy, setWaBusy] = useState(false)
+  const [pdfBusy, setPdfBusy] = useState(false)
+
+  async function savePdf() {
+    if (!receipt) return
+    setPdfBusy(true)
+    try {
+      await receiptPdfA5(receipt, settings)
+      toast({ title: "A5 receipt PDF downloaded", description: `Saved as PS-AMS-Receipt-${receipt.receiptNo}.pdf — true A5 paper size (148 × 210 mm).` })
+    } catch (e) {
+      toast({ title: "PDF export failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setPdfBusy(false)
+    }
+  }
 
   async function waDispatch() {
     if (!receipt) return
     const months = parsePaidMonths(receipt.months)
     const message = receiptWaMessage(receipt, settings, months.map(monthLabel).join(", "))
-    const intl = toIntlPhone(receipt.studentMobile)
+    const intl = toIntlPhone(receipt.studentMobile || "")
     if (!intl) {
       toast({ title: "No mobile number on file", description: "Add a mobile number to the player profile to enable one-click WhatsApp dispatch.", variant: "destructive" })
       return
@@ -139,15 +206,25 @@ export function ReceiptDialog({
     }
     setWaBusy(true)
     try {
-      const res = await dispatchWa(intl, message)
+      // The itemised message AND the true A5 PDF receipt travel together —
+      // the parent receives the details in chat plus the printable document.
+      let pdf: { blob: Blob; fileName: string } | null = null
+      try {
+        pdf = { blob: await buildReceiptPdfA5(receipt, settings), fileName: `PS-AMS-Receipt-${receipt.receiptNo}.pdf` }
+      } catch {
+        pdf = null // text-only dispatch is better than no dispatch
+      }
+      const res = await dispatchWaReceipt(intl, message, pdf)
       if (res.via === "linked") {
-        if (res.ok) {
-          toast({ title: "Receipt sent on WhatsApp", description: `Delivered through the academy's linked device to +${intl} — no chat window needed.` })
+        if (res.ok && res.attachment) {
+          toast({ title: "Receipt sent on WhatsApp", description: `Message + A5 PDF receipt delivered through the academy's linked device to +${intl} — no chat window needed.` })
+        } else if (res.ok) {
+          toast({ title: "Message sent — attachment failed", description: res.error ?? "The receipt PDF could not be uploaded. The itemised message was delivered.", variant: "destructive" })
         } else {
           toast({ title: "WhatsApp send failed", description: res.error ?? "Unknown error", variant: "destructive" })
         }
       } else {
-        toast({ title: "Opening WhatsApp chat", description: "Tip: link the academy WhatsApp once in Settings → WhatsApp Linked Device to send receipts directly — one click, no chat window." })
+        toast({ title: "Opening WhatsApp chat", description: "Tip: link the academy WhatsApp once in Settings → WhatsApp Linked Device to send receipts (with the PDF attached) directly — one click, no chat window." })
       }
     } catch (e) {
       toast({ title: "Could not send via WhatsApp", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
@@ -186,10 +263,11 @@ export function ReceiptDialog({
             size="sm"
             variant="outline"
             className="h-9 gap-1.5 border-border bg-card text-xs hover:bg-muted"
-            onClick={() => setPrint({ kind: "receipt-a5", title: `PS-AMS-Receipt-${receipt.receiptNo}`, data: { receipt, settings }, mode: "direct" })}
-            title="Opens the print dialog — choose 'Save as PDF' as the destination"
+            disabled={pdfBusy}
+            onClick={savePdf}
+            title="Downloads a true A5-size PDF (148 × 210 mm) of this receipt"
           >
-            <FileText className="h-3.5 w-3.5" /> Save PDF
+            {pdfBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} Save PDF
           </Button>
           <Button
             size="sm"
@@ -206,7 +284,7 @@ export function ReceiptDialog({
         </div>
         <div className="flex items-center justify-between">
           <p className="text-[15px] text-muted-foreground">
-            <b>Print A5 / 80mm Slip</b> go straight to the printer with no automatic headers or time stamps; <b>Save PDF</b> suggests the receipt number as the filename. The <b>WhatsApp</b> button delivers the itemized receipt through the academy’s linked WhatsApp device — one click, straight to the parent’s chat.
+            <b>Print A5 / 80mm Slip</b> go straight to the printer with no automatic headers or time stamps; <b>Save PDF</b> downloads a true A5-size PDF file. The <b>WhatsApp</b> button delivers the itemised message <b>together with the A5 PDF receipt</b> through the academy’s linked WhatsApp device — one click, straight to the parent’s chat.
           </p>
           <Button
             size="sm"
@@ -228,6 +306,10 @@ function DefaultersTab() {
   const [rows, setRows] = useState<StudentFeeStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<AcademySettings | null>(null)
+  // search + filters (junior / male / …) across the whole roster with dues
+  const [q, setQ] = useState("")
+  const [category, setCategory] = useState("all")
+  const [gender, setGender] = useState("all")
   const { setPrint, navigate, openCollectFee, dataVersion } = useAppStore()
   const { toast } = useToast()
 
@@ -252,8 +334,18 @@ function DefaultersTab() {
     }
   }, [toast, dataVersion])
 
-  const defaulterCount = rows.filter((r) => r.isDefaulter).length
-  const totalDue = rows.reduce((sum, r) => sum + r.dueAmount, 0)
+  // Apply the toolbar search + category + gender filters
+  const filtered = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (category === "all" || r.student.ageCategory === category) &&
+          (gender === "all" || (r.student.gender || "") === gender) &&
+          feeRowMatches([r.student.fullName, r.student.admissionNo, r.student.mobile, r.student.parentName], q),
+      ),
+    [rows, q, category, gender],
+  )
+  const filteredDue = filtered.reduce((sum, r) => sum + r.dueAmount, 0)
 
   // Excel/PDF generation can throw (encoding, layout edge cases) — never leave the user without feedback
   async function runExport(fn: () => Promise<unknown>) {
@@ -264,10 +356,11 @@ function DefaultersTab() {
     }
   }
 
-  const exportRows = rows.map((r) => ({
+  const exportRows = filtered.map((r) => ({
     name: r.student.fullName,
     admission: r.student.admissionNo,
     category: r.student.ageCategory,
+    gender: r.student.gender || "—",
     parent: r.student.parentName,
     phone: r.student.mobile,
     overdueMonths: r.overdueMonths.map(monthLabel).join(", ") || "—",
@@ -279,6 +372,7 @@ function DefaultersTab() {
     { header: "Student", key: "name", width: 24 },
     { header: "Admission No", key: "admission", width: 16 },
     { header: "Category", key: "category", width: 12 },
+    { header: "Gender", key: "gender", width: 10 },
     { header: "Unpaid Months (>1 mo)", key: "overdueMonths", width: 30 },
     { header: "Total Pending", key: "pendingCount", width: 12 },
     { header: "Outstanding (₹)", key: "due", width: 15 },
@@ -287,7 +381,8 @@ function DefaultersTab() {
   ]
 
   function printRoster() {
-    setPrint({ kind: "defaulters", title: "Fee Defaulters Roster", data: { rows: rows.filter((r) => r.isDefaulter), settings, totalDue: rows.filter((r) => r.isDefaulter).reduce((s, r) => s + r.dueAmount, 0) } })
+    const defaulters = filtered.filter((r) => r.isDefaulter)
+    setPrint({ kind: "defaulters", title: "Fee Defaulters Roster", data: { rows: defaulters, settings, totalDue: defaulters.reduce((s, r) => s + r.dueAmount, 0) } })
   }
 
   return (
@@ -296,15 +391,17 @@ function DefaultersTab() {
         <div>
           <div className="text-xs font-semibold">Defaulters — overdue by more than one month</div>
           <div className="text-[15px] text-muted-foreground">
-            <span className="font-semibold text-rose-600 dark:text-rose-300">{defaulterCount}</span> defaulter(s) of {rows.length} with any dues · total outstanding <b>{formatINR(totalDue)}</b>
+            <span className="font-semibold text-rose-600 dark:text-rose-300">{filtered.filter((r) => r.isDefaulter).length}</span> defaulter(s) of {filtered.length} shown · outstanding <b>{formatINR(filteredDue)}</b>
+            {(q || category !== "all" || gender !== "all") && <span className="text-foreground"> (filtered from {rows.length})</span>}
           </div>
         </div>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          <FeeFilterBar q={q} onQ={setQ} category={category} onCategory={setCategory} gender={gender} onGender={setGender} placeholder="Name / adm. no / mobile / parent…" />
           <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={printRoster}><Printer className="h-3.5 w-3.5" /> Print</Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => runExport(() => exportExcel({ sheetName: "Defaulters", fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster — overdue by more than one month", academy: settings ?? undefined, columns: cols, rows: exportRows, totalsRow: { name: "TOTAL", due: totalDue } }))}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => runExport(() => exportExcel({ sheetName: "Defaulters", fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster — overdue by more than one month", academy: settings ?? undefined, columns: cols, rows: exportRows, totalsRow: { name: "TOTAL", due: filteredDue } }))}>
             <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
           </Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => runExport(() => exportPDF({ fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster", subtitle: "Overdue by more than one billing month", academy: settings ?? undefined, columns: cols, rows: exportRows, orientation: "l", totalsRow: { name: "TOTAL", due: totalDue } }))}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => runExport(() => exportPDF({ fileName: "PS-AMS-defaulters", title: "Fee Defaulters Roster", subtitle: "Overdue by more than one billing month", academy: settings ?? undefined, columns: cols, rows: exportRows, orientation: "l", totalsRow: { name: "TOTAL", due: filteredDue } }))}>
             <FileText className="h-3.5 w-3.5" /> PDF
           </Button>
         </div>
@@ -324,10 +421,10 @@ function DefaultersTab() {
           </thead>
           <tbody>
             {loading && <tr><td colSpan={6} className="py-10 text-center"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Computing ledger…</td></tr>}
-            {!loading && rows.length === 0 && (
-              <tr><td colSpan={6} className="py-10 text-center text-emerald-600 dark:text-emerald-300">Excellent — no pending dues across the academy.</td></tr>
+            {!loading && filtered.length === 0 && (
+              <tr><td colSpan={6} className="py-10 text-center text-emerald-600 dark:text-emerald-300">{rows.length === 0 ? "Excellent — no pending dues across the academy." : "No students match the current search / filters."}</td></tr>
             )}
-            {rows.map((r) => (
+            {filtered.map((r) => (
               <tr key={r.student.id} className={cn("border-b border-border/40", r.isDefaulter && "bg-rose-400/[0.05]")}>
                 <td className="px-4 py-2.5">
                   <button className="text-left font-medium hover:text-primary hover:underline" onClick={() => navigate("student-detail", r.student.id)}>
@@ -401,9 +498,14 @@ function DefaultersTab() {
 
 function HistoryTab() {
   const [rows, setRows] = useState<(FeePayment & { studentName: string; admissionNo: string })[]>([])
+  const [students, setStudents] = useState<Record<string, { mobile: string; ageCategory: string; gender: string }>>({})
   const [settings, setSettings] = useState<AcademySettings | null>(null)
   const [loading, setLoading] = useState(true)
-  const [mobiles, setMobiles] = useState<Record<string, string>>({})
+  // search + filters (junior / male / …) across the receipt ledger
+  const [q, setQ] = useState("")
+  const [category, setCategory] = useState("all")
+  const [gender, setGender] = useState("all")
+  const [sendingId, setSendingId] = useState<string | null>(null)
   const { setPrint, dataVersion } = useAppStore()
   const { toast } = useToast()
 
@@ -411,13 +513,13 @@ function HistoryTab() {
     let alive = true
     void (async () => {
       try {
-        const [p, s, students] = await Promise.all([fetchPayments({ limit: 60 }), fetchSettings(), fetchStudents()])
+        const [p, s, studentRows] = await Promise.all([fetchPayments({ limit: 200 }), fetchSettings(), fetchStudents()])
         if (!alive) return
         setRows(p)
         setSettings(s)
-        const map: Record<string, string> = {}
-        for (const st of students) map[st.id] = st.mobile
-        setMobiles(map)
+        const map: Record<string, { mobile: string; ageCategory: string; gender: string }> = {}
+        for (const st of studentRows) map[st.id] = { mobile: st.mobile, ageCategory: st.ageCategory, gender: st.gender || "" }
+        setStudents(map)
       } catch (e) {
         if (alive) toast({ title: "Could not load receipt history", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
       } finally {
@@ -429,67 +531,116 @@ function HistoryTab() {
     }
   }, [toast, dataVersion])
 
+  const filtered = useMemo(
+    () =>
+      rows.filter((p) => {
+        const st = students[p.studentId]
+        if (category !== "all" && st && st.ageCategory !== category) return false
+        if (gender !== "all" && st && st.gender !== gender) return false
+        return feeRowMatches([p.receiptNo, p.studentName, p.admissionNo, st?.mobile, p.paymentMode], q)
+      }),
+    [rows, students, q, category, gender],
+  )
+  const filteredTotal = filtered.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+
+  /** Reprint straight to the printer — A5 zero-margin paper. */
+  function reprint(p: FeePayment & { studentName: string; admissionNo: string }) {
+    setPrint({ kind: "receipt-a5", title: `PS-AMS-Receipt-${p.receiptNo}`, data: { receipt: p, settings }, mode: "direct" })
+  }
+
+  /** One-click resend: itemised message + A5 PDF receipt through the linked device. */
+  async function resend(p: FeePayment & { studentName: string; admissionNo: string }) {
+    const info = students[p.studentId]
+    const intl = toIntlPhone(info?.mobile || "")
+    if (!intl) {
+      toast({ title: "No mobile number on file", description: `${p.studentName} has no mobile number in the profile.`, variant: "destructive" })
+      return
+    }
+    setSendingId(p.id)
+    try {
+      const message = receiptWaMessage(p, settings, parsePaidMonths(p.months).map(monthLabel).join(", "))
+      let pdf: { blob: Blob; fileName: string } | null = null
+      try {
+        pdf = { blob: await buildReceiptPdfA5(p, settings), fileName: `PS-AMS-Receipt-${p.receiptNo}.pdf` }
+      } catch {
+        pdf = null
+      }
+      const res = await dispatchWaReceipt(intl, message, pdf)
+      if (res.via === "linked") {
+        if (res.ok && res.attachment) toast({ title: "Receipt sent on WhatsApp", description: `Message + A5 PDF receipt delivered through the linked device to +${intl}.` })
+        else if (res.ok) toast({ title: "Message sent — attachment failed", description: res.error ?? "The receipt PDF could not be uploaded.", variant: "destructive" })
+        else toast({ title: "WhatsApp send failed", description: res.error ?? "Unknown error", variant: "destructive" })
+      } else {
+        toast({ title: "Opening WhatsApp chat", description: "Tip: link the academy WhatsApp once in Settings → WhatsApp Linked Device for direct one-click sends." })
+      }
+    } catch (e) {
+      toast({ title: "Could not send receipt", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setSendingId(null)
+    }
+  }
+
   return (
-    <div className="overflow-hidden glass rounded-2xl">
-      <div className="border-b px-4 py-2.5 text-xs font-semibold">Recent receipts (latest 60)</div>
-      <table className="w-full text-left text-xs">
-        <thead className="border-b border-border bg-muted/30 text-[15px] uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="px-4 py-2 font-medium">Receipt No</th>
-            <th className="px-3 py-2 font-medium">Date</th>
-            <th className="px-3 py-2 font-medium">Student</th>
-            <th className="px-3 py-2 font-medium">Periods</th>
-            <th className="px-3 py-2 font-medium">Mode</th>
-            <th className="px-3 py-2 text-right font-medium">Amount</th>
-            <th className="px-3 py-2 text-right font-medium">Reprint / Send</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading && <tr><td colSpan={7} className="py-8 text-center"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading…</td></tr>}
-          {!loading && rows.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-muted-foreground">No receipts yet.</td></tr>}
-          {rows.map((p) => (
-            <tr key={p.id} className="border-b border-border/40 hover:bg-accent/30">
-              <td className="px-4 py-2 font-mono text-[15px]">{p.receiptNo}</td>
-              <td className="px-3 py-2">{formatDate(p.paymentDate)}</td>
-              <td className="px-3 py-2 font-medium">{p.studentName} <span className="text-[15.5px] text-muted-foreground">{p.admissionNo}</span></td>
-              <td className="px-3 py-2">{parsePaidMonths(p.months).map(monthLabel).join(", ")}</td>
-              <td className="px-3 py-2">{p.paymentMode}</td>
-              <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatINR(p.amount)}</td>
-              <td className="px-3 py-2">
-                <div className="flex justify-end gap-1">
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" title="Straight to the default printer" onClick={() => setPrint({ kind: "receipt-a5", title: `PS-AMS-Receipt-${p.receiptNo}`, data: { receipt: p, settings }, mode: "direct" })}>A5</Button>
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" title="Direct thermal print — 80 mm roll" onClick={() => setPrint({ kind: "receipt-thermal", title: `PS-AMS-Slip-${p.receiptNo}`, data: { receipt: p, settings }, mode: "direct" })}>Thermal</Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 gap-1 border-emerald-500/30 bg-emerald-500/10 px-2 text-[14.5px] text-emerald-700 hover:bg-emerald-500/20 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300"
-                    onClick={async () => {
-                      const intl = toIntlPhone(mobiles[p.studentId])
-                      if (!intl) {
-                        toast({ title: "No mobile number on file", description: `${p.studentName} has no mobile number in the profile.`, variant: "destructive" })
-                        return
-                      }
-                      try {
-                        const res = await dispatchWa(mobiles[p.studentId], receiptWaMessage(p, settings, parsePaidMonths(p.months).map(monthLabel).join(", ")))
-                        if (res.via === "linked") {
-                          if (res.ok) toast({ title: "Receipt sent on WhatsApp", description: `Delivered through the linked device to +${intl}.` })
-                          else toast({ title: "WhatsApp send failed", description: res.error ?? "Unknown error", variant: "destructive" })
-                        } else {
-                          toast({ title: "Opening WhatsApp chat", description: "Tip: link the academy WhatsApp once in Settings → WhatsApp Linked Device for direct one-click sends." })
-                        }
-                      } catch (e) {
-                        toast({ title: "Could not send receipt", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
-                      }
-                    }}
-                  >
-                    <MessageCircle className="h-3 w-3" /> Send
-                  </Button>
-                </div>
-              </td>
+    <div className="space-y-3">
+      <div className="glass flex flex-wrap items-center gap-3 rounded-2xl p-3">
+        <div>
+          <div className="text-xs font-semibold">Receipt ledger</div>
+          <div className="text-[15px] text-muted-foreground">
+            {filtered.length} receipt{filtered.length === 1 ? "" : "s"} · <b className="text-foreground">{formatINR(filteredTotal)}</b> collected
+            {(q || category !== "all" || gender !== "all") && <> (filtered from {rows.length})</>}
+          </div>
+        </div>
+        <div className="ml-auto">
+          <FeeFilterBar q={q} onQ={setQ} category={category} onCategory={setCategory} gender={gender} onGender={setGender} placeholder="Receipt no / student / mobile / mode…" />
+        </div>
+      </div>
+      <div className="overflow-hidden glass rounded-2xl">
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-border bg-muted/30 text-[15px] uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-4 py-2 font-medium">Receipt No</th>
+              <th className="px-3 py-2 font-medium">Date</th>
+              <th className="px-3 py-2 font-medium">Student</th>
+              <th className="px-3 py-2 font-medium">Periods</th>
+              <th className="px-3 py-2 font-medium">Mode</th>
+              <th className="px-3 py-2 text-right font-medium">Amount</th>
+              <th className="px-3 py-2 text-right font-medium">Reprint / Send</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {loading && <tr><td colSpan={7} className="py-8 text-center"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading…</td></tr>}
+            {!loading && filtered.length === 0 && (
+              <tr><td colSpan={7} className="py-8 text-center text-muted-foreground">{rows.length === 0 ? "No receipts yet." : "No receipts match the current search / filters."}</td></tr>
+            )}
+            {filtered.map((p) => (
+              <tr key={p.id} className="border-b border-border/40 hover:bg-accent/30">
+                <td className="px-4 py-2 font-mono text-[15px]">{p.receiptNo}</td>
+                <td className="px-3 py-2">{formatDate(p.paymentDate)}</td>
+                <td className="px-3 py-2 font-medium">{p.studentName} <span className="text-[15.5px] text-muted-foreground">{p.admissionNo}</span></td>
+                <td className="px-3 py-2">{parsePaidMonths(p.months).map(monthLabel).join(", ")}</td>
+                <td className="px-3 py-2">{p.paymentMode}</td>
+                <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatINR(p.amount)}</td>
+                <td className="px-3 py-2">
+                  <div className="flex justify-end gap-1">
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" title="Straight to the default printer" onClick={() => reprint(p)}>A5</Button>
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" title="Direct thermal print — 80 mm roll" onClick={() => setPrint({ kind: "receipt-thermal", title: `PS-AMS-Slip-${p.receiptNo}`, data: { receipt: p, settings }, mode: "direct" })}>Thermal</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={sendingId === p.id}
+                      className="h-6 gap-1 border-emerald-500/30 bg-emerald-500/10 px-2 text-[14.5px] text-emerald-700 hover:bg-emerald-500/20 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300"
+                      title="Sends the itemised message plus the A5 PDF receipt via the linked device"
+                      onClick={() => resend(p)}
+                    >
+                      {sendingId === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <MessageCircle className="h-3 w-3" />} Send
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

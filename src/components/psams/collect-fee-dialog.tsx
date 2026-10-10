@@ -109,11 +109,13 @@ export function CollectFeeDialog() {
   }
 
   const filtered = useMemo(() => {
+    // The FULL active roster — the picker column scrolls, so every student
+    // is reachable (previously capped at 8 which hid most of the academy).
     const needle = q.trim().toLowerCase()
-    if (!needle) return students.slice(0, 8)
-    return students
-      .filter((s) => s.fullName.toLowerCase().includes(needle) || s.admissionNo.toLowerCase().includes(needle) || s.mobile.includes(needle))
-      .slice(0, 8)
+    if (!needle) return students
+    return students.filter(
+      (s) => s.fullName.toLowerCase().includes(needle) || s.admissionNo.toLowerCase().includes(needle) || s.mobile.includes(needle)
+    )
   }, [q, students])
 
   function toggleMonth(m: string) {

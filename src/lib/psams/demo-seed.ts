@@ -63,6 +63,7 @@ export async function loadDemoDataset(db: PrismaClient): Promise<{ students: num
         classGrade: s.classGrade,
         division: s.division,
         bloodGroup: s.bloodGroup,
+        gender: s.gender,
         heightCm: s.heightCm ?? null,
         weightKg: s.weightKg ?? null,
         standingReachCm: s.standingReachCm ?? null,

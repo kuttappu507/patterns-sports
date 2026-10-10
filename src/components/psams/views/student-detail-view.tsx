@@ -58,6 +58,7 @@ import type {
   StudentWithRelations,
 } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
+import { profilePdfA4 } from "@/lib/psams/export"
 import { useRevealMouse } from "@/components/psams/fx"
 import { MediaUpload } from "@/components/psams/media-upload"
 import { Button } from "@/components/ui/button"
@@ -119,7 +120,19 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
 
   function printProfile() {
     if (!student) return
-    setPrint({ kind: "profile-a4", title: "Player Profile Card", data: { student, achievements: student.achievements, settings } })
+    // DIRECT print — the A4 profile goes straight to the default printer
+    // (zero page margins, no headers/footers, NO preview window in between)
+    setPrint({ kind: "profile-a4", title: "Player Profile Card", data: { student, achievements: student.achievements, settings }, mode: "direct" })
+  }
+
+  async function downloadProfilePdf() {
+    if (!student) return
+    try {
+      await profilePdfA4(student, student.achievements, settings)
+      toast({ title: "Profile PDF downloaded", description: "A4 profile card saved — ready to share or archive." })
+    } catch (e) {
+      toast({ title: "PDF export failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    }
   }
 
   return (
@@ -159,12 +172,16 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
               <Chip label="Age" value={`${age} yrs (${ageDetailed(student.dateOfBirth)})`} />
               <Chip label="Sport" value={`${student.primarySport}${student.playingPosition ? " · " + student.playingPosition : ""}`} />
               <Chip label="Batch" value={student.trainingBatch ? `${student.trainingBatch} batch` : "—"} />
+              <Chip label="Gender" value={student.gender || "—"} />
               <Chip label="Blood" value={student.bloodGroup || "—"} />
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={printProfile}>
+            <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={printProfile} title="Straight to the default printer — no preview window, no page headers or footers">
               <Printer className="h-3.5 w-3.5" /> Print A4 Profile
+            </Button>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={downloadProfilePdf} title="Download the profile card as an A4 PDF file">
+              <Download className="h-3.5 w-3.5" /> Download PDF
             </Button>
             <Button size="sm" variant="outline" className="h-8 gap-1.5 border-border bg-card text-xs hover:bg-muted" onClick={() => openStudentForm(student)}>
               <Pencil className="h-3.5 w-3.5" /> Edit profile

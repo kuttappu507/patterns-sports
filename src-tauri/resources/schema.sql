@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS Student (
   classGrade       TEXT,
   division         TEXT,
   bloodGroup       TEXT,
+  gender           TEXT NOT NULL DEFAULT '',     -- Male|Female|Other (blank = unspecified)
   heightCm         REAL,
   weightKg         REAL,
   standingReachCm  REAL,

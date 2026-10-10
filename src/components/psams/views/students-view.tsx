@@ -6,6 +6,7 @@ import { Search, UserPlus, GraduationCap, Eye, Pencil, Trash2, Users, Sparkles }
 import { fetchStudents, deleteStudent, mediaUrl } from "@/lib/psams/api"
 import { CATEGORY_COLORS, computeAge, formatINR } from "@/lib/psams/domain"
 import type { Student } from "@/lib/psams/types"
+import { GENDERS } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ export function StudentsView() {
   const [category, setCategory] = useState("all")
   const [status, setStatus] = useState("Active")
   const [batch, setBatch] = useState("all")
+  const [gender, setGender] = useState("all")
   const [deleting, setDeleting] = useState<Student | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
   const { navigate, refresh, dataVersion, openStudentForm } = useAppStore()
@@ -97,6 +99,13 @@ export function StudentsView() {
               <SelectItem value="Evening" className="text-xs">Evening</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={gender} onValueChange={setGender}>
+            <SelectTrigger className={`${FILTER_TRIGGER} w-[118px]`}><SelectValue /></SelectTrigger>
+            <SelectContent className="border-border bg-popover">
+              <SelectItem value="all" className="text-xs">All genders</SelectItem>
+              {GENDERS.map((g) => <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className={`${FILTER_TRIGGER} w-[120px]`}><SelectValue /></SelectTrigger>
             <SelectContent className="border-border bg-popover">
@@ -159,7 +168,7 @@ export function StudentsView() {
                   </tr>
                 )}
                 <AnimatePresence initial={false}>
-                  {!loading && students.map((s, i) => (
+                  {!loading && students.filter((s) => gender === "all" || (s.gender || "") === gender).map((s, i) => (
                     <motion.tr
                       key={s.id}
                       initial={{ opacity: 0, y: 6 }}

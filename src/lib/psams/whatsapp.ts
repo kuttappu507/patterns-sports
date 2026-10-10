@@ -113,6 +113,7 @@ interface WaStore {
   connect: () => Promise<void>
   disconnect: () => Promise<void>
   send: (to: string, text: string) => Promise<{ ok: boolean; error?: string }>
+  sendDocument: (to: string, dataBase64: string, fileName: string, caption?: string) => Promise<{ ok: boolean; error?: string }>
 }
 
 export const useWaStore = create<WaStore>(() => ({
@@ -151,10 +152,23 @@ export const useWaStore = create<WaStore>(() => ({
   send: async (to, text) => {
     if (!isTauri()) return { ok: false, error: "WhatsApp linked-device sending is desktop-only" }
     const id = `wa-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    const ack = waitWaAck(id, 20000)
+    const ack = waitWaAck(id, 25000)
     try {
       const { invoke } = await import("@tauri-apps/api/core")
       await invoke("wa_send", { to, text, id })
+    } catch (e) {
+      pendingAcks.delete(id)
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+    return ack
+  },
+  sendDocument: async (to, dataBase64, fileName, caption) => {
+    if (!isTauri()) return { ok: false, error: "WhatsApp linked-device sending is desktop-only" }
+    const id = `wa-doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const ack = waitWaAck(id, 60000) // uploads take longer than text sends
+    try {
+      const { invoke } = await import("@tauri-apps/api/core")
+      await invoke("wa_send_document", { to, dataBase64, fileName, caption: caption ?? null, id })
     } catch (e) {
       pendingAcks.delete(id)
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
@@ -228,7 +242,7 @@ export function initWaBridge(): void {
 
 /**
  * One-click WhatsApp dispatch.
- * Desktop + linked  → through the sidecar (no window ever opens).
+ * Desktop + linked  → through the native engine (no window ever opens).
  * Otherwise        → wa.me deep link via the OS handler (graceful fallback).
  */
 export async function dispatchWa(
@@ -244,6 +258,53 @@ export async function dispatchWa(
   }
   await openExternal(waLink(toIntlPhone(phone), message))
   return { via: "link", ok: true }
+}
+
+/**
+ * One-click receipt dispatch WITH the PDF receipt attached.
+ *  Desktop + linked → the message text first, then the A5 receipt PDF as a
+ *                     WhatsApp document (caption repeats the receipt number).
+ *  Otherwise        → wa.me deep link with the itemised message (the parent
+ *                     still gets every receipt detail, just no attachment).
+ */
+export async function dispatchWaReceipt(
+  phone: string,
+  message: string,
+  pdf: { blob: Blob; fileName: string } | null,
+): Promise<{ via: "linked" | "link"; ok: boolean; error?: string; attachment?: boolean }> {
+  if (isTauri()) {
+    const { status, send, sendDocument } = useWaStore.getState()
+    if (status === "connected") {
+      const intl = toIntlPhone(phone)
+      const text = await send(intl, message)
+      if (!text.ok) return { via: "linked", ...text }
+      if (!pdf) return { via: "linked", ok: true }
+      const base64 = await blobToBase64(pdf.blob)
+      const receiptNoMatch = pdf.fileName.match(/(PS-AMS-Receipt-[A-Za-z0-9-]+)/)
+      const doc = await sendDocument(
+        intl,
+        base64,
+        pdf.fileName,
+        receiptNoMatch ? `Fee receipt ${receiptNoMatch[1].replace("PS-AMS-Receipt-", "")} — PDF attached` : "Fee receipt PDF attached",
+      )
+      if (!doc.ok) return { via: "linked", ok: true, error: doc.error, attachment: false }
+      return { via: "linked", ok: true, attachment: true }
+    }
+  }
+  await openExternal(waLink(toIntlPhone(phone), message))
+  return { via: "link", ok: true }
+}
+
+/** Blob → raw base64 (no data: prefix) for the IPC document payload. */
+async function blobToBase64(blob: Blob): Promise<string> {
+  const buf = await blob.arrayBuffer()
+  const bytes = new Uint8Array(buf)
+  let binary = ""
+  const CHUNK = 0x8000
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  }
+  return btoa(binary)
 }
 
 /** Render a raw QR payload into a data URL for the pairing card. */

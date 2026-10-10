@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
             classGrade: body.classGrade || null,
             division: body.division || null,
             bloodGroup: body.bloodGroup || null,
+            gender: body.gender || "",
             heightCm: body.heightCm ?? null,
             weightKg: body.weightKg ?? null,
             standingReachCm: body.standingReachCm ?? null,
