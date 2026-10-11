@@ -70,13 +70,15 @@ export async function desktopSavePdf(
   defaultName: string,
 ): Promise<{ saved: boolean; path?: string; message?: string }> {
   try {
-    const { save } = await import("@tauri-apps/plugin-dialog")
-    const path = await save({
-      defaultPath: defaultName.replace(/[\\/:*?"<>|]/g, "-") + ".pdf",
-      filters: [{ name: "PDF", extensions: ["pdf"] }],
+    // PS-014: Rust-side save dialog — the picked path is registered for the
+    // session and print_to_pdf only accepts whitelisted destinations.
+    const { invoke } = await import("@tauri-apps/api/core")
+    const path = await invoke<string | null>("pick_save_path", {
+      fileName: defaultName.replace(/[\\/:*?"<>|]/g, "-") + ".pdf",
+      filterName: "PDF",
+      extensions: ["pdf"],
     })
     if (!path) return { saved: false }
-    const { invoke } = await import("@tauri-apps/api/core")
     await invoke("print_to_pdf", { paper, path })
     return { saved: true, path }
   } catch (e) {

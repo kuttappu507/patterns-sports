@@ -14,6 +14,7 @@
 //    or a remembered USB drive when present)
 // ============================================================
 
+mod picks;
 mod printing;
 mod updates;
 mod whatsapp;
@@ -519,6 +520,9 @@ fn backup_now(handle: tauri::AppHandle) -> BackupOutcome {
 /// Frontend command: remember (or clear) the folder backups are written to.
 /// Writes/clears ps-ams-backup-target.txt NEXT TO THE DATABASE — the same
 /// marker the exit-backup routine reads. `None` resets to the default folder.
+/// PS-014: the path must have been picked by the native folder dialog this
+/// session (picks::pick_backup_folder) or live inside the app data root —
+/// the webview can never supply an arbitrary directory here.
 #[tauri::command]
 fn set_backup_target(handle: tauri::AppHandle, path: Option<String>) -> Result<String, String> {
     let paths = resolve_data_paths(&handle);
@@ -528,6 +532,9 @@ fn set_backup_target(handle: tauri::AppHandle, path: Option<String>) -> Result<S
             let dir = PathBuf::from(p.trim());
             if !dir.is_dir() {
                 return Err("Choose an existing folder".into());
+            }
+            if !picks::may_use_path(&handle, picks::PickKind::BackupFolder, &dir) {
+                return Err("That folder was not chosen through the app's folder picker — pick it again in Settings".into());
             }
             fs::write(&marker, dir.to_string_lossy().as_bytes())
                 .map_err(|e| format!("Could not write {}: {e}", BACKUP_MARKER))?;
@@ -569,6 +576,11 @@ fn restore_probe(handle: tauri::AppHandle, source: String) -> RestoreProbe {
         media_dir: None,
         source_bytes: fs::metadata(&src).map(|m| m.len()).unwrap_or(0),
     };
+    // PS-014: same path rule as restore_backup — dialog pick or app data root.
+    if !picks::may_use_path(&handle, picks::PickKind::RestoreSource, &src) {
+        probe.error = Some("That backup was not chosen through the app's file picker — choose it again in Settings".into());
+        return probe;
+    }
     if !src.exists() {
         probe.error = Some("Backup file not found".into());
         return probe;
@@ -611,6 +623,12 @@ fn restore_backup(
     let src = PathBuf::from(&source);
     if !src.exists() {
         return Err("Backup file not found".into());
+    }
+    // PS-014: the source must be a dialog pick from this session or a file
+    // inside the app data root — the webview can never point this command at
+    // an arbitrary file on disk.
+    if !picks::may_use_path(&handle, picks::PickKind::RestoreSource, &src) {
+        return Err("That backup was not chosen through the app's file picker — choose it again in Settings".into());
     }
     // Accept only a real SQLite database file — never an arbitrary payload.
     if !sqlite_header_ok(&src) {
@@ -834,6 +852,9 @@ pub fn run() {
             restart_app,
             schema_sql,
             finish_boot,
+            picks::pick_restore_source,
+            picks::pick_backup_folder,
+            picks::pick_save_path,
             printing::print_direct,
             printing::print_to_pdf,
             updates::check_update,
@@ -847,6 +868,7 @@ pub fn run() {
             whatsapp::wa_logout
         ])
         .manage(whatsapp::WaState::default())
+        .manage(picks::PickState::default())
         .on_window_event(|window, event| {
             // If the splash window dies for ANY reason (crash, Alt+F4) before
             // the boot handshake finished, still reveal the main window.

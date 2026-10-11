@@ -362,7 +362,8 @@ export function mediaUrl(path?: string | null): string {
     if (!base) return ""
     return convertFileSrc(`${base}/${path}`)
   }
-  const token = process.env.NEXT_PUBLIC_PSAMS_API_TOKEN
-  const tokenQs = token ? `&token=${encodeURIComponent(token)}` : ""
-  return `/api/media?path=${encodeURIComponent(path)}${tokenQs}`
+  // PS-012: tokens are never placed in URLs (they leak into server logs).
+  // Web-mode media requests authenticate with the HttpOnly `psams_token`
+  // cookie the proxy hands out on page loads — <img> sends it automatically.
+  return `/api/media?path=${encodeURIComponent(path)}`
 }

@@ -173,23 +173,43 @@ See [`docs/PORTING_GUIDE.md`](docs/PORTING_GUIDE.md) for the full guide.
 
 ## Security (read this before exposing the web app)
 
-> ⚠️ **The web API (`/api/*`) has no authentication by default. It is
-> designed to run on loopback only — same machine, same user.**
+> The web API posture is enforced in app code since the Phase 3B audit pass
+> (PS-012…015): **loopback by default, token required for LAN, no tokens in
+> URLs, same-origin writes only.**
 
 - **Desktop (Tauri) build**: no HTTP server exists at all; the UI talks to
-  SQLite/filesystem plugins directly. Nothing to expose.
-- **Web preview/dev (`bun run dev`)**: Next.js binds `0.0.0.0`, so the dev
-  server is reachable from your LAN. On untrusted networks, firewall the port
-  or enable the API token (below).
-- **Web production (`bun start`)**: the start script sets `HOSTNAME=localhost`,
-  so the standalone server only accepts loopback connections. Remove that
-  variable only if you deliberately want LAN access.
-- **Opt-in API token**: set **both** `PSAMS_API_TOKEN` and
-  `NEXT_PUBLIC_PSAMS_API_TOKEN` (see `.env.example`) to require a token on
-  every `/api/*` request. The bundled client sends it automatically
-  (`x-psams-token` header, `?token=` for media URLs); other clients must send
-  the header or query parameter themselves. With no token configured, any
-  process/host that can reach the port has full read-write access to the API.
+  SQLite/filesystem plugins directly. Nothing to expose. The webview cannot
+  originate filesystem paths — every file/folder is picked by a native dialog
+  on the Rust side, and only those paths (or files inside the app's data
+  root) are honoured. The release CSP is `script-src 'self'` plus
+  compile-time hashes Tauri injects for the bundled assets, and the in-app
+  updater downloads ONLY from this project's official GitHub releases,
+  verifies the installer against the release's published sha256 digest, and
+  refuses to launch anything it did not download and verify itself.
+- **Web dev (`bun run dev`)**: binds `127.0.0.1` (loopback) — the dev server
+  is not reachable from other machines. Deliberately overriding this is a
+  manual `npx next dev -H 0.0.0.0` choice.
+- **Web production (`bun start`)**: the standalone launcher
+  (`scripts/start-server.mjs`) binds `127.0.0.1` by default. It honours an
+  explicit `HOSTNAME`/`PSAMS_BIND` — but **refuses to start on a non-loopback
+  address unless an API token is configured** (or `PSAMS_API_OPEN=1` is set
+  explicitly to accept the risk).
+- **Opt-in API token**: set `PSAMS_API_TOKEN` (server) and/or
+  `NEXT_PUBLIC_PSAMS_API_TOKEN` (client) to require a token on every
+  `/api/*` request. Accepted credentials: the `x-psams-token` header (sent
+  automatically by the bundled client when configured) or the `psams_token`
+  HttpOnly cookie the server hands out on page loads (that is what
+  authenticates `<img>` media requests). **`?token=` query strings are no
+  longer accepted anywhere** — URLs leak into logs. Comparison is
+  timing-safe. State-changing requests (non-GET) must additionally pass an
+  Origin/Host same-origin check, which blocks cross-site request forgery
+  even from a hostile tab.
+- **Threat model summary**: loopback bind stops the LAN; the token stops
+  other local processes you don't trust on shared machines; the Origin check
+  stops hostile web pages; the data-info endpoint never reveals database
+  credentials (PS-013). For remote/central hosting, put the app behind a
+  proper reverse proxy with TLS and real auth — PS-AMS is an offline-first
+  single-academy tool, not a multi-tenant service.
 
 ## Fee & Billing Rules (the ONE set of financial rules)
 

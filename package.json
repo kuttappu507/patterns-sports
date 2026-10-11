@@ -4,9 +4,9 @@
   "description": "Pattern Sports Academy Management System — offline-first academy suite (Next.js SPA + Tauri v2 desktop shell, Clean Court / Dark Court themes)",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "dev": "next dev -H 127.0.0.1 -p 3000 2>&1 | tee dev.log",
     "build": "prisma generate && next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
-    "start": "HOSTNAME=localhost NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
+    "start": "NODE_ENV=production bun scripts/start-server.mjs 2>&1 | tee server.log",
     "lint": "eslint .",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",

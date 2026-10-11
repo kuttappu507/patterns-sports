@@ -8,7 +8,6 @@
 
 import Database from "@tauri-apps/plugin-sql"
 import { writeFile, writeTextFile, mkdir, remove } from "@tauri-apps/plugin-fs"
-import { save as saveDialog } from "@tauri-apps/plugin-dialog"
 import { appDataDir, join } from "@tauri-apps/api/path"
 import { invoke } from "@tauri-apps/api/core"
 import type {
@@ -989,13 +988,17 @@ export async function exportBackup(): Promise<BackupSnapshot> {
     2
   )
   // Desktop: offer a native Save dialog as well (anchor downloads are unreliable in WebView2).
+  // PS-014: the dialog runs on the Rust side (pick_save_path) and extends the
+  // fs scope for exactly the picked file; the webview never names a path.
   // savedPath stays null when the dialog is cancelled — the caller must not
   // toast success for a file that was never written.
   let savedPath: string | null = null
   try {
-    const target = await saveDialog({
-      defaultPath: `PS-AMS-snapshot-${new Date().toISOString().slice(0, 10)}.json`,
-      filters: [{ name: "JSON snapshot", extensions: ["json"] }],
+    const { invoke } = await import("@tauri-apps/api/core")
+    const target = await invoke<string | null>("pick_save_path", {
+      fileName: `PS-AMS-snapshot-${new Date().toISOString().slice(0, 10)}.json`,
+      filterName: "JSON snapshot",
+      extensions: ["json"],
     })
     if (target) {
       await writeTextFile(target, json)

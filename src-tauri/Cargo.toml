@@ -34,6 +34,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = "0.4"
 dirs = "5"
+# Updater integrity (PS-015): sha256 of the downloaded installer, compared
+# against the GitHub release `digest`. Pure Rust — no native build.
+sha2 = "0.10"
 ureq = { version = "2", default-features = false, features = ["tls"] }
 
 # Native printing (WebView2 print pipeline). These MUST stay version-aligned

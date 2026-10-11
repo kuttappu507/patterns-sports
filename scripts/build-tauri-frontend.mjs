@@ -42,3 +42,9 @@ if (!fs.existsSync(path.join(root, "out", "index.html"))) {
 }
 
 console.log("[build-tauri] static export ready: out/")
+
+// PS-014 note — do NOT re-add script-src 'unsafe-inline' to tauri.conf.json.
+// At compile time Tauri parses ALL frontend assets and injects sha256 hashes
+// for every inline script into the served CSP (SecurityConfig documentation).
+// The committed CSP is `script-src 'self'`; Tauri appends the hashes itself,
+// so the release build is hash-strict with no build-time patching needed.

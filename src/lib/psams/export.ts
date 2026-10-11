@@ -31,9 +31,16 @@ export type ExportRow = Record<string, string | number | null | undefined>
 async function saveBlob(blob: Blob, fileName: string): Promise<void> {
   if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
     try {
-      const { save } = await import("@tauri-apps/plugin-dialog")
+      // PS-014: the save dialog runs on the Rust side and extends the fs
+      // scope for exactly the picked file; the webview never names a path.
       const { writeFile } = await import("@tauri-apps/plugin-fs")
-      const target = await save({ defaultPath: fileName })
+      const { invoke } = await import("@tauri-apps/api/core")
+      const ext = fileName.includes(".") ? fileName.split(".").pop() : undefined
+      const target = await invoke<string | null>("pick_save_path", {
+        fileName,
+        filterName: ext ? ext.toUpperCase() : undefined,
+        extensions: ext ? [ext] : undefined,
+      })
       if (target) {
         await writeFile(target, new Uint8Array(await blob.arrayBuffer()))
         return

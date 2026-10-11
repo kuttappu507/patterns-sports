@@ -684,6 +684,8 @@ interface ReleaseInfo {
   asset_name: string
   asset_url: string
   asset_size: number
+  /** GitHub release `digest` ("sha256:…") — the updater refuses to download without it (PS-015). */
+  asset_digest: string
 }
 
 function UpdatesCard() {
@@ -737,7 +739,13 @@ function UpdatesCard() {
     setProgress({ received: 0, total: info.asset_size || 0 })
     try {
       const { invoke } = await import("@tauri-apps/api/core")
-      const path = await invoke<string>("download_update", { url: info.asset_url, name: info.asset_name })
+      // PS-015: url allowlist + sha256 digest verification happen in Rust;
+      // install_update only launches a file this session's download produced.
+      const path = await invoke<string>("download_update", {
+        url: info.asset_url,
+        name: info.asset_name,
+        digest: info.asset_digest,
+      })
       setInstallerPath(path)
       toast({ title: "Installer downloaded", description: path })
     } catch (e) {
@@ -963,17 +971,15 @@ function DataSafety() {
 
   async function pickRestoreFile() {
     try {
-      const { open } = await import("@tauri-apps/plugin-dialog")
-      const sel = await open({
-        multiple: false,
-        title: "Choose a PS-AMS database backup",
-        filters: [{ name: "PS-AMS database backup", extensions: ["db", "sqlite", "db3"] }],
-      })
-      if (typeof sel !== "string") return
+      // PS-014: the native dialog runs on the Rust side and registers the
+      // picked file for this session — restore_probe/restore_backup only
+      // accept paths that came through it (or live in the app data root).
+      const { invoke } = await import("@tauri-apps/api/core")
+      const sel = await invoke<string | null>("pick_restore_source")
+      if (!sel) return
       // Pre-flight: full validation (quick_check + core tables on a temp
       // copy) BEFORE the confirm dialog — a bad file is rejected here, with
       // the exact reason, and nothing is staged (PS-006).
-      const { invoke } = await import("@tauri-apps/api/core")
       const probe = await invoke<RestoreProbe>("restore_probe", { source: sel })
       if (!probe.valid) {
         toast({ title: "That file cannot be restored", description: probe.error || "Not a valid PS-AMS database", variant: "destructive" })
@@ -1015,10 +1021,10 @@ function DataSafety() {
   async function pickBackupTarget() {
     setBusy("target")
     try {
-      const { open } = await import("@tauri-apps/plugin-dialog")
-      const dir = await open({ directory: true, title: "Choose the backup folder (e.g. a USB drive)" })
-      if (typeof dir !== "string") return
+      // PS-014: Rust-side folder dialog + session whitelist (see picks.rs).
       const { invoke } = await import("@tauri-apps/api/core")
+      const dir = await invoke<string | null>("pick_backup_folder")
+      if (!dir) return
       const msg = await invoke<string>("set_backup_target", { path: dir })
       toast({ title: "Backup folder set", description: msg })
       setPaths(await dataInfo())

@@ -6,6 +6,7 @@
 - **Effort keys:** S ≤ ½ day · M ≈ 1 day · L ≈ 2–3 days (single-dev, including tests).
 - **Policy decisions (§6) adopted 2026-10-11 (owner: "continue"):** Q1a (arrears repriced at current fee, documented) · Q2a (Restrict + archive-only) · Q3a (zero-fee auto-settled) · Q6a (no advance months) · Q7a (epsilon/round compare now). Documented in README → "Fee & Billing Rules".
 - **Status (2026-10-11):** **3A COMPLETE** — 3A-4…3A-9 ✅ (balance/financial items — ledger live on web, desktop backstop implemented, 87 tests green incl. live concurrency evidence) and 3A-1…3A-3 ✅ (crash-safe backup/restore: VACUUM INTO + verify + atomic swap, restore validation + media restore + status record; code review-verified in sandbox — cargo unavailable, Windows tag CI compiles; frontend gates green, client-audit now guards the new invariants). New direct `sqlx` dep in src-tauri (same libsqlite3-sys 0.28 as tauri-plugin-sql — no new native build).
+- **Status (2026-10-11, 3B):** **3B COMPLETE** — PS-012 ✅ (loopback bind enforced in `scripts/start-server.mjs`; LAN bind requires a token unless `PSAMS_API_OPEN=1`; proxy: Origin/Host same-origin for writes, timing-safe token via header + new HttpOnly `psams_token` cookie, `?token=` URLs removed), PS-013 ✅ (data-info: path for file: URLs, fixed string otherwise), PS-014 ✅ (fs scope → `$APPDATA/**`; all webview dialog perms removed; Rust-side pickers + session whitelist gate restore/backup-target/print paths; release CSP `script-src 'self'` — Tauri injects asset hashes at compile time; `ws:` leftover dropped), PS-015 ✅ (download-origin allowlist, release `digest` sha256 required, length check, partial-file cleanup, `install_update` provenance). `sha2` dep added (pure Rust). Regression suite `tests/security.test.ts` (17 tests) + client-audit 3B section (+26 checks). Gates: verify 104/104 ✓, client-audit PASS ✓, `next build` ✓. Rust review-verified (tag CI compiles).
 - **Owner-reported fixes folded in (2026-10-11):** PS-051 (pointer cursor — CSS affordance block in `globals.css`) and PS-052 (WhatsApp reconnect dead-end — terminal `LoggedOut` in sidecar + wipe-and-respawn with capped budget + `wa_restart` command + "Restart connection" button in all transient states). Gates re-run green (verify 87/87, parity, client-audit, `next build`); Rust changes compile on tag CI. PS-016 file-loss recurred (`upload/route.ts` restored from index).
 
 ---
@@ -34,15 +35,15 @@
 
 ## Phase 3B — Security and privacy
 
-**Gate 0 (policy):** owner decision on §6 Q5 (API posture).
+**Gate 0 (policy):** ~~owner decision on §6 Q5 (API posture)~~ — **adopted 2026-10-11 (owner: "continue"): Q5(a)** token required on non-loopback binds + loopback bind enforced in code.
 
 | Order | Item | Fixes | Effort | Key work |
 |---|---|---|---|---|
-| 3B-1 | API posture | PS-012 | M | bind standalone server to `127.0.0.1` (honour explicit `HOSTNAME`); require token by default with explicit opt-out env; Origin/Host match for non-GET; header-only token; timing-safe compare; update README threat model |
-| 3B-2 | Secret redaction | PS-013 | S | data-info: path for `file:` URLs, fixed string otherwise |
-| 3B-3 | Tauri least privilege | PS-014 | M | fs scope → `$APPDATA/**` + runtime-extend after dialog picks; drop `unsafe-inline`/`ws:` from release CSP; dialog-session-scoped restore/target paths |
-| 3B-4 | Updater hardening | PS-015 | M | URL allowlist (own releases), sha256 from release `digest`, length verification, partial-file cleanup, installer-launch provenance check |
-| 3B-5 | Regression tests | — | S | route tests: unauthenticated PII dump denied; cross-origin POST rejected; DATABASE_URL never in responses |
+| 3B-1 ✅ | API posture | PS-012 | M | **DONE 2026-10-11.** `scripts/start-server.mjs` binds `127.0.0.1` by default (honours explicit `HOSTNAME`/`PSAMS_BIND`, validates it is a bind address); non-loopback start REQUIRES a token unless `PSAMS_API_OPEN=1`; `npm run dev` binds `-H 127.0.0.1`. Proxy: Origin/Referer↔Host match for non-GET (403), token via `x-psams-token` header or HttpOnly `psams_token` session cookie (set on page loads, SameSite=Strict), `?token=` dropped everywhere, constant-time compare. README threat model + `.env.example` rewritten |
+| 3B-2 ✅ | Secret redaction | PS-013 | S | **DONE 2026-10-11.** data-info: resolved path for `file:` URLs, fixed `external database (URL hidden)` otherwise; never echoes `DATABASE_URL`; regression-tested |
+| 3B-3 ✅ | Tauri least privilege | PS-014 | M | **DONE 2026-10-11.** fs scope → `$APPDATA/**` only (+ setup-time runtime extension for portable mode); dropped read-*/copy/read-dir + ALL webview dialog permissions; new `picks.rs` Rust-side dialog commands (`pick_restore_source`/`pick_backup_folder`/`pick_save_path`) register session-whitelisted paths and extend the fs scope per pick; `restore_probe`/`restore_backup`/`set_backup_target`/`print_to_pdf` enforce the whitelist; release CSP `script-src 'self'` (Tauri compile-time hash injection covers the 11 static-export inline scripts) and no `ws://localhost:*` |
+| 3B-4 ✅ | Updater hardening | PS-015 | M | **DONE 2026-10-11.** `DOWNLOAD_BASE` allowlist enforced in `pick_asset` AND `download_update` (no traversal/query); release asset `digest` (sha256) surfaced to UI and REQUIRED; `received == Content-Length` enforced; HTML-response guard; any failure deletes the partial file; `install_update` launches only the file `download_update` verified this session (`LAST_INSTALLER`); `sha2 = 0.10` added |
+| 3B-5 ✅ | Regression tests | — | S | **DONE 2026-10-11.** `tests/security.test.ts` 17 tests: unauth PII dump denied, query-token rejected, cross-origin POST rejected (even with valid token), hostile Referer rejected, loopback cross-port allowed, cookie flow green, page-load Set-Cookie (HttpOnly/SameSite), DATABASE_URL never in data-info responses; client-audit +26 wiring checks (Phase 3B section) |
 
 ---
 

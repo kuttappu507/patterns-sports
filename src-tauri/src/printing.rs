@@ -151,6 +151,7 @@ fn wait_for_print(
 }
 
 use std::future::Future;
+use tauri::Manager;
 
 /// Silent print of the current document (already rendered into
 /// #psams-print-root with print CSS applied) at the given paper preset.
@@ -164,10 +165,16 @@ pub async fn print_direct(window: tauri::WebviewWindow, paper: String) -> Result
 }
 
 /// Render the current document to a PDF file at the exact paper size.
+/// PS-014: the destination must come from the native save dialog
+/// (picks::pick_save_path) or live inside the app data root.
 #[tauri::command]
 pub async fn print_to_pdf(window: tauri::WebviewWindow, paper: String, path: String) -> Result<String, String> {
     if path.trim().is_empty() {
         return Err("No destination file was chosen".into());
+    }
+    let dest_path = std::path::PathBuf::from(path.trim());
+    if !crate::picks::may_use_path(window.app_handle(), crate::picks::PickKind::SaveFile, &dest_path) {
+        return Err("That destination was not chosen through the app's save dialog".into());
     }
     let (tx, rx) = std::sync::mpsc::channel::<Result<String, String>>();
     let dest = path.clone();
