@@ -824,13 +824,62 @@ function UpdatesCard() {
 
 /* ---------------- Data safety ---------------- */
 
+/** Real outcome of the Rust backup routine (PS-002 — failures are data). */
+interface BackupOutcome {
+  ok: boolean
+  target: string
+  dbFile: string | null
+  dbBytes: number
+  mediaCopied: number
+  mediaSkipped: number
+  pruned: number
+  error: string | null
+}
+
+/** Pre-flight validation of a restore source (PS-006). */
+interface RestoreProbe {
+  valid: boolean
+  error: string | null
+  mediaDir: string | null
+  sourceBytes: number
+}
+
+/** Outcome of the last staged-restore apply (PS-003 — surfaced to the UI). */
+interface RestoreStatusRecord {
+  ok: boolean
+  at: string
+  error: string | null
+  mediaCopied: number
+  mediaSkipped: number
+  preSnapshot: string | null
+}
+
 function DataSafety() {
   const { toast } = useToast()
   const [busy, setBusy] = useState<null | "db" | "json" | "restore" | "target">(null)
   const [paths, setPaths] = useState<DataLocationInfo | null>(null)
   const [restorePath, setRestorePath] = useState<string | null>(null)
+  const [restoreMediaDir, setRestoreMediaDir] = useState<string | null>(null)
+  const [restoreStatus, setRestoreStatus] = useState<RestoreStatusRecord | null>(null)
   const [restartAsk, setRestartAsk] = useState(false)
   const desktop = isTauri()
+
+  useEffect(() => {
+    if (!desktop) return
+    let alive = true
+    void (async () => {
+      try {
+        const { invoke } = await import("@tauri-apps/api/core")
+        const status = await invoke<RestoreStatusRecord | null>("restore_status")
+        if (alive) setRestoreStatus(status ?? null)
+      } catch {
+        /* no record — nothing to show */
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [desktop])
 
   useEffect(() => {
     let alive = true
@@ -846,18 +895,36 @@ function DataSafety() {
     }
   }, [])
 
-  // DESKTOP — the real database backup: copies ps-ams.db (with WAL sidecars)
-  // and the whole media tree via the Rust `backup_now` command, then names
-  // the folder it wrote.
+  // DESKTOP — the real database backup via the Rust `backup_now` command:
+  // VACUUM INTO snapshot (one consistent file) → verified (quick_check + core
+  // tables) → atomic rename, then the media mirror. The outcome is rendered
+  // AS-IS — skipped media files and failures can no longer hide (PS-002).
   async function backupNow() {
     setBusy("db")
     try {
       const { invoke } = await import("@tauri-apps/api/core")
-      const folder = await invoke<string>("backup_now")
-      toast({
-        title: "Database backup written",
-        description: `A full copy of ps-ams.db and the media library was written to ${folder}`,
-      })
+      const res = await invoke<BackupOutcome>("backup_now")
+      if (res.ok) {
+        const bits = [
+          `${res.dbFile ?? "database"} (${(res.dbBytes / 1024 / 1024).toFixed(1)} MB)`,
+          `${res.mediaCopied} media file(s)`,
+          res.mediaSkipped > 0 ? `${res.mediaSkipped} media file(s) could NOT be copied` : null,
+          res.pruned > 0 ? `${res.pruned} old backup(s) pruned` : null,
+        ]
+        toast({
+          title: "Database backup verified",
+          description: `${bits.filter(Boolean).join(" · ")} → ${res.target}`,
+        })
+        if (res.mediaSkipped > 0) {
+          toast({
+            title: "Some media files were skipped",
+            description: `${res.mediaSkipped} file(s) in the media library could not be copied to ${res.target}. Check the drive for lock/read errors.`,
+            variant: "destructive",
+          })
+        }
+      } else {
+        toast({ title: "Backup failed — nothing was written", description: res.error || "Unknown error", variant: "destructive" })
+      }
     } catch (e) {
       toast({ title: "Backup failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     } finally {
@@ -902,9 +969,20 @@ function DataSafety() {
         title: "Choose a PS-AMS database backup",
         filters: [{ name: "PS-AMS database backup", extensions: ["db", "sqlite", "db3"] }],
       })
-      if (typeof sel === "string") setRestorePath(sel)
+      if (typeof sel !== "string") return
+      // Pre-flight: full validation (quick_check + core tables on a temp
+      // copy) BEFORE the confirm dialog — a bad file is rejected here, with
+      // the exact reason, and nothing is staged (PS-006).
+      const { invoke } = await import("@tauri-apps/api/core")
+      const probe = await invoke<RestoreProbe>("restore_probe", { source: sel })
+      if (!probe.valid) {
+        toast({ title: "That file cannot be restored", description: probe.error || "Not a valid PS-AMS database", variant: "destructive" })
+        return
+      }
+      setRestoreMediaDir(probe.mediaDir)
+      setRestorePath(sel)
     } catch (e) {
-      toast({ title: "Could not open the file picker", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+      toast({ title: "Could not check the backup", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     }
   }
 
@@ -915,7 +993,8 @@ function DataSafety() {
     setBusy("restore")
     try {
       const { invoke } = await import("@tauri-apps/api/core")
-      await invoke("restore_backup", { source })
+      await invoke("restore_backup", { source, restoreMedia: !!restoreMediaDir })
+      setRestoreMediaDir(null)
       setRestartAsk(true)
     } catch (e) {
       toast({ title: "Restore failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
@@ -972,6 +1051,27 @@ function DataSafety() {
         <DatabaseBackup className="h-4 w-4 text-primary" />
         <span className="text-sm font-semibold">Data Safety</span>
       </div>
+      {desktop && restoreStatus && (
+        <div
+          className={`mb-3 rounded-lg border p-2.5 text-[14.5px] leading-relaxed ${
+            restoreStatus.ok
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+              : "border-rose-500/40 bg-rose-500/10 text-rose-800 dark:text-rose-200"
+          }`}
+        >
+          {restoreStatus.ok ? (
+            <>
+              Last restore applied {restoreStatus.at} — a safety copy of the replaced database is kept as <span className="font-mono">ps-ams.pre-restore.db</span>
+              {restoreStatus.mediaCopied > 0 && `, ${restoreStatus.mediaCopied} media file(s) restored`}
+              {restoreStatus.mediaSkipped > 0 && `, ${restoreStatus.mediaSkipped} media file(s) skipped`}.
+            </>
+          ) : (
+            <>
+              The last restore attempt FAILED ({restoreStatus.at}) — the live database was <b>not</b> modified. {restoreStatus.error}
+            </>
+          )}
+        </div>
+      )}
       <p className="text-[15.5px] leading-relaxed text-muted-foreground">
         {desktop
           ? "The active SQLite database and the media directory are backed up automatically every time the desktop app exits — into the folder below, or onto a remembered USB drive. Backup now writes that same full copy immediately."
@@ -1021,7 +1121,7 @@ function DataSafety() {
       </div>
 
       {/* restore confirmation */}
-      <AlertDialog open={!!restorePath} onOpenChange={(o) => !o && setRestorePath(null)}>
+      <AlertDialog open={!!restorePath} onOpenChange={(o) => { if (!o) { setRestorePath(null); setRestoreMediaDir(null) } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Restore the database from this backup?</AlertDialogTitle>
@@ -1029,6 +1129,9 @@ function DataSafety() {
               {restorePath}
               {"\n"}
               The current database will be REPLACED by the selected file the next time the app starts (a safety copy is kept as ps-ams.pre-restore.db). JSON snapshots cannot be restored here — choose a ps-ams-*.db backup written by this app.
+              {restoreMediaDir
+                ? `\n\nThe media library (photos, documents, certificates) will also be restored from:\n${restoreMediaDir}`
+                : "\n\nNo matching media folder was found next to this backup — only the database will be restored."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -44,6 +44,18 @@ Supplements the baseline after the Phase 3A balance/financial work (FIX_PLAN 3A-
 | PS-052 WhatsApp reconnect — Rust compile | 📋 review-only in sandbox (cargo unavailable); `wa_restart` registered in `generate_handler`; generation-guard + unlink-flag + capped auto-respawn logic line-verified; compiles on tag CI 🪟 |
 | PS-052 WhatsApp reconnect — behaviour | 📋 scenarios for the next Windows run: (a) revoke pairing on phone → app wipes session, respawns, fresh QR appears with no click; (b) "Restart connection" visible in starting/pairing/reconnecting/QR-pending states and returns to pairing; (c) explicit Unlink does NOT auto-respawn |
 
+## 0d. Crash-safe backup/restore 3A-1…3 (executed 2026-10-11 — all green)
+
+| Check | Result |
+|---|---|
+| ESLint / tsc / vitest / parity | ✅ 0 errors · clean · 87/87 · 7 models ↔ 7 tables |
+| client-audit.mjs | ✅ PASS — now guards the new invariants (VACUUM INTO + quick_check + .partial; atomic `.tmp` rename + pre-restore snapshot; restore_probe + core-table validation; restore_status surfaced) |
+| next build | ✅ success |
+| Rust compile | 📋 review-only in sandbox (cargo unavailable) — tag CI compiles; `sqlx` promoted to a direct dep of src-tauri (same libsqlite3-sys 0.28 instance as tauri-plugin-sql) |
+| PS-002 runtime scenarios | 📋 🪟 (a) Backup now on a healthy DB → toast "verified" with file size + media counts; (b) full/locked USB target → "Backup failed — nothing was written", no `.partial` left behind; (c) exit-backup failure visible in boot.log as "exit backup FAILED"; (d) 21st backup prunes the oldest (retention 20, log line) |
+| PS-003 runtime scenarios | 📋 🪟 (a) staged restore with a corrupt/interrupted staged file → banner "FAILED — live database was not modified"; (b) successful restore → banner with pre-restore snapshot path; (c) kill the app mid-apply (simulated) → live DB still opens with original data |
+| PS-006 runtime scenarios | 📋 🪟 (a) foreign SQLite file → probe rejects with the exact reason, nothing staged; (b) backup with sibling media-<stamp> → confirm dialog names it, media mirrored with copied/skipped counts; (c) backup without media folder → dialog says only the DB will be restored |
+
 ## 1. Financial integrity (Phase 4)
 
 | ID | Case | Source finding | Status |
