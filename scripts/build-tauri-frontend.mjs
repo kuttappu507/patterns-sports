@@ -15,6 +15,19 @@ const root = process.cwd()
 const apiDir = path.join(root, "src", "app", "api")
 const stashDir = path.join(root, ".tauri-api-stash")
 
+// PS-047 — self-heal FIRST: a SIGKILL / CI cancel between the rename and the
+// restore used to leave the repo looking mutilated (src/app/api missing,
+// .tauri-api-stash holding it) and the next run silently built without the
+// API. If a stash exists while the live api dir is gone, restore it now.
+if (!fs.existsSync(apiDir) && fs.existsSync(stashDir)) {
+  fs.renameSync(stashDir, apiDir)
+  console.log("[build-tauri] SELF-HEAL: restored src/app/api from a leftover .tauri-api-stash")
+} else if (fs.existsSync(stashDir)) {
+  // both exist — the stash is stale debris from an interrupted older run
+  fs.rmSync(stashDir, { recursive: true, force: true })
+  console.log("[build-tauri] removed stale .tauri-api-stash (live src/app/api intact)")
+}
+
 let stashed = false
 if (fs.existsSync(apiDir)) {
   fs.rmSync(stashDir, { recursive: true, force: true })

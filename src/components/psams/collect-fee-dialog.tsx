@@ -1,4 +1,5 @@
 "use client"
+import { SafeImg } from "@/components/psams/safe-img"
 
 // ============================================================
 // PS-AMS :: Fee collection — centered POPUP dialog (POS flow).
@@ -74,6 +75,9 @@ export function CollectFeeDialog() {
       setMode("Cash")
       setPaymentDate(new Date().toISOString().slice(0, 10))
       setReceipt(null)
+      // PS-042 — reset the in-flight flag too: a payment still saving when the
+      // dialog closed used to resurface as a receipt popup over the reset form.
+      setSaving(false)
       setLoading(true)
       Promise.all([fetchStudents({ status: "Active" }), fetchSettings()])
         .then(([s, st]) => {
@@ -192,11 +196,14 @@ export function CollectFeeDialog() {
                 {!loading && filtered.map((s) => (
                   <button key={s.id} onClick={() => pick(s)} className={cn("flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-accent/50", selected?.id === s.id && "bg-accent")}>
                     <div className="h-8 w-8 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-teal-500/10">
-                      {s.photoPath ? (
-                        <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[15.5px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
-                      )}
+                      <SafeImg
+                        src={mediaUrl(s.photoPath)}
+                        alt={s.fullName}
+                        className="h-full w-full object-cover"
+                        fallback={
+                          <div className="flex h-full w-full items-center justify-center text-[15.5px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
+                        }
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-medium">{s.fullName}</div>

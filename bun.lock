@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "nextjs_tailwind_shadcn_ts",
+      "name": "ps-ams",
       "dependencies": {
         "@fontsource/poppins": "^5.3.0",
         "@fontsource/sora": "^5.3.0",

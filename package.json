@@ -1,11 +1,15 @@
 {
   "name": "ps-ams",
   "version": "1.6.4",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "packageManager": "bun@1.2.20",
   "description": "Pattern Sports Academy Management System — offline-first academy suite (Next.js SPA + Tauri v2 desktop shell, Clean Court / Dark Court themes)",
   "private": true,
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 3000 2>&1 | tee dev.log",
-    "build": "prisma generate && next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "build": "prisma generate && next build && node scripts/assemble-standalone.mjs",
     "start": "NODE_ENV=production bun scripts/start-server.mjs 2>&1 | tee server.log",
     "lint": "eslint .",
     "tauri": "tauri",

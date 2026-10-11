@@ -90,7 +90,6 @@ CREATE TABLE IF NOT EXISTS FeePayment (
 );
 CREATE INDEX IF NOT EXISTS idx_payment_student ON FeePayment(studentId);
 CREATE INDEX IF NOT EXISTS idx_payment_date    ON FeePayment(paymentDate);
-CREATE INDEX IF NOT EXISTS idx_payment_receipt ON FeePayment(receiptNo);
 
 CREATE TABLE IF NOT EXISTS PaymentMonth (
   id        TEXT PRIMARY KEY,

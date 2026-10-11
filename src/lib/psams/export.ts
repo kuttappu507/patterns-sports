@@ -24,32 +24,54 @@ function timestamp(): string {
 export type ExportRow = Record<string, string | number | null | undefined>
 
 /**
+ * Outcome of persisting a generated document (PS-037): callers must be able
+ * to tell "saved" from "the user cancelled the dialog" — the old code fell
+ * through a cancel (or a failed native write) into the anchor-download
+ * fallback the codebase itself documents as unreliable in WebView2, so a
+ * cancelled export came back as a hidden second download.
+ */
+export interface SaveOutcome {
+  saved: boolean
+  /** true when the user cancelled the native Save dialog (neutral UX). */
+  cancelled?: boolean
+}
+
+/**
  * Persist a generated document. In the Tauri desktop shell a native
  * Save dialog is used (WebView2 blocks anchor downloads); on the web
- * this falls back to file-saver.
+ * this falls back to file-saver. Cancel/failure NEVER falls back to the
+ * unreliable anchor path inside Tauri (PS-037) — the caller reports it.
  */
-async function saveBlob(blob: Blob, fileName: string): Promise<void> {
+async function saveBlob(blob: Blob, fileName: string): Promise<SaveOutcome> {
   if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+    let writeFile: ((path: string, data: Uint8Array) => Promise<void>) | null = null
+    let target: string | null = null
     try {
       // PS-014: the save dialog runs on the Rust side and extends the fs
       // scope for exactly the picked file; the webview never names a path.
-      const { writeFile } = await import("@tauri-apps/plugin-fs")
+      const fs = await import("@tauri-apps/plugin-fs")
       const { invoke } = await import("@tauri-apps/api/core")
+      writeFile = fs.writeFile
       const ext = fileName.includes(".") ? fileName.split(".").pop() : undefined
-      const target = await invoke<string | null>("pick_save_path", {
+      target = await invoke<string | null>("pick_save_path", {
         fileName,
         filterName: ext ? ext.toUpperCase() : undefined,
         extensions: ext ? [ext] : undefined,
       })
-      if (target) {
-        await writeFile(target, new Uint8Array(await blob.arrayBuffer()))
-        return
-      }
     } catch {
-      /* fall through to browser download */
+      // dialog pipeline broken — do NOT hide it behind a second download
+      return { saved: false }
+    }
+    if (!target) return { saved: false, cancelled: true }
+    try {
+      await writeFile!(target, new Uint8Array(await blob.arrayBuffer()))
+      return { saved: true }
+    } catch {
+      return { saved: false }
     }
   }
   saveAs(blob, fileName)
+  return { saved: true }
 }
 
 // ---------------- Excel ----------------
@@ -63,7 +85,7 @@ export async function exportExcel(opts: {
   columns: { header: string; key: string; width?: number }[]
   rows: ExportRow[]
   totalsRow?: ExportRow
-}) {
+}): Promise<SaveOutcome> {
   const wb = new ExcelJS.Workbook()
   wb.creator = "PS-AMS"
   const ws = wb.addWorksheet(opts.sheetName.slice(0, 30))
@@ -142,7 +164,7 @@ export async function exportExcel(opts: {
   })
 
   const buf = await wb.xlsx.writeBuffer()
-  await saveBlob(
+  return saveBlob(
     new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
     `${opts.fileName}-${timestamp()}.xlsx`
   )
@@ -150,17 +172,28 @@ export async function exportExcel(opts: {
 
 // ---------------- CSV ----------------
 
-export async function exportCSV(fileName: string, columns: { header: string; key: string }[], rows: ExportRow[]) {
+/**
+ * PS-038 — neutralize spreadsheet formula injection: a crafted value like
+ * "=HYPERLINK(...)" (or a leading + - @ / tab / CR) would EXECUTE as a
+ * formula the moment the CSV opens in Excel. Prefix a single quote — the
+ * standard mitigation; the Excel (.xlsx) path is already safe because
+ * ExcelJS types plain strings as text.
+ */
+function csvSafe(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+}
+
+export async function exportCSV(fileName: string, columns: { header: string; key: string }[], rows: ExportRow[]): Promise<SaveOutcome> {
   const data = rows.map((r) => {
     const o: Record<string, string | number> = {}
     columns.forEach((c) => {
       const v = r[c.key]
-      o[c.header] = v === null || v === undefined ? "" : v
+      o[c.header] = v === null || v === undefined ? "" : typeof v === "string" ? csvSafe(v) : v
     })
     return o
   })
   const csv = Papa.unparse(data)
-  await saveBlob(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }), `${fileName}-${timestamp()}.csv`)
+  return saveBlob(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }), `${fileName}-${timestamp()}.csv`)
 }
 
 // ---------------- PDF ----------------
@@ -175,7 +208,7 @@ export async function exportPDF(opts: {
   totalsRow?: ExportRow
   orientation?: "p" | "l"
   footnote?: string
-}) {
+}): Promise<SaveOutcome> {
   const doc = new jsPDF({ orientation: opts.orientation ?? "p", unit: "mm", format: "a4" })
   const pageW = doc.internal.pageSize.getWidth()
 
@@ -207,16 +240,34 @@ export async function exportPDF(opts: {
   doc.setDrawColor(31, 111, 178)
   doc.line(14, afterTitle + 1, pageW - 14, afterTitle + 1)
 
+  // PS-036 — ₹ (U+20B9) is NOT in jsPDF's standard WinAnsi fonts: table
+  // HEADS that carry it ("Outstanding (₹)") rendered mojibake on paper, the
+  // same corruption the receipt path's rs() guard already fixes. Replace in
+  // headers AND footers, and format numeric cells of ₹-columns in Indian
+  // rupee notation. (A full embedded Noto Sans subset for Malayalam user
+  // text is a deliberate follow-up — see FIX_PLAN 3D-2.)
+  const paperHeader = (h: string) => h.replace(/₹/g, "Rs.")
+  const moneyCols = new Set(
+    opts.columns.map((c, i) => (c.header.includes("₹") ? i : -1)).filter((i) => i >= 0)
+  )
+  const paperCell = (value: string | number | null | undefined, col: number): string => {
+    if (value === null || value === undefined) return ""
+    if (moneyCols.has(col) && typeof value === "number") return rs(value)
+    return String(value).replace(/₹/g, "Rs.")
+  }
+
   autoTable(doc, {
     startY: afterTitle + 4,
-    head: [opts.columns.map((c) => c.header)],
-    body: opts.rows.map((r) => opts.columns.map((c) => String(r[c.key] ?? ""))),
+    head: [opts.columns.map((c) => paperHeader(c.header))],
+    body: opts.rows.map((r) => opts.columns.map((c, i) => paperCell(r[c.key], i))),
     ...(opts.totalsRow
-      ? { foot: [opts.columns.map((c) => String(opts.totalsRow?.[c.key] ?? ""))] }
+      ? { foot: [opts.columns.map((c, i) => paperCell(opts.totalsRow?.[c.key], i))] }
       : {}),
     styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
     headStyles: { fillColor: [31, 111, 178], textColor: 255, fontStyle: "bold" },
     footStyles: { fillColor: [240, 244, 248], textColor: [30, 30, 30], fontStyle: "bold" },
+    // the totals row repeated on EVERY page read as a fresh total — show it once
+    showFoot: "lastPage",
     alternateRowStyles: { fillColor: [244, 248, 252] },
     margin: { left: 12, right: 12 },
   })
@@ -234,7 +285,7 @@ export async function exportPDF(opts: {
     )
   }
 
-  await saveBlob(doc.output("blob"), `${opts.fileName}-${timestamp()}.pdf`)
+  return saveBlob(doc.output("blob"), `${opts.fileName}-${timestamp()}.pdf`)
 }
 
 /* =================== document exports (receipt / profile) =================== */
@@ -311,8 +362,11 @@ function drawLetterhead(doc: jsPDF, academy: AcademySettings | null, docTitle: s
 export async function buildReceiptPdfA5(
   receipt: FeePayment & { studentName?: string; admissionNo?: string },
   settings: AcademySettings | null,
+  /** PS-040 — the web "Save PDF" honours the saved receipt preset (desktop
+   *  always did); the layout derives its right edge from pageW so A6 fits. */
+  paper: "A6" | "A5" = "A5",
 ): Promise<Blob> {
-  const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a5" })
+  const doc = new jsPDF({ orientation: "p", unit: "mm", format: paper === "A6" ? "a6" : "a5" })
   const pageW = doc.internal.pageSize.getWidth()
   const months = parsePaidMonths(receipt.months || "[]")
 
@@ -401,9 +455,10 @@ export async function buildReceiptPdfA5(
 export async function receiptPdfA5(
   receipt: FeePayment & { studentName?: string; admissionNo?: string },
   settings: AcademySettings | null,
-): Promise<void> {
-  const blob = await buildReceiptPdfA5(receipt, settings)
-  await saveBlob(blob, `PS-AMS-Receipt-${receipt.receiptNo}.pdf`)
+  paper: "A6" | "A5" = "A5",
+): Promise<SaveOutcome> {
+  const blob = await buildReceiptPdfA5(receipt, settings, paper)
+  return saveBlob(blob, `PS-AMS-Receipt-${receipt.receiptNo}.pdf`)
 }
 
 /**
@@ -414,7 +469,7 @@ export async function profilePdfA4(
   student: Student & { achievements?: Achievement[] },
   achievements: Achievement[],
   settings: AcademySettings | null,
-): Promise<void> {
+): Promise<SaveOutcome> {
   const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" })
   const pageW = doc.internal.pageSize.getWidth()
   const bmi = computeBMI(student.weightKg, student.heightCm)
@@ -594,7 +649,7 @@ export async function profilePdfA4(
     )
   }
 
-  await saveBlob(doc.output("blob"), `PS-AMS-Profile-${student.admissionNo}.pdf`)
+  return saveBlob(doc.output("blob"), `PS-AMS-Profile-${student.admissionNo}.pdf`)
 }
 
 /** Base64 (no data: prefix) — used to hand PDFs to the WhatsApp engine. */

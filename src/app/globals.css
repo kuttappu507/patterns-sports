@@ -808,6 +808,15 @@ html.splash-window .splash {
   #psams-print-root {
     display: block !important;
   }
+  /* PS-041 — Radix portals (receipt/confirm dialogs) and the sonner Toaster
+     mount at <body>, OUTSIDE #psams-root: an open dialog + toasts used to
+     print onto the paper in browser mode. Suppress every overlay layer. */
+  body > [data-radix-portal],
+  body > [role="dialog"],
+  body > [data-sonner-toaster],
+  [data-radix-popper-content-wrapper] {
+    display: none !important;
+  }
   /* ZERO page margins — Chromium/WebView2 suppress the automatic
      header & footer (URL, date/time stamp, page count) when the page
      margin box is empty, so paper output is clean by default.
@@ -877,6 +886,15 @@ html.splash-window .splash {
 .print-a5-preview {
   width: 148mm;
   min-height: 210mm;
+  background: #fff;
+  color: #000;
+}
+/* PS-040 — preset-aware preview: the A6 receipt preset must preview at its
+   true 105 mm width, not an A5-width sheet dressed down to 105 mm on the
+   outside while the inner class still claims 148 mm. */
+.print-a6-preview {
+  width: 105mm;
+  min-height: 148mm;
   background: #fff;
   color: #000;
 }

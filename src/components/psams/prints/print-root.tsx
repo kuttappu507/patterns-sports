@@ -20,7 +20,7 @@ import {
   setReceiptPaper,
   type PrintPaper,
 } from "@/lib/psams/print-desktop"
-import type { AcademySettings, Achievement, FeePayment, PrintPayload, Student } from "@/lib/psams/types"
+import type { AcademySettings, Achievement, FeePayment, PrintPayload, RosterPrintData, Student } from "@/lib/psams/types"
 import { computeAge, ageDetailed, computeBMI, formatDate, formatINR, monthLabel, parsePaidMonths, categoryBracket, ACADEMY_MAPS_URL } from "@/lib/psams/domain"
 import { mediaUrl } from "@/lib/psams/api"
 import { Button } from "@/components/ui/button"
@@ -57,7 +57,9 @@ function PaperFor({ payload, preview, paperOverride }: { payload: PrintPayload; 
       paper = <ProfileA4 data={payload.data as ProfileData} preview={preview} />
       break
     case "receipt-a5":
-      paper = <ReceiptA5 data={payload.data as ReceiptData} preview={preview} />
+      // PS-040 — the preview class follows the saved preset so an A6
+      // receipt previews at its true 105 mm width.
+      paper = <ReceiptA5 data={payload.data as ReceiptData} preview={preview} paper={paperOverride === "print-page-a6" ? "A6" : "A5"} />
       break
     case "receipt-thermal":
       paper = <ReceiptThermal data={payload.data as ReceiptData} preview={preview} />
@@ -393,11 +395,11 @@ interface ReceiptData {
   settings: AcademySettings | null
 }
 
-function ReceiptA5({ data, preview }: { data: ReceiptData; preview?: boolean }) {
+function ReceiptA5({ data, preview, paper }: { data: ReceiptData; preview?: boolean; paper?: "A6" | "A5" }) {
   const { receipt: r, settings } = data
   const months = parsePaidMonths(r.months || "[]")
   return (
-    <div className={`print-a5-preview ${preview ? "" : "print-page"} p-[9mm] text-[12px] text-black`} style={preview ? { zoom: 0.95 } : undefined}>
+    <div className={`${paper === "A6" ? "print-a6-preview" : "print-a5-preview"} ${preview ? "" : "print-page"} p-4 text-[12px] text-black`} style={preview ? { zoom: paper === "A6" ? 1.2 : 0.95 } : undefined}>
       <Letterhead settings={settings} docTitle="Fee Payment Receipt" />
       <div className="mt-3 flex justify-between text-[11px]">
         <div><span className="text-neutral-500">Receipt No: </span><b className="font-mono">{r.receiptNo}</b></div>
@@ -454,6 +456,7 @@ function ReceiptThermal({ data, preview }: { data: ReceiptData; preview?: boolea
       ))}
       <div className="my-1">{dash}</div>
       <div>Mode    : {r.paymentMode}</div>
+      {r.notes && <div>Note    : {r.notes}</div>}
       <div className="text-[15px] font-bold">TOTAL   : {formatINR(r.amount)}</div>
       <div className="my-1">{dash}</div>
       <div className="text-center">
@@ -469,12 +472,7 @@ function ReceiptThermal({ data, preview }: { data: ReceiptData; preview?: boolea
 
 function RosterPrint({ payload, preview }: { payload: PrintPayload; preview?: boolean }) {
   const isDefaulters = payload.kind === "defaulters"
-  const data = payload.data as {
-    rows: (Student & { overdueMonths?: string[]; pendingMonths?: string[]; dueAmount?: number })[]
-    settings: AcademySettings | null
-    filters?: Record<string, string>
-    totalDue?: number
-  }
+  const data = payload.data as RosterPrintData
   const { rows, settings } = data
 
   return (

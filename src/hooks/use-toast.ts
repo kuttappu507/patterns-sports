@@ -8,8 +8,12 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+// PS-043 — one visible toast with no auto-dismiss meant a success erased a
+// failure the operator never read. Keep the last 3 and retire each toast
+// after 5 seconds (errors included — the destructive variant lingers in the
+// UI log area long enough to be read).
+const TOAST_LIMIT = 3
+const TOAST_REMOVE_DELAY = 5000
 
 type ToasterToast = ToastProps & {
   id: string

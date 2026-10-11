@@ -1,4 +1,5 @@
 "use client"
+import { SafeImg } from "@/components/psams/safe-img"
 
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
@@ -261,13 +262,16 @@ export function DashboardView() {
                       className="group rounded-xl border border-border bg-card/60 p-3 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/60 hover:shadow-[0_10px_24px_-12px_rgba(239, 71, 111,0.45)] dark:hover:shadow-[0_0_20px_-8px_rgba(255, 107, 141,0.45)]"
                     >
                       <div className="mx-auto h-14 w-14 overflow-hidden rounded-full border-2 border-border bg-gradient-to-br from-primary/15 to-yellow-400/15 shadow-inner transition-all duration-200 group-hover:border-primary/40">
-                        {m.photoPath ? (
-                          <img src={mediaUrl(m.photoPath)} alt={m.fullName} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center font-display text-lg font-bold text-primary/70">
-                            {m.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-                          </div>
-                        )}
+                        <SafeImg
+                          src={mediaUrl(m.photoPath)}
+                          alt={m.fullName}
+                          className="h-full w-full object-cover"
+                          fallback={
+                            <div className="flex h-full w-full items-center justify-center font-display text-lg font-bold text-primary/70">
+                              {m.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                            </div>
+                          }
+                        />
                       </div>
                       <div className="mt-2 truncate text-xs font-semibold" title={m.fullName}>{m.fullName}</div>
                       <div className="truncate text-[14.5px] font-medium text-primary/80">{m.role}</div>

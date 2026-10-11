@@ -191,3 +191,24 @@ export interface PrintPayload {
    *  PDF (desktop only; the browser preview offers print-to-PDF instead). */
   mode?: "preview" | "direct" | "pdf"
 }
+
+/**
+ * PS-035 — the letterhead roster print ("Fee Defaulters Roster" / "Student
+ * Registry Report") reads student identity fields DIRECTLY off each row.
+ * The fee-status rows keep them under `.student`, which printed a roster
+ * with NO names/contacts — so producers must map to this shape and the
+ * print layer casts to it, making a future shape mismatch a build error.
+ */
+export interface RosterPrintRow extends Student {
+  /** defaulters roster only — month keys + outstanding amount */
+  overdueMonths?: string[]
+  pendingMonths?: string[]
+  dueAmount?: number
+}
+
+export interface RosterPrintData {
+  rows: RosterPrintRow[]
+  settings: AcademySettings | null
+  filters?: Record<string, string>
+  totalDue?: number
+}

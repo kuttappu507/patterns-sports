@@ -100,7 +100,6 @@ model FeePayment {
 
   @@index([studentId])
   @@index([paymentDate])
-  @@index([receiptNo])
 }
 
 /// Billing allocation ledger (PS-001): one row per settled (student, month).

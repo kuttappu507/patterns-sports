@@ -1,4 +1,5 @@
 "use client"
+import { SafeImg } from "@/components/psams/safe-img"
 
 // ============================================================
 // PS-AMS :: Administration — executive committee CRUD with
@@ -98,6 +99,7 @@ function WhatsAppCard() {
   const { status, qr, me, connect, restart, disconnect } = useWaStore()
   const [qrImg, setQrImg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [confirmUnlink, setConfirmUnlink] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -173,10 +175,34 @@ function WhatsAppCard() {
             </p>
           )}
           <div className="mt-3">
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 border-rose-500/30 text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-300" disabled={busy} onClick={unlink}>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 border-rose-500/30 text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-300" disabled={busy} onClick={() => setConfirmUnlink(true)}>
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />} Unlink device
             </Button>
           </div>
+          {/* PS-042 — unlinking wipes the saved WhatsApp session on one click;
+              it now demands an explicit confirmation. */}
+          <AlertDialog open={confirmUnlink} onOpenChange={(o) => !o && setConfirmUnlink(false)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Unlink the WhatsApp device?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This removes the paired device from this computer AND wipes the saved session — the academy WhatsApp must be re-linked by scanning a new QR code. Scheduled/queued sends stop until relinked.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep the link</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-white hover:bg-destructive/90"
+                  onClick={async () => {
+                    setConfirmUnlink(false)
+                    await unlink()
+                  }}
+                >
+                  Unlink &amp; wipe session
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       ) : status === "waiting_scan" && qrImg ? (
         <>
@@ -330,7 +356,7 @@ function CommitteeManager() {
                 <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border bg-muted">
                   {m.photoPath ? (
                      
-                    <img src={mediaUrl(m.photoPath)} alt={m.fullName} className="h-full w-full object-cover" />
+                    <SafeImg src={mediaUrl(m.photoPath)} alt={m.fullName} className="h-full w-full object-cover" fallback={<div className="flex h-full w-full items-center justify-center text-xs font-semibold text-muted-foreground">{m.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>} />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-muted-foreground">{m.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
                   )}

@@ -1,4 +1,5 @@
 "use client"
+import { SafeImg } from "@/components/psams/safe-img"
 
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -55,6 +56,7 @@ import {
 } from "@/lib/psams/domain"
 import type {
   AcademySettings,
+  Achievement,
   StudentWithRelations,
 } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
@@ -65,6 +67,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -75,6 +78,9 @@ import { SELECTION_LEVELS, MEDAL_OPTIONS } from "@/lib/psams/types"
 export function StudentDetailView({ studentId }: { studentId: string }) {
   const [student, setStudent] = useState<StudentWithRelations | null>(null)
   const [settings, setSettings] = useState<AcademySettings | null>(null)
+  // PS-042 — a career milestone was erased by ONE mis-tap: confirm + busy.
+  const [deletingAch, setDeletingAch] = useState<Achievement | null>(null)
+  const [achBusy, setAchBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [achOpen, setAchOpen] = useState(false)
   const { navigate, setPrint, refresh, dataVersion, openStudentForm } = useAppStore()
@@ -138,8 +144,12 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
   async function downloadProfilePdf() {
     if (!student) return
     try {
-      await profilePdfA4(student, student.achievements, settings)
-      toast({ title: "Profile PDF downloaded", description: "A4 profile card saved — ready to share or archive." })
+      const out = await profilePdfA4(student, student.achievements, settings)
+      if (!out?.saved) {
+        toast({ title: "Profile not saved", description: "The save was cancelled — no file was written." })
+      } else {
+        toast({ title: "Profile PDF downloaded", description: "A4 profile card saved — ready to share or archive." })
+      }
     } catch (e) {
       toast({ title: "PDF export failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     }
@@ -156,7 +166,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
           <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg border-2 border-border bg-gradient-to-br from-primary/15 to-cyan-500/10 shadow-md">
             {student.photoPath ? (
                
-              <img src={mediaUrl(student.photoPath)} alt={student.fullName} className="h-full w-full object-cover" />
+              <SafeImg src={mediaUrl(student.photoPath)} alt={student.fullName} className="h-full w-full object-cover" fallback={<div className="flex h-full w-full items-center justify-center text-xl font-bold text-muted-foreground">{student.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>} />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-xl font-bold text-muted-foreground">
                 {student.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
@@ -256,15 +266,8 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
                       size="icon"
                       variant="ghost"
                       className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={async () => {
-                        try {
-                          await deleteAchievement(a.id)
-                          toast({ title: "Achievement removed" })
-                          refresh()
-                        } catch (e) {
-                          toast({ title: "Delete failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
-                        }
-                      }}
+                      onClick={() => setDeletingAch(a)}
+                      aria-label={`Delete achievement: ${a.tournamentName}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -369,6 +372,42 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
           refresh()
         }}
       />
+
+      {/* PS-042 — deleting a career milestone demanded no confirmation and
+          had no busy state: one mis-tap erased it permanently. */}
+      <AlertDialog open={!!deletingAch} onOpenChange={(o) => !o && setDeletingAch(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove &ldquo;{deletingAch?.tournamentName}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The achievement entry (level, medal, certificate link) is deleted from the player&rsquo;s record. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              disabled={achBusy}
+              onClick={async () => {
+                if (!deletingAch || achBusy) return
+                setAchBusy(true)
+                try {
+                  await deleteAchievement(deletingAch.id)
+                  toast({ title: "Achievement removed" })
+                  setDeletingAch(null)
+                  refresh()
+                } catch (e) {
+                  toast({ title: "Delete failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+                } finally {
+                  setAchBusy(false)
+                }
+              }}
+            >
+              {achBusy ? "Removing…" : "Remove achievement"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

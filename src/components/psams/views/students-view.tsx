@@ -1,4 +1,5 @@
 "use client"
+import { SafeImg } from "@/components/psams/safe-img"
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -188,13 +189,16 @@ export function StudentsView() {
                       <td className="row-hover px-4 py-2.5">
                         <button className="flex items-center gap-2.5 text-left" onClick={() => navigate("student-detail", s.id)}>
                           <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-yellow-400/15 transition-all duration-200 group-hover:border-primary/40 group-hover:shadow-[0_0_12px_-2px_rgba(239, 71, 111,0.45)] dark:group-hover:shadow-[0_0_12px_-2px_rgba(255, 107, 141,0.55)]">
-                            {s.photoPath ? (
-                              <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-[15.5px] font-bold text-primary/70">
-                                {s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-                              </div>
-                            )}
+                            <SafeImg
+                              src={mediaUrl(s.photoPath)}
+                              alt={s.fullName}
+                              className="h-full w-full object-cover"
+                              fallback={
+                                <div className="flex h-full w-full items-center justify-center text-[15.5px] font-bold text-primary/70">
+                                  {s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                                </div>
+                              }
+                            />
                           </div>
                           <div className="min-w-0">
                             <div className="truncate font-semibold text-foreground transition-colors group-hover:text-primary">{s.fullName}</div>
@@ -239,7 +243,7 @@ export function StudentsView() {
         </div>
       </StaggerItem>
 
-      <p className="mt-3 px-1 text-[13px] text-muted-foreground">Tip — <b className="text-foreground">double-click</b> any row to open the player2019s full profile.</p>
+      <p className="mt-3 px-1 text-[13px] text-muted-foreground">Tip — <b className="text-foreground">double-click</b> any row to open the player&rsquo;s full profile.</p>
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent className="border-border bg-popover">

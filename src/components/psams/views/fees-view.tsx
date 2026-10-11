@@ -37,7 +37,7 @@ import {
 } from "@/lib/psams/domain"
 import { isTauri } from "@/lib/psams/api"
 import { getReceiptPaper, paperLabel } from "@/lib/psams/print-desktop"
-import { AGE_CATEGORIES, GENDERS, type FeePayment, type StudentFeeStatus, type AcademySettings } from "@/lib/psams/types"
+import { AGE_CATEGORIES, GENDERS, type FeePayment, type StudentFeeStatus, type AcademySettings, type RosterPrintData } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { exportExcel, exportPDF, buildReceiptPdfA5, receiptPdfA5 } from "@/lib/psams/export"
 import { toIntlPhone, receiptWaMessage, reminderWaMessage, dispatchWa, dispatchWaReceipt } from "@/lib/psams/whatsapp"
@@ -326,8 +326,14 @@ export function ReceiptDialog({
           mode: "pdf",
         })
       } else {
-        await receiptPdfA5(receipt, settings)
-        toast({ title: "Receipt PDF downloaded", description: `Saved as PS-AMS-Receipt-${receipt.receiptNo}.pdf — true A5 paper size (148 × 210 mm).` })
+        // PS-040 — the web "Save PDF" follows the saved receipt preset
+        // (A6 by default) exactly like the desktop native pipeline does.
+        const out = await receiptPdfA5(receipt, settings, getReceiptPaper())
+        if (!out.saved) {
+          toast({ title: "Receipt not saved", description: "The save was cancelled — no file was written." })
+        } else {
+          toast({ title: "Receipt PDF downloaded", description: `Saved as PS-AMS-Receipt-${receipt.receiptNo}.pdf — true A5 paper size (148 × 210 mm).` })
+        }
       }
     } catch (e) {
       toast({ title: "PDF export failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
@@ -362,9 +368,9 @@ export function ReceiptDialog({
       const res = await dispatchWaReceipt(intl, message, pdf)
       if (res.via === "linked") {
         if (res.ok && res.attachment) {
-          toast({ title: "Receipt sent on WhatsApp", description: `Message + A5 PDF receipt delivered through the academy's linked device to +${intl} — no chat window needed.` })
+          toast({ title: "Receipt sent · queued to WhatsApp", description: `Accepted by WhatsApp via the academy's linked device for +${intl} (no chat window). WhatsApp gives no delivery receipt — the linked phone shows the final status.` })
         } else if (res.ok) {
-          toast({ title: "Message sent — attachment failed", description: res.error ?? "The receipt PDF could not be uploaded. The itemised message was delivered.", variant: "destructive" })
+          toast({ title: "Message queued — attachment failed", description: res.error ?? "The receipt PDF could not be uploaded. The itemised message was accepted by WhatsApp.", variant: "destructive" })
         } else {
           toast({ title: "WhatsApp send failed", description: res.error ?? "Unknown error", variant: "destructive" })
         }
@@ -448,6 +454,9 @@ export function ReceiptDialog({
 /* ============================ DEFAULTERS ============================ */
 
 function DefaultersTab() {
+  // PS-042 — repeated Remind clicks sent DUPLICATE WhatsApp messages: a
+  // per-row busy set + an offline gate (mirrors ReceiptDialog's navigator.onLine).
+  const [remindBusy, setRemindBusy] = useState<Set<string>>(new Set())
   const [rows, setRows] = useState<StudentFeeStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<AcademySettings | null>(null)
@@ -492,10 +501,16 @@ function DefaultersTab() {
   )
   const filteredDue = filtered.reduce((sum, r) => sum + r.dueAmount, 0)
 
-  // Excel/PDF generation can throw (encoding, layout edge cases) — never leave the user without feedback
-  async function runExport(fn: () => Promise<unknown>) {
+  // Excel/PDF generation can throw (encoding, layout edge cases) — never
+  // leave the user without feedback. PS-037: a cancelled Save dialog (or a
+  // failed native write) is reported honestly — no hidden second download,
+  // and the old "downloaded" toast no longer lies.
+  async function runExport(fn: () => Promise<{ saved: boolean } | unknown>) {
     try {
-      await fn()
+      const res = (await fn()) as { saved?: boolean }
+      if (res && res.saved === false) {
+        toast({ title: "Not saved", description: "The export was cancelled — nothing was written to disk." })
+      }
     } catch (e) {
       toast({ title: "Export failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     }
@@ -527,7 +542,16 @@ function DefaultersTab() {
 
   function printRoster() {
     const defaulters = filtered.filter((r) => r.isDefaulter)
-    setPrint({ kind: "defaulters", title: "Fee Defaulters Roster", data: { rows: defaulters, settings, totalDue: defaulters.reduce((s, r) => s + r.dueAmount, 0) } })
+    // PS-035 — the print layer reads identity fields DIRECTLY off each row
+    // while fee-status rows keep them under .student (the printed roster had
+    // NO names, admission numbers, parents or contacts). Map to the typed
+    // RosterPrintData shape so a future drift fails the build.
+    const data: RosterPrintData = {
+      rows: defaulters.map((r) => ({ ...r.student, overdueMonths: r.overdueMonths, pendingMonths: r.pendingMonths, dueAmount: r.dueAmount })),
+      settings,
+      totalDue: defaulters.reduce((s, r) => s + r.dueAmount, 0),
+    }
+    setPrint({ kind: "defaulters", title: "Fee Defaulters Roster", data })
   }
 
   return (
@@ -609,16 +633,28 @@ function DefaultersTab() {
                         // month (overdue + current) — the reminder text must
                         // list exactly the periods that amount pays for.
                         const pending = r.pendingMonths
+                        if (!navigator.onLine) {
+                          toast({ title: "You are offline", description: "Reconnect to the internet before sending WhatsApp reminders.", variant: "destructive" })
+                          return
+                        }
+                        if (remindBusy.has(r.student.id)) return
+                        setRemindBusy((prev) => new Set(prev).add(r.student.id))
                         try {
                           const res = await dispatchWa(r.student.mobile, reminderWaMessage({ studentName: r.student.fullName, academyName: settings?.academyName, periodsLabel: pending.map(monthLabel).join(", "), dueAmount: r.dueAmount }))
                           if (res.via === "linked") {
-                            if (res.ok) toast({ title: "Reminder sent on WhatsApp", description: `Fee reminder for ${r.student.fullName} delivered via the linked device.` })
+                            if (res.ok) toast({ title: "Reminder sent · queued to WhatsApp", description: `Fee reminder for ${r.student.fullName} accepted via the linked device (WhatsApp does not confirm delivery — check the linked phone).` })
                             else toast({ title: "WhatsApp send failed", description: res.error ?? "Unknown error", variant: "destructive" })
                           } else {
                             toast({ title: "Opening WhatsApp chat", description: "Tip: link the academy WhatsApp once in Settings → WhatsApp Linked Device for direct one-click sends." })
                           }
                         } catch (e) {
                           toast({ title: "Could not send reminder", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+                        } finally {
+                          setRemindBusy((prev) => {
+                            const n = new Set(prev)
+                            n.delete(r.student.id)
+                            return n
+                          })
                         }
                       }}
                     >
@@ -715,8 +751,8 @@ function HistoryTab() {
       }
       const res = await dispatchWaReceipt(intl, message, pdf)
       if (res.via === "linked") {
-        if (res.ok && res.attachment) toast({ title: "Receipt sent on WhatsApp", description: `Message + A5 PDF receipt delivered through the linked device to +${intl}.` })
-        else if (res.ok) toast({ title: "Message sent — attachment failed", description: res.error ?? "The receipt PDF could not be uploaded.", variant: "destructive" })
+        if (res.ok && res.attachment) toast({ title: "Receipt sent · queued to WhatsApp", description: `Accepted by WhatsApp via the linked device for +${intl}.` })
+        else if (res.ok) toast({ title: "Message queued — attachment failed", description: res.error ?? "The receipt PDF could not be uploaded.", variant: "destructive" })
         else toast({ title: "WhatsApp send failed", description: res.error ?? "Unknown error", variant: "destructive" })
       } else {
         toast({ title: "Opening WhatsApp chat", description: "Tip: link the academy WhatsApp once in Settings → WhatsApp Linked Device for direct one-click sends." })

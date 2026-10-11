@@ -1,4 +1,5 @@
 "use client"
+import { SafeImg } from "@/components/psams/safe-img"
 
 // ============================================================
 // PS-AMS :: Smart Search, Multi-Parameter Filters & Reports
@@ -62,9 +63,16 @@ export function ReportsView() {
   }, [toast])
 
   // Excel/PDF generation can throw — surface it instead of failing silently
-  async function runExport(fn: () => Promise<unknown>) {
+  // Excel/PDF generation can throw (encoding, layout edge cases) — never
+  // leave the user without feedback. PS-037: a cancelled Save dialog (or a
+  // failed native write) is reported honestly — no hidden second download,
+  // and the old "downloaded" toast no longer lies.
+  async function runExport(fn: () => Promise<{ saved: boolean } | unknown>) {
     try {
-      await fn()
+      const res = (await fn()) as { saved?: boolean }
+      if (res && res.saved === false) {
+        toast({ title: "Not saved", description: "The export was cancelled — nothing was written to disk." })
+      }
     } catch (e) {
       toast({ title: "Export failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     }
@@ -234,7 +242,7 @@ export function ReportsView() {
                       <div className="h-8 w-8 overflow-hidden rounded-full border bg-muted">
                         {s.photoPath ? (
                            
-                          <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
+                          <SafeImg src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" fallback={<div className="flex h-full w-full items-center justify-center text-[15.5px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>} />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-[15.5px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
                         )}

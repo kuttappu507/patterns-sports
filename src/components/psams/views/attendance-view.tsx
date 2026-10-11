@@ -1,4 +1,5 @@
 "use client"
+import { SafeImg } from "@/components/psams/safe-img"
 
 // ============================================================
 // PS-AMS :: Court-Side Attendance Tracker — daily checklist by
@@ -109,6 +110,13 @@ export function AttendanceView() {
 
   async function markAll(status: "Present" | "Absent") {
     if (markAllBusy) return
+    // PS-042 — the bulk buttons silently OVERWROTE an already-marked day
+    // (a history rewrite with one tap). Confirm when anything is already
+    // recorded for this date.
+    const alreadyMarked = roster.filter((s) => records[s.id] && records[s.id] !== status).length
+    if (alreadyMarked > 0 && !window.confirm(`This will overwrite ${alreadyMarked} already-marked record(s) for ${date} with "${status}". Continue?`)) {
+      return
+    }
     const snapshot = { ...records }
     const batch = roster.map((s) => ({ studentId: s.id, date, batch: s.trainingBatch || s.ageCategory, status }))
     setRecords((prev) => {
@@ -213,13 +221,16 @@ export function AttendanceView() {
                     )}
                   >
                     <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-cyan-500/10">
-                      {s.photoPath ? (
-                        <img src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[15.5px] font-bold text-primary/70">
-                          {s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-                        </div>
-                      )}
+                      <SafeImg
+                        src={mediaUrl(s.photoPath)}
+                        alt={s.fullName}
+                        className="h-full w-full object-cover"
+                        fallback={
+                          <div className="flex h-full w-full items-center justify-center text-[15.5px] font-bold text-primary/70">
+                            {s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                          </div>
+                        }
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-semibold">{s.fullName}</div>
