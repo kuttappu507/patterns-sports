@@ -34,6 +34,17 @@ pub struct WaState {
     status: Mutex<String>,
     qr: Mutex<Option<String>>,
     me: Mutex<Option<String>>,
+    /// Set while an explicit unlink (wa_logout) is in flight, so the reader
+    /// loop never auto-respawns the sidecar the user just asked to stop.
+    unlinking: Mutex<bool>,
+    /// Budget of automatic respawns after a `logged_out` termination (a
+    /// revoked pairing). Reset whenever a QR is issued or a connection is
+    /// established; capped so a pathological wipe→respawn loop cannot spin.
+    auto_respawns: Mutex<u32>,
+    /// Bumped on every real spawn. Reader loops capture their generation and
+    /// ignore the Terminated event of a sidecar they no longer own — without
+    /// this, a killed sidecar's stale reader could tear down the fresh one.
+    generation: Mutex<u64>,
 }
 
 impl Default for WaState {
@@ -43,6 +54,9 @@ impl Default for WaState {
             status: Mutex::new("stopped".into()),
             qr: Mutex::new(None),
             me: Mutex::new(None),
+            unlinking: Mutex::new(false),
+            auto_respawns: Mutex::new(0),
+            generation: Mutex::new(0),
         }
     }
 }
@@ -109,6 +123,14 @@ pub fn spawn_sidecar(app: &AppHandle) -> Result<(), String> {
     let (mut rx, child) = cmd.spawn().map_err(|e| format!("sidecar spawn failed: {e}"))?;
     log_line("whatsapp-bot sidecar spawned");
 
+    let my_gen = {
+        let state = app.state::<WaState>();
+        *state.unlinking.lock().unwrap() = false; // a new run clears any in-flight unlink
+        let mut gen = state.generation.lock().unwrap();
+        *gen += 1;
+        *gen
+    };
+
     {
         let state = app.state::<WaState>();
         *state.child.lock().unwrap() = Some(child);
@@ -128,13 +150,53 @@ pub fn spawn_sidecar(app: &AppHandle) -> Result<(), String> {
                 CommandEvent::Terminated(status) => {
                     let _ = status;
                     let state = handle.state::<WaState>();
+                    // A reader loop that no longer owns the live sidecar (its
+                    // child was killed by wa_restart / a newer spawn) must not
+                    // tear down the replacement — just exit quietly.
+                    if *state.generation.lock().unwrap() != my_gen {
+                        break;
+                    }
                     if let Some(c) = state.child.lock().unwrap().take() {
                         let _ = c.kill();
                     }
+                    let was_logged_out = *state.status.lock().unwrap() == "logged_out";
+                    let unlinking = *state.unlinking.lock().unwrap();
                     drop(state);
                     log_line("whatsapp-bot sidecar exited");
+
+                    // The pairing was revoked on the phone: the stored session
+                    // is dead forever and the sidecar exited without a QR. Wipe
+                    // it and respawn once — the fresh sidecar pairs from
+                    // scratch, so a new QR appears with no user action.
+                    let mut wipe_stale = false;
+                    if was_logged_out && !unlinking {
+                        let state = handle.state::<WaState>();
+                        let mut n = state.auto_respawns.lock().unwrap();
+                        if *n < 3 {
+                            *n += 1;
+                            wipe_stale = true;
+                        }
+                    }
+                    if wipe_stale {
+                        let dir = std::path::PathBuf::from(auth_dir(&handle));
+                        if dir.exists() {
+                            let _ = std::fs::remove_dir_all(&dir);
+                        }
+                        log_line("stale pairing wiped — respawning for a fresh QR");
+                    }
+
                     set_status(&handle, "stopped");
                     *handle.state::<WaState>().me.lock().unwrap() = None;
+
+                    if wipe_stale {
+                        let respawner = handle.clone();
+                        std::thread::spawn(move || {
+                            std::thread::sleep(std::time::Duration::from_millis(500));
+                            if let Err(e) = spawn_sidecar(&respawner) {
+                                log_line(&format!("wa auto-respawn failed: {e}"));
+                            }
+                        });
+                    }
                     break;
                 }
                 CommandEvent::Error(err) => {
@@ -172,6 +234,7 @@ fn handle_sidecar_line(app: &AppHandle, raw: &[u8]) {
             let qr = v.get("value").and_then(|x| x.as_str()).map(|s| s.to_string());
             *state.qr.lock().unwrap() = qr;
             *state.status.lock().unwrap() = "waiting_scan".into();
+            *state.auto_respawns.lock().unwrap() = 0; // pairing is progressing — refill the budget
             log_line("whatsapp pairing QR issued");
             let _ = app.emit("wa://event", v);
         }
@@ -181,6 +244,7 @@ fn handle_sidecar_line(app: &AppHandle, raw: &[u8]) {
             *state.me.lock().unwrap() = if me.is_empty() { None } else { Some(me) };
             *state.qr.lock().unwrap() = None;
             *state.status.lock().unwrap() = "connected".into();
+            *state.auto_respawns.lock().unwrap() = 0;
             log_line(&format!("whatsapp connected: {jid}"));
             let _ = app.emit("wa://event", v);
         }
@@ -271,6 +335,13 @@ pub async fn wa_send_document(
 
 #[tauri::command]
 pub async fn wa_logout(app: AppHandle) -> Result<(), String> {
+    {
+        let state = app.state::<WaState>();
+        // Mark the unlink so the reader loop never auto-respawns the sidecar
+        // the user just asked to stop (a LoggedOut event may fire while the
+        // server-side unpair is processed).
+        *state.unlinking.lock().unwrap() = true;
+    }
     let running = {
         let state = app.state::<WaState>();
         let mut guard = state.child.lock().unwrap();
@@ -301,6 +372,42 @@ pub async fn wa_logout(app: AppHandle) -> Result<(), String> {
         }
     });
     Ok(())
+}
+
+/// Manual restart from the Settings card ("Restart connection"). Kills the
+/// running sidecar (if any) and brings up a fresh one; with `force_relink`
+/// the saved pairing is wiped too, so the next run pairs from scratch and
+/// issues a brand-new QR. The UI stays event-driven: the fresh sidecar emits
+/// starting/pairing/qr/connected frames as usual.
+#[tauri::command]
+pub async fn wa_restart(app: AppHandle, force_relink: Option<bool>) -> Result<WaSnapshot, String> {
+    let force = force_relink.unwrap_or(false);
+    {
+        let state = app.state::<WaState>();
+        let mut guard = state.child.lock().unwrap();
+        if let Some(c) = guard.take() {
+            log_line("wa_restart — killing running sidecar");
+            let _ = c.kill();
+        }
+    }
+    if force {
+        let dir = std::path::PathBuf::from(auth_dir(&app));
+        if dir.exists() {
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+        log_line("wa_restart — saved pairing wiped");
+    }
+    // Give the killed sidecar's reader loop a beat to observe the
+    // termination before a fresh process takes the slot.
+    let respawner = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(400));
+        if let Err(e) = spawn_sidecar(&respawner) {
+            log_line(&format!("wa_restart respawn failed: {e}"));
+        }
+    });
+    let state = app.state::<WaState>();
+    Ok(snapshot(&*state))
 }
 
 /// Kill the sidecar on app exit (no orphaned sockets).

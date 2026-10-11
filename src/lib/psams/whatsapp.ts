@@ -111,6 +111,8 @@ interface WaStore {
   me: string | null // linked account's phone number, when connected
   refresh: () => Promise<void>
   connect: () => Promise<void>
+  /** Kill and respawn the sidecar; use when pairing/connecting seems stuck. */
+  restart: () => Promise<void>
   disconnect: () => Promise<void>
   send: (to: string, text: string) => Promise<{ ok: boolean; error?: string }>
   sendDocument: (to: string, dataBase64: string, fileName: string, caption?: string) => Promise<{ ok: boolean; error?: string }>
@@ -141,6 +143,17 @@ export const useWaStore = create<WaStore>(() => ({
     if (!isTauri()) return
     const { invoke } = await import("@tauri-apps/api/core")
     const snap = await invoke<{ status: WaStatus; qr: string | null; me: string | null }>("wa_start")
+    useWaStore.setState({ status: snap.status, qr: snap.qr })
+  },
+  restart: async () => {
+    if (!isTauri()) return
+    const { invoke } = await import("@tauri-apps/api/core")
+    // Kill + respawn the sidecar. The fresh process re-emits its status/QR
+    // frames, so the card follows along through starting → pairing → QR.
+    const snap = await invoke<{ status: WaStatus; qr: string | null; me: string | null }>(
+      "wa_restart",
+      { forceRelink: false },
+    )
     useWaStore.setState({ status: snap.status, qr: snap.qr })
   },
   disconnect: async () => {

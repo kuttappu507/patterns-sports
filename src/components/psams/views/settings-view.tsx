@@ -95,7 +95,7 @@ const WA_STATUS_META: Record<WaStatus, { label: string; tone: string }> = {
 
 function WhatsAppCard() {
   const { toast } = useToast()
-  const { status, qr, me, connect, disconnect } = useWaStore()
+  const { status, qr, me, connect, restart, disconnect } = useWaStore()
   const [qrImg, setQrImg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -133,6 +133,17 @@ function WhatsAppCard() {
       toast({ title: "WhatsApp unlinked", description: "The paired device was removed from this computer and the saved session wiped." })
     } catch (e) {
       toast({ title: "Could not unlink", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function restartConnection() {
+    setBusy(true)
+    try {
+      await restart()
+    } catch (e) {
+      toast({ title: "Could not restart the WhatsApp connection", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     } finally {
       setBusy(false)
     }
@@ -201,6 +212,23 @@ function WhatsAppCard() {
               <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-500" disabled={busy} onClick={link}>
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <QrCode className="h-3.5 w-3.5" />} {status === "logged_out" ? "Scan again to relink" : "Link a device (scan QR)"}
               </Button>
+            </div>
+          )}
+          {/* Escape hatch while a connection attempt or auto-reconnect is in
+              flight: kill and respawn the sidecar. The saved pairing survives,
+              so a healthy session is back in one click (or a fresh QR if the
+              pairing itself was revoked — that wipes itself and re-issues a QR
+              automatically). */}
+          {["starting", "pairing", "reconnecting", "waiting_scan"].includes(status) && (
+            <div className="mt-3">
+              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" disabled={busy} onClick={restartConnection}>
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Restart connection
+              </Button>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+                {status === "reconnecting"
+                  ? "Still offline after a while? Restarting re-opens the connection — the saved pairing is kept. If the pairing was revoked on the phone, a fresh QR appears by itself."
+                  : "Taking too long? Restarting the connection usually fixes it — the saved pairing is kept."}
+              </p>
             </div>
           )}
         </>

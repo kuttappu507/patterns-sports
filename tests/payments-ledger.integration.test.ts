@@ -2,7 +2,6 @@ import { describe, expect, it, afterAll } from "vitest"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { fileURLToPath } from "node:url"
 import { createClient } from "@libsql/client"
 import { NextRequest } from "next/server"
 
@@ -20,7 +19,6 @@ import { NextRequest } from "next/server"
 // imports below) so src/lib/db resolves to the temp file.
 // ===========================================================================
 
-const here = path.dirname(fileURLToPath(import.meta.url))
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "psams-ledger-test-"))
 const dbFile = path.join(tmpDir, "ledger-test.db")
 process.env.DATABASE_URL = `file:${dbFile}`

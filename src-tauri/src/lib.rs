@@ -384,6 +384,7 @@ pub fn run() {
             updates::install_update,
             whatsapp::wa_snapshot,
             whatsapp::wa_start,
+            whatsapp::wa_restart,
             whatsapp::wa_send,
             whatsapp::wa_send_document,
             whatsapp::wa_logout

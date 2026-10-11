@@ -30,6 +30,20 @@ Supplements the baseline after the Phase 3A balance/financial work (FIX_PLAN 3A-
 | next build | ✅ 17 routes |
 | Desktop collect/delete (Tauri) | 📋 design-verified only — plugin pool cannot host BEGIN…COMMIT (verified against tauri-plugin-sql 2.2.0 source: `Pool::connect` default pool, per-call `pool.execute`); UNIQUE(studentId,month) backstop + compensating cleanup + boot-time ledger sync implemented; runtime proof awaits the next Windows build |
 
+## 0c. Owner-reported fixes PS-051 / PS-052 (executed 2026-10-11 — all green)
+
+| Check | Result |
+|---|---|
+| ESLint | ✅ 0 errors (10 pre-existing warnings unchanged) |
+| tsc --noEmit | ✅ clean |
+| vitest | ✅ 87/87 |
+| check:parity | ✅ 7 models ↔ 7 tables, 29 native delegations ↔ 30 tauri exports |
+| client-audit.mjs | ✅ PASS |
+| next build | ✅ success; `/api/upload` present in the route list (PS-016 restoration re-verified in the artifact) |
+| PS-051 cursor affordance | ✅ CSS block in `globals.css` `@layer base` — pointer on `button:not(:disabled)`, role=button/menuitem/…/tab, `a[href]`, `label[for]`, `select:not(:disabled)`, `summary`; visual check pending on next Windows run 🪟 |
+| PS-052 WhatsApp reconnect — Rust compile | 📋 review-only in sandbox (cargo unavailable); `wa_restart` registered in `generate_handler`; generation-guard + unlink-flag + capped auto-respawn logic line-verified; compiles on tag CI 🪟 |
+| PS-052 WhatsApp reconnect — behaviour | 📋 scenarios for the next Windows run: (a) revoke pairing on phone → app wipes session, respawns, fresh QR appears with no click; (b) "Restart connection" visible in starting/pairing/reconnecting/QR-pending states and returns to pairing; (c) explicit Unlink does NOT auto-respawn |
+
 ## 1. Financial integrity (Phase 4)
 
 | ID | Case | Source finding | Status |

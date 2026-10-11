@@ -1,11 +1,12 @@
 # PS-AMS — Fix Plan (Phases 3A–3D, then 4–6)
 
-- **Source:** `AUDIT_REPORT.md` (defect register PS-001…PS-050) @ commit `63bf119` (v1.6.4)
+- **Source:** `AUDIT_REPORT.md` (defect register PS-001…PS-052) @ commit `63bf119` (v1.6.4)
 - **Principle:** data integrity and recoverability first; small, reviewable, reversible increments; no rewrites; preserve features/design/offline capability.
 - **Rule:** every phase ends with the full gate suite (`npm run verify` + `client-audit` + `next build`) green and a reviewed diff. Windows compile correctness is gated by `build-exe.yml` (tag build); Rust changes additionally get `rustfmt --edition 2021` parse checks locally.
 - **Effort keys:** S ≤ ½ day · M ≈ 1 day · L ≈ 2–3 days (single-dev, including tests).
 - **Policy decisions (§6) adopted 2026-10-11 (owner: "continue"):** Q1a (arrears repriced at current fee, documented) · Q2a (Restrict + archive-only) · Q3a (zero-fee auto-settled) · Q6a (no advance months) · Q7a (epsilon/round compare now). Documented in README → "Fee & Billing Rules".
 - **Status (2026-10-11):** 3A-4…3A-9 ✅ DONE (balance/financial items — ledger live on web, desktop backstop implemented, 87 tests green incl. live concurrency evidence); 3A-1…3A-3 (Rust backup/restore) still pending — cargo unavailable in sandbox, Windows CI compiles on tag.
+- **Owner-reported fixes folded in (2026-10-11):** PS-051 (pointer cursor — CSS affordance block in `globals.css`) and PS-052 (WhatsApp reconnect dead-end — terminal `LoggedOut` in sidecar + wipe-and-respawn with capped budget + `wa_restart` command + "Restart connection" button in all transient states). Gates re-run green (verify 87/87, parity, client-audit, `next build`); Rust changes compile on tag CI. PS-016 file-loss recurred (`upload/route.ts` restored from index).
 
 ---
 

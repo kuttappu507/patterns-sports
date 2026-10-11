@@ -169,6 +169,26 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Clickable affordance — Tailwind v4 preflight leaves buttons, selects and
+     summaries on the default arrow cursor, so nothing ever shows the hand.
+     Restore it for every element that acts on a click (buttons, icon buttons,
+     links, labelled form hints, Radix menu/option/tab/combobox items which are
+     plain divs, native selects and <details> summaries). Disabled controls
+     keep the not-allowed / default cursor. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]),
+  [role="menuitemcheckbox"]:not([aria-disabled="true"]),
+  [role="menuitemradio"]:not([aria-disabled="true"]),
+  [role="option"]:not([aria-disabled="true"]),
+  [role="combobox"]:not([aria-disabled="true"]),
+  [role="tab"],
+  a[href],
+  label[for],
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
   html {
     height: 100%;
     color-scheme: light;

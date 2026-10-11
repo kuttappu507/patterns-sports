@@ -109,7 +109,16 @@ async fn main() {
                     emit(serde_json::json!({ "type": "connected", "value": me }));
                 }
                 Event::Disconnected(_) => emit_status("reconnecting"),
-                Event::LoggedOut(_) => emit_status("logged_out"),
+                Event::LoggedOut(_) => {
+                    // The pairing was revoked on the phone (or WhatsApp invalid-
+                    // ated the session): reconnecting can NEVER succeed and no QR
+                    // will be issued while this stale session is loaded. Exit so
+                    // the parent wipes the dead session and respawns a fresh
+                    // sidecar, which pairs from scratch — a new QR then appears
+                    // in Settings without any user action.
+                    emit_status("logged_out");
+                    std::process::exit(0);
+                }
                 Event::StreamError(e) => {
                     emit(serde_json::json!({ "type": "log", "value": format!("stream error: {e:?}") }));
                 }
