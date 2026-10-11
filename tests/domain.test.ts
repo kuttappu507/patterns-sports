@@ -7,6 +7,7 @@ import {
   assertValidStudentInput,
   assertValidAttendanceRecords,
   assertValidUpload,
+  roundMoney,
   ACADEMY_ADDRESS,
   DEFAULT_SETTINGS,
   hasPaidCurrentMonth,
@@ -26,6 +27,7 @@ import {
   trainingAge,
   healthyWeightBand,
 } from "../src/lib/psams/domain"
+import { planLedgerBackfill } from "../src/lib/psams/ledger"
 import { DEMO_SETTINGS } from "../src/lib/psams/demo-data"
 import { toIntlPhone, waLink } from "../src/lib/psams/whatsapp"
 
@@ -464,6 +466,168 @@ describe("assertValidUpload", () => {
     expect(() => assertValidUpload({ name: "archive.zip", type: "application/zip", size: 10 })).toThrow(/Unsupported file type/)
     expect(() => assertValidUpload({ name: "doc.pdf", type: "application/pdf", size: 1024 })).not.toThrow()
     expect(() => assertValidUpload({ name: "pic.webp", type: "image/webp", size: 1024 })).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// v1.7 (Phase 3A) — balance-audit fixes: PS-004 zero-fee, PS-009 money
+// precision, PS-008 billing-window bounds, PS-001 ledger planner
+// ---------------------------------------------------------------------------
+
+describe("zero-fee students (PS-004)", () => {
+  const waiver = { id: "s1", registrationDate: "2026-01-15", monthlyFee: 0 }
+
+  it("treats a fee-waiver student as fully settled forever", () => {
+    const now = new Date("2026-04-10")
+    const st = computeFeeStatus(waiver, [], now)
+    expect(st.pendingMonths).toEqual([])
+    expect(st.overdueMonths).toEqual([])
+    expect(st.dueAmount).toBe(0)
+    expect(st.isDefaulter).toBe(false)
+  })
+
+  it("keeps a waiver student out of the defaulter bucket even with a year of history", () => {
+    const now = new Date("2027-01-10")
+    const st = computeFeeStatus(waiver, [], now)
+    expect(st.isDefaulter).toBe(false)
+    expect(classifyFeeCycle(st)).toBe("paid")
+  })
+
+  it("counts a fractional fee student as settled too (monthlyFee ≤ 0)", () => {
+    const st = computeFeeStatus({ ...waiver, monthlyFee: -1 }, [], new Date("2026-04-10"))
+    expect(st.isDefaulter).toBe(false)
+  })
+
+  it("still shows their past receipts in the paid set", () => {
+    const st = computeFeeStatus(waiver, [{ months: '["2026-02"]', paymentDate: "2026-02-05" }], new Date("2026-04-10"))
+    expect(st.paidMonths).toEqual(["2026-02"])
+    expect(st.pendingMonths).toEqual([])
+  })
+})
+
+describe("money precision (PS-009)", () => {
+  it("rounds away binary float dust", () => {
+    expect(roundMoney(3 * 499.99)).toBe(1499.97)
+    expect(roundMoney(1499.9700000000003)).toBe(1499.97)
+    expect(roundMoney(0.1 + 0.2)).toBe(0.3)
+  })
+
+  it("accepts an amount within the half-rupee tolerance of the exact sum", () => {
+    // 3 × 499.99 computed with float dust still passes
+    expect(() => assertValidPayment(["2026-01", "2026-02", "2026-03"], 1499.9700000000003, 499.99)).not.toThrow()
+    expect(() => assertValidPayment(["2026-01"], 500.004, 500)).not.toThrow()
+  })
+
+  it("still rejects an amount that is genuinely off", () => {
+    expect(() => assertValidPayment(["2026-01"], 499, 500)).toThrow(/Amount must match/)
+    expect(() => assertValidPayment(["2026-01"], 501, 500)).toThrow(/Amount must match/)
+  })
+
+  it("rounds dueAmount aggregates", () => {
+    const student = { id: "s1", registrationDate: "2026-01-15", monthlyFee: 499.99 }
+    const st = computeFeeStatus(student, [], new Date("2026-04-10"))
+    expect(st.dueAmount).toBe(1499.97)
+  })
+})
+
+describe("payment input bounds (PS-008)", () => {
+  const now = new Date("2026-04-10")
+  const reg = "2026-01-15"
+  const bounds = { registrationDate: reg, now }
+
+  it("rejects months before the billing start (joining month is complimentary)", () => {
+    expect(() => assertValidPayment(["2026-01"], 500, 500, [], bounds)).toThrow(/Billing starts/)
+  })
+
+  it("rejects future billing months", () => {
+    expect(() => assertValidPayment(["2026-05"], 500, 500, [], bounds)).toThrow(/future billing month/)
+    expect(() => assertValidPayment(["2030-05"], 500, 500, [], bounds)).toThrow(/future billing month/)
+  })
+
+  it("accepts the current and past billing months", () => {
+    expect(() => assertValidPayment(["2026-02", "2026-03", "2026-04"], 1500, 500, [], bounds)).not.toThrow()
+  })
+
+  it("rejects a receipt date in the future", () => {
+    expect(() =>
+      assertValidPayment(["2026-04"], 500, 500, [], { ...bounds, paymentDate: "2026-04-11" })
+    ).toThrow(/future/)
+  })
+
+  it("rejects a calendar-impossible receipt date (2026-02-30)", () => {
+    expect(() =>
+      assertValidPayment(["2026-04"], 500, 500, [], { ...bounds, paymentDate: "2026-02-30" })
+    ).toThrow(/real calendar date/)
+  })
+
+  it("rejects an unparseable receipt date", () => {
+    expect(() =>
+      assertValidPayment(["2026-04"], 500, 500, [], { ...bounds, paymentDate: "10/04/2026" })
+    ).toThrow(/YYYY-MM-DD/)
+  })
+
+  it("rejects a receipt date before the registration date", () => {
+    expect(() =>
+      assertValidPayment(["2026-04"], 500, 500, [], { ...bounds, paymentDate: "2026-01-10" })
+    ).toThrow(/before the student's registration/)
+  })
+
+  it("accepts today as the receipt date", () => {
+    expect(() =>
+      assertValidPayment(["2026-04"], 500, 500, [], { ...bounds, paymentDate: "2026-04-10" })
+    ).not.toThrow()
+  })
+
+  it("rejects payment modes outside the receipt allowlist", () => {
+    expect(() =>
+      assertValidPayment(["2026-04"], 500, 500, [], { ...bounds, paymentMode: "Foo" })
+    ).toThrow(/Payment mode must be one of/)
+    expect(() =>
+      assertValidPayment(["2026-04"], 500, 500, [], { ...bounds, paymentMode: "UPI / GPay" })
+    ).not.toThrow()
+    expect(() =>
+      assertValidPayment(["2026-04"], 500, 500, [], { ...bounds, paymentMode: "Bank Transfer" })
+    ).not.toThrow()
+  })
+
+  it("leaves legacy calls without bounds unchanged", () => {
+    expect(() => assertValidPayment(["2026-01"], 500, 500, [])).not.toThrow()
+  })
+})
+
+describe("billing allocation ledger planner (PS-001)", () => {
+  const row = (id: string, studentId: string, months: string) => ({ id, studentId, months })
+
+  it("plans one allocation per settled month", () => {
+    const { allocations, clashes } = planLedgerBackfill([row("p1", "s1", '["2026-02","2026-03"]')], [])
+    expect(allocations).toHaveLength(2)
+    expect(allocations[0]).toMatchObject({ studentId: "s1", month: "2026-02", paymentId: "p1" })
+    expect(allocations[1]).toMatchObject({ studentId: "s1", month: "2026-03", paymentId: "p1" })
+    expect(clashes).toEqual([])
+  })
+
+  it("is idempotent — already-present keys are not re-planned", () => {
+    const payments = [row("p1", "s1", '["2026-02","2026-03"]')]
+    const existing = [{ studentId: "s1", month: "2026-02" }, { studentId: "s1", month: "2026-03" }]
+    const { allocations, clashes } = planLedgerBackfill(payments, existing)
+    expect(allocations).toEqual([])
+    expect(clashes).toEqual([])
+  })
+
+  it("resolves legacy double-receipted months FIRST receipt wins and reports the clash", () => {
+    const payments = [row("p1", "s1", '["2026-02"]'), row("p2", "s1", '["2026-02","2026-04"]')]
+    const { allocations, clashes } = planLedgerBackfill(payments, [])
+    // p1 gets 2026-02; p2 keeps only 2026-04 in the ledger
+    expect(allocations).toEqual([
+      expect.objectContaining({ paymentId: "p1", month: "2026-02" }),
+      expect.objectContaining({ paymentId: "p2", month: "2026-04" }),
+    ])
+    expect(clashes).toEqual([{ studentId: "s1", month: "2026-02" }])
+  })
+
+  it("survives garbage months JSON (treated as no months)", () => {
+    const { allocations } = planLedgerBackfill([row("p1", "s1", "not json")], [])
+    expect(allocations).toEqual([])
   })
 })
 

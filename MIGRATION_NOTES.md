@@ -1,6 +1,15 @@
-# PS-AMS — Migration Notes (PROPOSALS — nothing executed)
+# PS-AMS — Migration Notes (PROPOSALS — nothing executed on real data)
 
 Status: **design documents for Phase 3A/3C approval.** No real database has been touched. Every step below is rehearsed on disposable legacy-shaped fixtures first, with before/after reconciliation evidence, per `FIX_PLAN.md`.
+
+> **Update 2026-10-11:** MN-1 is now IMPLEMENTED for the ledger itself (Phase 3A-4):
+> the `PaymentMonth` table exists in all three schema copies, both backends backfill +
+> reconcile it on every boot (first receipt wins legacy duplicates, clashes reported,
+> receipts never rewritten), and the web collect runs inside one `db.$transaction` with
+> the UNIQUE backstop. The automatic FK-rebuild for existing databases (MN-3) still
+> awaits the MN-2 migration runner (Phase 3C) — until then the application-layer
+> delete guard (409) is the operative protection. No real database was migrated by
+> hand; every boot-time reconciliation is additive and idempotent.
 
 ---
 

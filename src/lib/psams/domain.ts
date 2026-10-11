@@ -3,7 +3,7 @@
 // numbering, formatting. Pure functions, shared client & server.
 // ============================================================
 
-import type { AcademySettings } from "./types"
+import { PAYMENT_MODES, type AcademySettings } from "./types"
 
 // ---------- Age & category ----------
 
@@ -193,8 +193,28 @@ export interface PaymentLite {
 }
 
 /**
+ * Money rounding for the fee engine (PS-009): amounts live in a REAL/Float
+ * column, so binary float error can leak into sums (3 × 499.99 →
+ * 1499.9700000000003). Every aggregate and comparison goes through this —
+ * half-rupee precision is far beyond any real fee granularity.
+ */
+export function roundMoney(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100
+}
+
+/**
  * Compute the fee status of a student: billing starts the month AFTER the
  * registration month (joining month is complimentary), up to current month.
+ *
+ * Arrears policy (§6 Q1a, documented — PS-007): outstanding months are
+ * valued at the student's CURRENT monthlyFee at the moment of reading.
+ * The academy re-prices old arrears when the fee changes; receipts keep
+ * the amount actually collected, so history is preserved even though the
+ * "due" figure moves with the fee.
+ *
+ * Zero-fee / fee-waiver students (PS-004): `monthlyFee <= 0` means there
+ * is nothing to collect — such a student is ALWAYS fully settled and can
+ * never become a defaulter or receive fee reminders.
  */
 export function computeFeeStatus(
   student: {
@@ -214,11 +234,22 @@ export function computeFeeStatus(
     for (const m of parsePaidMonths(p.months)) paidMonths.add(m)
     if (!lastPayment || new Date(p.paymentDate) > new Date(lastPayment.paymentDate)) lastPayment = p
   }
+  if ((student.monthlyFee || 0) <= 0) {
+    // Fee waiver: no collectible months, no dues, never a defaulter.
+    return {
+      paidMonths: Array.from(paidMonths).sort(),
+      pendingMonths: [] as string[],
+      overdueMonths: [] as string[],
+      dueAmount: 0,
+      isDefaulter: false,
+      lastPayment,
+    }
+  }
   const allBillable = monthsBetween(billingStart, now).filter((k) => !paidMonths.has(k))
   const currentKey = monthKey(now)
   const pendingMonths = allBillable
   const overdueMonths = pendingMonths.filter((k) => k < currentKey)
-  const dueAmount = pendingMonths.length * (student.monthlyFee || 0)
+  const dueAmount = roundMoney(pendingMonths.length * (student.monthlyFee || 0))
   // "Overdue by more than one month" => at least 2 unpaid cycles behind
   const isDefaulter = overdueMonths.length > 1
   return {
@@ -321,13 +352,46 @@ export function assertValidStudentInput(input: Record<string, unknown>): void {
   }
 }
 
+/** Optional write-path bounds for a payment — filled by BOTH backends. */
+export interface PaymentBounds {
+  /** Student's registration date — billing starts the following month. */
+  registrationDate?: string | Date
+  /** Receipt date — must be calendar-real, not before registration, not in the future. */
+  paymentDate?: string | Date
+  /** Receipt mode — allowlist enforced (Cash | UPI / GPay | Bank Transfer). */
+  paymentMode?: string
+  /** Evaluation clock (defaults to now) — injected by tests. */
+  now?: Date
+}
+
+const PAY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Parse a receipt date strictly: strings in "YYYY-MM-DD" must be a REAL
+ * calendar day ("2026-02-30" is rejected instead of rolling into March),
+ * and anything unparseable is rejected.
+ */
+function parseReceiptDate(raw: string | Date): Date | null {
+  if (raw instanceof Date) return isNaN(raw.getTime()) ? null : raw
+  if (typeof raw !== "string" || !PAY_DATE_RE.test(raw.trim())) return null
+  const [y, m, d] = raw.trim().split("-").map(Number)
+  const dt = new Date(y, m - 1, d)
+  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d ? dt : null
+}
+
 /**
  * Guards the payment write path on BOTH backends. Rejects:
  *   - months that are not strict "YYYY-MM" keys (desktop previously accepted any string)
  *   - duplicate months inside one request
  *   - a month that is ALREADY settled — no double receipting
- *   - any amount other than months.length × monthlyFee
- *     (a discount field would be a deliberate feature; it does not exist)
+ *   - any amount other than months.length × monthlyFee (± half a rupee of
+ *     float tolerance, PS-009 — a discount field would be a deliberate
+ *     feature; it does not exist)
+ *   - (with bounds) months before the joining month or in the future —
+ *     the ledger books the CURRENT billing window only (§6 Q6a, PS-008)
+ *   - (with bounds) receipt dates that are invalid, calendar-impossible,
+ *     pre-registration, or in the future
+ *   - (with bounds) payment modes outside the receipt-mode allowlist
  * `alreadyPaidMonths` comes from computeFeeStatus().paidMonths on the live
  * student row — recompute it server-side, never trust the client.
  */
@@ -335,7 +399,8 @@ export function assertValidPayment(
   months: unknown[],
   amount: number,
   monthlyFee: number,
-  alreadyPaidMonths: string[] = []
+  alreadyPaidMonths: string[] = [],
+  bounds: PaymentBounds = {}
 ): void {
   if (!Array.isArray(months) || months.length === 0) {
     throw new Error("studentId and at least one billing month are required")
@@ -346,6 +411,24 @@ export function assertValidPayment(
   if (new Set(months as string[]).size !== months.length) {
     throw new Error("Duplicate billing months in one payment are not allowed")
   }
+  const now = bounds.now ?? new Date()
+  const currentKey = monthKey(now)
+  if (bounds.registrationDate !== undefined) {
+    const reg = new Date(bounds.registrationDate)
+    if (!isNaN(reg.getTime())) {
+      const billingStartKey = monthKey(new Date(reg.getFullYear(), reg.getMonth() + 1, 1))
+      const tooEarly = (months as string[]).filter((m) => m < billingStartKey)
+      if (tooEarly.length > 0) {
+        throw new Error(
+          `Billing starts ${monthLabel(billingStartKey)} (the joining month is complimentary) — cannot collect for ${tooEarly.map(monthLabel).join(", ")}`
+        )
+      }
+      const future = (months as string[]).filter((m) => m > currentKey)
+      if (future.length > 0) {
+        throw new Error(`Cannot collect a future billing month — ${future.map(monthLabel).join(", ")} has not started yet`)
+      }
+    }
+  }
   const paid = new Set(alreadyPaidMonths)
   const already = (months as string[]).filter((m) => paid.has(m))
   if (already.length > 0) {
@@ -354,11 +437,34 @@ export function assertValidPayment(
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Collected amount must be greater than zero")
   }
-  const expected = months.length * (monthlyFee || 0)
+  if (bounds.paymentMode !== undefined && bounds.paymentMode !== "" &&
+      !(PAYMENT_MODES as readonly string[]).includes(bounds.paymentMode)) {
+    throw new Error(`Payment mode must be one of: ${PAYMENT_MODES.join(" | ")}`)
+  }
+  if (bounds.paymentDate !== undefined) {
+    const pd = parseReceiptDate(bounds.paymentDate)
+    if (!pd) {
+      throw new Error("Receipt date must be a real calendar date in YYYY-MM-DD format")
+    }
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+    if (pd > todayEnd) {
+      throw new Error("Receipt date cannot be in the future")
+    }
+    if (bounds.registrationDate !== undefined) {
+      const reg = new Date(bounds.registrationDate)
+      if (!isNaN(reg.getTime())) {
+        const regDay = new Date(reg.getFullYear(), reg.getMonth(), reg.getDate())
+        if (pd < regDay) {
+          throw new Error("Receipt date cannot be before the student's registration date")
+        }
+      }
+    }
+  }
+  const expected = roundMoney(months.length * (monthlyFee || 0))
   if (expected <= 0) {
     throw new Error("This student has no monthly fee to collect")
   }
-  if (amount !== expected) {
+  if (Math.abs(roundMoney(amount) - expected) > 0.005) {
     throw new Error(
       `Amount must match the selected months — ${months.length} month${months.length === 1 ? "" : "s"} × ${formatINR(monthlyFee)} = ${formatINR(expected)}`
     )

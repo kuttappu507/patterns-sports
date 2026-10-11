@@ -55,6 +55,7 @@ model Student {
   achievements Achievement[]
   payments    FeePayment[]
   attendance  Attendance[]
+  paymentMonths PaymentMonth[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -86,7 +87,7 @@ model FeePayment {
   id          String   @id @default(cuid())
   receiptNo   String   @unique
   studentId   String
-  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Restrict)
   paymentDate DateTime @default(now())
   months      String // JSON array of billing periods "YYYY-MM" (multi-month settle)
   amount      Float
@@ -95,9 +96,30 @@ model FeePayment {
   collectedBy String?
   createdAt   DateTime @default(now())
 
+  monthAllocations PaymentMonth[]
+
   @@index([studentId])
   @@index([paymentDate])
   @@index([receiptNo])
+}
+
+/// Billing allocation ledger (PS-001): one row per settled (student, month).
+/// `UNIQUE(studentId, month)` is the database-level backstop that makes a
+/// concurrent double-collect physically impossible — the second insert fails
+/// with a constraint violation instead of minting a second receipt.
+/// `months` JSON on FeePayment stays in sync (dual-write) during the
+/// transition release; reads still come from the JSON.
+model PaymentMonth {
+  id        String     @id @default(cuid())
+  studentId String
+  student   Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  month     String // "YYYY-MM"
+  paymentId String
+  payment   FeePayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, month])
+  @@index([month])
+  @@index([paymentId])
 }
 
 model CommitteeMember {

@@ -61,10 +61,15 @@ CREATE INDEX IF NOT EXISTS idx_achievement_student ON Achievement(studentId);
 CREATE INDEX IF NOT EXISTS idx_achievement_level   ON Achievement(level);
 
 -- ---------- Fee payments (receipts) ----------
+-- FeePayment → Student is ON DELETE RESTRICT (financial audit trail must
+-- survive the student row; the app refuses deletes with receipts and points
+-- at the Alumni status instead). Existing databases pick this up via the
+-- FK-rebuild migration shipped with the 3C migration runner — until then the
+-- application-layer guard is the operative protection on legacy files.
 CREATE TABLE IF NOT EXISTS FeePayment (
   id          TEXT PRIMARY KEY,
   receiptNo   TEXT NOT NULL UNIQUE,
-  studentId   TEXT NOT NULL REFERENCES Student(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  studentId   TEXT NOT NULL REFERENCES Student(id) ON DELETE RESTRICT ON UPDATE CASCADE,
   paymentDate TEXT NOT NULL,                     -- ISO-8601
   months      TEXT NOT NULL,                     -- JSON array of "YYYY-MM" billing periods
   amount      REAL NOT NULL,
@@ -76,6 +81,20 @@ CREATE TABLE IF NOT EXISTS FeePayment (
 CREATE INDEX IF NOT EXISTS idx_payment_student ON FeePayment(studentId);
 CREATE INDEX IF NOT EXISTS idx_payment_date    ON FeePayment(paymentDate);
 CREATE INDEX IF NOT EXISTS idx_payment_receipt ON FeePayment(receiptNo);
+
+-- ---------- Billing allocation ledger (one row per settled student+month) ----------
+-- UNIQUE(studentId, month) turns a concurrent double-collect into a
+-- constraint error (HTTP 409) instead of a second receipt. The JSON months
+-- column on FeePayment stays in sync during the transition release.
+CREATE TABLE IF NOT EXISTS PaymentMonth (
+  id        TEXT PRIMARY KEY,
+  studentId TEXT NOT NULL REFERENCES Student(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  month     TEXT NOT NULL,                       -- "YYYY-MM"
+  paymentId TEXT NOT NULL REFERENCES FeePayment(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  UNIQUE (studentId, month)
+);
+CREATE INDEX IF NOT EXISTS idx_paymentmonth_month   ON PaymentMonth(month);
+CREATE INDEX IF NOT EXISTS idx_paymentmonth_payment ON PaymentMonth(paymentId);
 
 -- ---------- Executive committee ----------
 CREATE TABLE IF NOT EXISTS CommitteeMember (

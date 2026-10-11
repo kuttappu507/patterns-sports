@@ -191,6 +191,32 @@ See [`docs/PORTING_GUIDE.md`](docs/PORTING_GUIDE.md) for the full guide.
   the header or query parameter themselves. With no token configured, any
   process/host that can reach the port has full read-write access to the API.
 
+## Fee & Billing Rules (the ONE set of financial rules)
+
+These are product-policy decisions (audit report §6, adopted 2026-10) implemented by the shared
+engine in `src/lib/psams/domain.ts` and enforced identically by the web API and the desktop backend:
+
+- **Billing month** — billing starts the month AFTER registration; the joining month is complimentary.
+- **Defaulter** — overdue by MORE than one billing month (2+ unpaid older cycles).
+- **One receipt per month** — every settled `(student, billing month)` gets a row in the
+  `PaymentMonth` allocation ledger with `UNIQUE(studentId, month)`. A concurrent double-collect is
+  rejected by SQLite itself (HTTP 409 / a "month already settled" error), not just by app logic
+  (audit PS-001). Legacy receipts are backfilled automatically; historical double-bookings, if any,
+  are reported at boot — never rewritten.
+- **Arrears pricing (Q1a)** — outstanding months are valued at the student's CURRENT monthly fee
+  when read/collected. The academy re-prices old arrears after a fee change; receipts keep the
+  amount actually collected. (A per-month `feeAtAccrual` history would be a deliberate future feature.)
+- **Zero-fee / waiver students (Q3a)** — `monthlyFee ≤ 0` means permanently settled: never "due",
+  never a defaulter, never reminded. Collecting from a zero-fee student is rejected.
+- **Billing window (Q6a)** — months before the joining month or in the future are rejected;
+  receipt dates must be real calendar days, not before registration and not in the future;
+  payment mode is restricted to `Cash | UPI / GPay | Bank Transfer` (audit PS-008).
+- **Money precision (Q7a)** — amounts are stored as REAL and compared with a half-rupee float
+  tolerance; every aggregate is rounded (audit PS-009).
+- **Deletion policy (Q2a)** — a student with fee receipts can NOT be hard-deleted (HTTP 409 /
+  "set status to Alumni"); the database-level FK is `ON DELETE RESTRICT` on fresh databases.
+  Only students with zero financial history can be deleted, and their media files are unlinked.
+
 ## Data & Safety
 
 - **Local-first storage**: everything lives in SQLite; media files live on disk with traversal-guarded relative paths in the database.

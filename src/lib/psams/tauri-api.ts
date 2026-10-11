@@ -7,7 +7,7 @@
 // ============================================================
 
 import Database from "@tauri-apps/plugin-sql"
-import { writeFile, writeTextFile, mkdir } from "@tauri-apps/plugin-fs"
+import { writeFile, writeTextFile, mkdir, remove } from "@tauri-apps/plugin-fs"
 import { save as saveDialog } from "@tauri-apps/plugin-dialog"
 import { appDataDir, join } from "@tauri-apps/api/path"
 import { invoke } from "@tauri-apps/api/core"
@@ -27,6 +27,7 @@ import {
   computeAge,
   computeFeeStatus,
   classifyFeeCycle,
+  monthLabel,
   parsePaidMonths,
   sanitizeFileName,
   todayKey,
@@ -36,8 +37,10 @@ import {
   assertValidStudentInput,
   assertValidAttendanceRecords,
   assertValidUpload,
+  isSafeMediaPath,
   DEFAULT_SETTINGS,
 } from "./domain"
+import { planLedgerBackfill } from "./ledger"
 import {
   DEMO_STUDENTS,
   DEMO_COMMITTEE,
@@ -135,6 +138,49 @@ async function runMigrations(db: DB): Promise<void> {
   } catch (e) {
     console.warn("[PS-AMS] migration check failed:", e instanceof Error ? e.message : e)
   }
+  // v1.7 — billing allocation ledger (PS-001): reconcile PaymentMonth with
+  // the receipts' JSON months on every boot. Idempotent; also repairs the
+  // crash window of an interrupted collect (payment row without allocations).
+  try {
+    const ledger = await syncPaymentLedger(db)
+    if (ledger.added > 0 || ledger.orphans > 0) {
+      console.warn(
+        `[PS-AMS] ledger reconciled — ${ledger.added} allocation row(s) backfilled, ${ledger.orphans} orphan(s) removed`
+      )
+    }
+  } catch (e) {
+    console.warn("[PS-AMS] ledger sync failed:", e instanceof Error ? e.message : e)
+  }
+}
+
+/**
+ * Desktop twin of bootstrap.ts syncPaymentLedger: backfill missing
+ * PaymentMonth allocation rows from the receipts' JSON months (first
+ * receipt wins pre-existing duplicates — reported, never rewritten) and
+ * drop allocation rows whose receipt is gone (FK cascades can be skipped
+ * on pool connections where the pragma is off).
+ */
+async function syncPaymentLedger(db: DB): Promise<{ added: number; orphans: number; clashes: number }> {
+  const payments = await db.select<{ id: string; studentId: string; months: string }[]>(
+    "SELECT id, studentId, months FROM FeePayment",
+    []
+  )
+  const existing = await db.select<{ studentId: string; month: string }[]>(
+    "SELECT studentId, month FROM PaymentMonth",
+    []
+  )
+  const { allocations, clashes } = planLedgerBackfill(payments, existing)
+  for (const a of allocations) {
+    await db.execute(
+      "INSERT INTO PaymentMonth (id, studentId, month, paymentId) VALUES ($1,$2,$3,$4)",
+      [a.id, a.studentId, a.month, a.paymentId]
+    )
+  }
+  const orphanResult = await db.execute(
+    "DELETE FROM PaymentMonth WHERE paymentId NOT IN (SELECT id FROM FeePayment)",
+    []
+  )
+  return { added: allocations.length, orphans: orphanResult.rowsAffected, clashes: clashes.length }
 }
 
 /** Boot the offline backend: DB + media directories. Called once at app start. */
@@ -383,11 +429,36 @@ export async function updateStudent(id: string, input: Partial<StudentInput>): P
 
 export async function deleteStudent(id: string): Promise<void> {
   const db = await getDb()
+  // PS-005 (§6 Q2a): receipts are the academy's financial audit trail — a
+  // student with any fee payment must be archived (status Alumni) instead
+  // of deleted. The DB-level FK is ON DELETE RESTRICT on fresh databases;
+  // this application guard is the operative protection everywhere.
+  const pays = await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM FeePayment WHERE studentId = $1", [id])
+  const receiptCount = pays[0]?.n ?? 0
+  if (receiptCount > 0) {
+    throw new Error(
+      `This student has ${receiptCount} fee receipt(s) — financial history must be preserved. Set the student's status to Alumni instead of deleting.`
+    )
+  }
+  const student = await getStudentRow(id)
   // explicit cascade (foreign_keys pragma is per-connection in sqlite)
+  await db.execute("DELETE FROM PaymentMonth WHERE studentId = $1", [id])
   await db.execute("DELETE FROM Achievement WHERE studentId = $1", [id])
-  await db.execute("DELETE FROM FeePayment WHERE studentId = $1", [id])
   await db.execute("DELETE FROM Attendance WHERE studentId = $1", [id])
   await db.execute("DELETE FROM Student WHERE id = $1", [id])
+  // Media cleanup AFTER a successful delete — minors' photos/documents must
+  // not linger unreferenced. Best-effort: a stray file never fails the delete.
+  const base = getMediaBase()
+  if (base) {
+    for (const rel of [student.photoPath, student.birthCertPath, student.idCardPath]) {
+      if (!rel || !isSafeMediaPath(rel)) continue
+      try {
+        await remove(await join(base, rel))
+      } catch {
+        /* already gone or locked — ignore */
+      }
+    }
+  }
 }
 
 // ---------- Achievements ----------
@@ -462,7 +533,7 @@ export async function fetchFeeStatuses(): Promise<StudentFeeStatus[]> {
   })
 }
 
-export async function collectPayment(input: {
+interface CollectInput {
   studentId: string
   months: string[]
   amount: number
@@ -470,7 +541,26 @@ export async function collectPayment(input: {
   paymentDate?: string
   notes?: string
   collectedBy?: string
-}): Promise<FeePaymentWithStudent> {
+}
+
+/**
+ * The Tauri SQL plugin hands every statement to an arbitrary pooled
+ * connection (sqlx pool), so a BEGIN…COMMIT across db.execute calls is NOT
+ * a real transaction. The collect is therefore ordered to make the
+ * database's own UNIQUE(studentId, month) index the race backstop (PS-001):
+ *
+ *   1. validate (shared validator, including billing-window bounds)
+ *   2. friendly ledger pre-check (clears the common double-click)
+ *   3. insert the receipt
+ *   4. insert one PaymentMonth allocation per settled month — the loser of
+ *      a race hits UNIQUE here, and its receipt is removed again
+ *      (compensating cleanup) so the month stays single-booked
+ *
+ * A receipt written without allocations (crash between 3 and 4) is repaired
+ * on the next boot: syncPaymentLedger rebuilds allocations from the JSON
+ * months, which remain the read source of truth during the transition.
+ */
+export async function collectPayment(input: CollectInput): Promise<FeePaymentWithStudent> {
   const db = await getDb()
   if (!input.studentId || !Array.isArray(input.months) || input.months.length === 0) {
     throw new Error("studentId and at least one billing month are required")
@@ -478,11 +568,45 @@ export async function collectPayment(input: {
   if (!input.amount || Number(input.amount) <= 0) {
     throw new Error("Collected amount must be greater than zero")
   }
+  const now = new Date()
+  let lastError: unknown = null
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await collectAttempt(db, input, now)
+    } catch (e) {
+      lastError = e
+      const msg = e instanceof Error ? e.message : String(e)
+      const unique = /UNIQUE constraint failed/i.test(msg)
+      // Receipt-number tie between concurrent collects → re-run (re-validates).
+      if (unique && /FeePayment\.receiptNo/i.test(msg) && attempt < 3) continue
+      // Transient SQLite contention → re-run.
+      if (!unique && /locked|busy/i.test(msg) && attempt < 3) continue
+      throw e
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Failed to record payment")
+}
+
+async function collectAttempt(db: DB, input: CollectInput, now: Date): Promise<FeePaymentWithStudent> {
   // Same rejects as the web POST /api/payments route (shared validator):
   // strict YYYY-MM keys, no duplicate months, no month that already has a
-  // receipt, and the amount must equal months.length × monthlyFee — so a
-  // token payment can never clear months it did not pay for.
+  // receipt, billing-window bounds, and the amount must equal
+  // months.length × monthlyFee (± float tolerance) — so a token payment can
+  // never clear months it did not pay for.
   const student = await getStudentRow(input.studentId)
+  // Ledger pre-check FIRST — a settled month is a conflict with an existing
+  // receipt (same classification as the web backend's 409). The
+  // UNIQUE(studentId, month) index below remains the authoritative backstop.
+  const placeholders = input.months.map((_, i) => `$${i + 2}`).join(", ")
+  const clashes = await db.select<{ month: string }[]>(
+    `SELECT month FROM PaymentMonth WHERE studentId = $1 AND month IN (${placeholders})`,
+    [input.studentId, ...input.months]
+  )
+  if (clashes.length > 0) {
+    throw new Error(
+      `Month already settled — a receipt exists for ${clashes.map((c) => monthLabel(c.month)).join(", ")}`
+    )
+  }
   const priorPayments = await db.select<FeePayment[]>(
     "SELECT * FROM FeePayment WHERE studentId = $1 ORDER BY paymentDate ASC",
     [input.studentId]
@@ -491,10 +615,15 @@ export async function collectPayment(input: {
     input.months,
     Number(input.amount),
     student.monthlyFee,
-    computeFeeStatus(student, priorPayments).paidMonths
+    computeFeeStatus(student, priorPayments).paidMonths,
+    {
+      registrationDate: student.registrationDate,
+      paymentDate: input.paymentDate,
+      paymentMode: input.paymentMode,
+      now,
+    }
   )
   const existing = await db.select<{ receiptNo: string }[]>("SELECT receiptNo FROM FeePayment", [])
-  const now = new Date()
   const receiptNo = nextReceiptNo(existing.map((r) => r.receiptNo), now)
   const id = uuid()
   const paymentDate = (input.paymentDate ? new Date(input.paymentDate) : now).toISOString()
@@ -515,6 +644,40 @@ export async function collectPayment(input: {
       now.toISOString(),
     ]
   )
+  try {
+    for (const m of input.months) {
+      await db.execute(
+        `INSERT INTO PaymentMonth (id, studentId, month, paymentId) VALUES ($1,$2,$3,$4)`,
+        [uuid(), input.studentId, m, id]
+      )
+    }
+  } catch (e) {
+    // Race lost: UNIQUE(studentId, month) fired for a month another collect
+    // just booked. Roll the receipt back again (compensating cleanup — the
+    // JSON months lived only on this row) and re-raise as a settled-month
+    // error, exactly like the web backend's 409.
+    try {
+      await db.execute("DELETE FROM PaymentMonth WHERE paymentId = $1", [id])
+      await db.execute("DELETE FROM FeePayment WHERE id = $1", [id])
+      // If FK cascades were skipped on another pool connection, clear any
+      // orphaned allocation rows for the raced months so a retry is clean.
+      const ph = input.months.map((_, i) => `$${i + 2}`).join(", ")
+      await db.execute(
+        `DELETE FROM PaymentMonth WHERE studentId = $1 AND month IN (${ph})
+         AND paymentId NOT IN (SELECT id FROM FeePayment WHERE studentId = $1)`,
+        [input.studentId, ...input.months, input.studentId]
+      )
+    } catch {
+      /* boot-time syncPaymentLedger sweeps any residue — never mask the real error */
+    }
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/UNIQUE constraint failed/i.test(msg) && /PaymentMonth/i.test(msg)) {
+      throw new Error(
+        `Month already settled — a receipt exists for ${input.months.map(monthLabel).join(", ")}`
+      )
+    }
+    throw e
+  }
   return {
     id,
     receiptNo,
@@ -1031,6 +1194,10 @@ export async function loadDemoData(): Promise<{ students: number; committee: num
   const tracked = JSON.stringify({ students: demoStudentIds, committee: demoCommitteeIds })
   await db.execute(`INSERT INTO Setting (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = $2`, [DEMO_KEY, tracked])
 
+  // Demo receipts were written as raw SQL (no ledger dual-write) — reconcile
+  // the allocation ledger immediately so the demo months are race-protected.
+  await syncPaymentLedger(db)
+
   return { students: demoStudentIds.length, committee: demoCommitteeIds.length }
 }
 
@@ -1041,6 +1208,9 @@ export async function removeDemoData(): Promise<void> {
   const { students, committee } = JSON.parse(flag[0].value) as { students: string[]; committee: string[] }
 
   for (const id of students) {
+    // PaymentMonth first: allocation rows must not outlive their receipts
+    // (FK cascades are per-connection on sqlite — explicit, like the rest).
+    await db.execute("DELETE FROM PaymentMonth WHERE studentId = $1", [id])
     await db.execute("DELETE FROM FeePayment WHERE studentId = $1", [id])
     await db.execute("DELETE FROM Attendance WHERE studentId = $1", [id])
     await db.execute("DELETE FROM Achievement WHERE studentId = $1", [id])

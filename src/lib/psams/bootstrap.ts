@@ -1,6 +1,7 @@
 import { createClient } from "@libsql/client"
 import fs from "node:fs"
 import path from "node:path"
+import { planLedgerBackfill } from "@/lib/psams/ledger"
 
 // ============================================================
 // PS-AMS :: boot-time database bootstrap (web / preview server).
@@ -77,7 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_achievement_level   ON Achievement(level);
 CREATE TABLE IF NOT EXISTS FeePayment (
   id          TEXT PRIMARY KEY,
   receiptNo   TEXT NOT NULL UNIQUE,
-  studentId   TEXT NOT NULL REFERENCES Student(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  studentId   TEXT NOT NULL REFERENCES Student(id) ON DELETE RESTRICT ON UPDATE CASCADE,
   paymentDate TEXT NOT NULL,
   months      TEXT NOT NULL,
   amount      REAL NOT NULL,
@@ -89,6 +90,16 @@ CREATE TABLE IF NOT EXISTS FeePayment (
 CREATE INDEX IF NOT EXISTS idx_payment_student ON FeePayment(studentId);
 CREATE INDEX IF NOT EXISTS idx_payment_date    ON FeePayment(paymentDate);
 CREATE INDEX IF NOT EXISTS idx_payment_receipt ON FeePayment(receiptNo);
+
+CREATE TABLE IF NOT EXISTS PaymentMonth (
+  id        TEXT PRIMARY KEY,
+  studentId TEXT NOT NULL REFERENCES Student(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  month     TEXT NOT NULL,
+  paymentId TEXT NOT NULL REFERENCES FeePayment(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  UNIQUE (studentId, month)
+);
+CREATE INDEX IF NOT EXISTS idx_paymentmonth_month   ON PaymentMonth(month);
+CREATE INDEX IF NOT EXISTS idx_paymentmonth_payment ON PaymentMonth(paymentId);
 
 CREATE TABLE IF NOT EXISTS CommitteeMember (
   id               TEXT PRIMARY KEY,
@@ -139,6 +150,50 @@ export function resolveDbFile(): string | null {
 let bootstrapped = false
 
 /**
+ * Reconcile the PaymentMonth allocation ledger with the receipts' JSON
+ * months (PS-001). Idempotent — runs on every boot: legacy rows, rows the
+ * demo seeder wrote directly, and crash-window rows (payment inserted,
+ * allocations not yet) all get their allocation rows back, because the
+ * JSON months column is the read source of truth during the transition.
+ * Orphan allocation rows (their receipt is gone — FK cascades can be
+ * skipped on connections where the pragma is off) are removed so they
+ * can never block a fresh collect.
+ */
+export async function syncPaymentLedger(): Promise<{ added: number; orphans: number; clashes: number }> {
+  const dbFile = resolveDbFile()
+  if (!dbFile) return { added: 0, orphans: 0, clashes: 0 }
+  const client = createClient({ url: `file:${dbFile}` })
+  try {
+    const payments = (
+      await client.execute("SELECT id, studentId, months FROM FeePayment")
+    ).rows as unknown as { id: string; studentId: string; months: string }[]
+    const existing = (
+      await client.execute("SELECT studentId, month FROM PaymentMonth")
+    ).rows as unknown as { studentId: string; month: string }[]
+    const { allocations, clashes } = planLedgerBackfill(payments, existing)
+    for (const a of allocations) {
+      await client.execute({
+        sql: "INSERT INTO PaymentMonth (id, studentId, month, paymentId) VALUES (?, ?, ?, ?)",
+        args: [a.id, a.studentId, a.month, a.paymentId],
+      })
+    }
+    const orphan = await client.execute(
+      "DELETE FROM PaymentMonth WHERE paymentId NOT IN (SELECT id FROM FeePayment)"
+    )
+    if (clashes.length > 0) {
+      // Legacy double-receipted months are reported, never rewritten
+      // (the audit rule: historical receipts are never merged or deleted).
+      console.warn(
+        `[PS-AMS] ledger reconciliation: ${clashes.length} legacy double-receipted month(s) detected — first receipt wins the ledger, receipts left untouched`
+      )
+    }
+    return { added: allocations.length, orphans: orphan.rowsAffected, clashes: clashes.length }
+  } finally {
+    client.close()
+  }
+}
+
+/**
  * Ensure the SQLite database exists with the full schema, and seed the
  * demo dataset the first time an empty database is seen.
  */
@@ -184,6 +239,14 @@ export async function bootstrapDatabase(): Promise<void> {
       )
     } else {
       console.warn(`[PS-AMS] database ready — ${studentCount} student record(s) present`)
+    }
+
+    // ---- 4: reconcile the billing allocation ledger (PS-001 backstop) ----
+    const ledger = await syncPaymentLedger()
+    if (ledger.added > 0 || ledger.orphans > 0) {
+      console.warn(
+        `[PS-AMS] ledger reconciled — ${ledger.added} allocation row(s) backfilled, ${ledger.orphans} orphan(s) removed`
+      )
     }
   } catch (e) {
     console.error("[PS-AMS] database bootstrap failed:", e instanceof Error ? e.message : e)

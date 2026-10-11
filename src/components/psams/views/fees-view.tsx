@@ -605,7 +605,10 @@ function DefaultersTab() {
                           toast({ title: "No mobile number on file", description: `${r.student.fullName} has no mobile number in the profile.`, variant: "destructive" })
                           return
                         }
-                        const pending = r.overdueMonths.length > 0 ? r.overdueMonths : r.pendingMonths
+                        // PS-011: the Outstanding figure covers every PENDING
+                        // month (overdue + current) — the reminder text must
+                        // list exactly the periods that amount pays for.
+                        const pending = r.pendingMonths
                         try {
                           const res = await dispatchWa(r.student.mobile, reminderWaMessage({ studentName: r.student.fullName, academyName: settings?.academyName, periodsLabel: pending.map(monthLabel).join(", "), dueAmount: r.dueAmount }))
                           if (res.via === "linked") {

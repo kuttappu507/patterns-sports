@@ -138,6 +138,37 @@ if (!bootDdl) {
   }
 }
 
+// -- FK actions: FeePayment → Student must be ON DELETE RESTRICT (PS-005) in
+// BOTH raw DDL copies. SQLite cannot ALTER an FK action, so a silent drift
+// back to CASCADE would reintroduce the financial-history wipe on fresh DBs.
+function fkActionForStudent(src, table) {
+  const m = src.match(new RegExp(`CREATE TABLE IF NOT EXISTS ${table}\\s*\\(([^;]*?)\\n\\);`, "s"))
+  if (!m) return null
+  const fm = m[1].match(/studentId\s+TEXT NOT NULL REFERENCES Student\(id\) ON DELETE (\w+)/)
+  return fm ? fm[1] : null
+}
+for (const [label, src] of [
+  ["schema.sql", sqlSrc],
+  ["bootstrap.ts SCHEMA_DDL", bootDdl ? bootDdl[1] : null],
+]) {
+  if (!src) continue
+  const action = fkActionForStudent(src, "FeePayment")
+  if (action !== "RESTRICT") {
+    errors.push(`schema: FeePayment.studentId must be ON DELETE RESTRICT in ${label} (found: ${action ?? "no FK"}) — financial history depends on it`)
+  }
+  const ledger = fkActionForStudent(src, "PaymentMonth")
+  if (ledger !== "CASCADE") {
+    errors.push(`schema: PaymentMonth.studentId must be ON DELETE CASCADE in ${label} (found: ${ledger ?? "no FK"})`)
+  }
+}
+const feePaymentPrisma = prismaSrc.match(/model FeePayment \{([\s\S]*?)\n\}/)
+if (!feePaymentPrisma || !/onDelete:\s*Restrict/.test(feePaymentPrisma[1])) {
+  errors.push("schema: prisma FeePayment.student must declare onDelete: Restrict")
+}
+if (!prismaSrc.includes("model PaymentMonth")) {
+  errors.push("schema: prisma must declare the PaymentMonth allocation-ledger model")
+}
+
 // -- diff models ↔ tables --
 for (const [model, cols] of models) {
   const table = tables.get(model)

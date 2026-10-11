@@ -4,6 +4,8 @@
 - **Principle:** data integrity and recoverability first; small, reviewable, reversible increments; no rewrites; preserve features/design/offline capability.
 - **Rule:** every phase ends with the full gate suite (`npm run verify` + `client-audit` + `next build`) green and a reviewed diff. Windows compile correctness is gated by `build-exe.yml` (tag build); Rust changes additionally get `rustfmt --edition 2021` parse checks locally.
 - **Effort keys:** S ≤ ½ day · M ≈ 1 day · L ≈ 2–3 days (single-dev, including tests).
+- **Policy decisions (§6) adopted 2026-10-11 (owner: "continue"):** Q1a (arrears repriced at current fee, documented) · Q2a (Restrict + archive-only) · Q3a (zero-fee auto-settled) · Q6a (no advance months) · Q7a (epsilon/round compare now). Documented in README → "Fee & Billing Rules".
+- **Status (2026-10-11):** 3A-4…3A-9 ✅ DONE (balance/financial items — ledger live on web, desktop backstop implemented, 87 tests green incl. live concurrency evidence); 3A-1…3A-3 (Rust backup/restore) still pending — cargo unavailable in sandbox, Windows CI compiles on tag.
 
 ---
 
@@ -16,12 +18,12 @@
 | 3A-1 | Backup crash-safety | PS-002 | M | `VACUUM INTO` snapshot from a short-lived connection (single consistent .db, no sidecars) → `PRAGMA quick_check` + size verify → mirror media with per-file error counts → return success/failure counts; `backup_now` propagates failure; `.partial` staging + timestamp with millis; retention pruning (keep N); UI renders real outcome incl. skipped-file counts |
 | 3A-2 | Restore crash-safety | PS-003 | M | pre-restore snapshot = checkpointed copy (or db+wal+shm together); staged → `.tmp` → `quick_check` → atomic `fs::rename`; auto-rollback from `pre` on any failure; failure record surfaced to UI |
 | 3A-3 | Restore validation + media | PS-006 | S | post-stage validation (`quick_check` + `Student/FeePayment/Attendance` present + optional schema version); optional media restore from sibling `media-<stamp>` with confirm + skipped-file report |
-| 3A-4 | Billing allocation ledger | PS-001 (+PS-030 month filtering) | L | implement MN-1: `PaymentMonth(studentId, month, paymentId)` + `UNIQUE(studentId,month)` in all 3 DDL copies; backfill from existing `months` JSON inside a transaction; reconciliation report (receipts vs allocations, counts+sums); dual writes during transition; web `db.$transaction`, desktop `BEGIN IMMEDIATE…COMMIT`; retry loop re-validates |
-| 3A-5 | Zero-fee handling | PS-004 | S | `computeFeeStatus`: `monthlyFee <= 0` ⇒ settled (Q3a) + tests |
-| 3A-6 | Deletion guard | PS-005 | M | `onDelete: Restrict` for FeePayment (3 DDL copies + Prisma), 409 when payments exist (Q2a), desktop delete in one transaction, media unlink on success; MN-4 FK migration for existing DBs |
-| 3A-7 | Payment input bounds | PS-008, PS-011 | S | window bounds + calendar-real paymentDate ≤ today + mode allowlist in `assertValidPayment` (Q6a); reminder period list uses `pendingMonths` |
-| 3A-8 | Money precision | PS-009 | S | epsilon/round compare in `assertValidPayment` + rounded aggregates (Q7a); Int-paise deferred unless owner opts for Q7b |
-| 3A-9 | Arrears policy | PS-007 | S | document chosen Q1 policy in validator JSDoc + README (+ `feeAtAccrual` column only if Q1b) |
+| 3A-4 ✅ | Billing allocation ledger | PS-001 (+PS-030 month filtering) | L | **DONE 2026-10-11.** `PaymentMonth(studentId, month, paymentId)` + `UNIQUE(studentId,month)` in all 3 DDL copies + Prisma; boot-time backfill from `months` JSON (first receipt wins, clashes reported, never rewritten) on BOTH backends; reconciliation check runs every boot; web collect = `db.$transaction` (read + ledger pre-check + validate + insert + allocations, retry re-validates, clash → 409); desktop = UNIQUE backstop + compensating cleanup (plugin pool cannot host BEGIN…COMMIT — verified against tauri-plugin-sql 2.2.0 source; documented in tauri-api.ts); live concurrency evidence: tests/payments-ledger.integration.test.ts |
+| 3A-5 ✅ | Zero-fee handling | PS-004 | S | **DONE.** `computeFeeStatus`: `monthlyFee <= 0` ⇒ settled + tests |
+| 3A-6 ✅ | Deletion guard | PS-005 | M | **DONE.** `onDelete: Restrict` for FeePayment in 3 DDL copies + Prisma (fresh DBs; legacy FK rebuild rides the 3C migration runner — documented); 409 when payments exist (Q2a) on BOTH backends; desktop delete = explicit cascade + PaymentMonth first + media unlink; media unlink on web |
+| 3A-7 ✅ | Payment input bounds | PS-008, PS-011 | S | **DONE.** window bounds + calendar-real paymentDate ≤ today + mode allowlist in `assertValidPayment` (Q6a); reminder period list uses `pendingMonths` |
+| 3A-8 ✅ | Money precision | PS-009 | S | **DONE.** `roundMoney` + half-rupee tolerance compare in `assertValidPayment` + rounded `dueAmount` (Q7a); Int-paise deferred |
+| 3A-9 ✅ | Arrears policy | PS-007 | S | **DONE.** Q1a policy documented in `computeFeeStatus`/`assertValidPayment` JSDoc + README "Fee & Billing Rules"; `feeAtAccrual` column not needed (Q1a) |
 
 **Migration safety protocol (applies to 3A-4/3A-6):** build legacy-shaped fixture DBs (pre-`gender`, pre-ledger), run the migration on copies, compare before/after counts and sums per table, produce a reconciliation report, and only then ship. Never migrate a real database automatically without a verified backup and owner approval.
 

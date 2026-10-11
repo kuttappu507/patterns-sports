@@ -141,5 +141,17 @@ export async function loadDemoDataset(db: PrismaClient): Promise<{ students: num
     update: { value: trackedValue },
   })
 
+  // Demo receipts bypass the collect API (no ledger dual-write) — reconcile
+  // the PaymentMonth ledger immediately (PS-001; idempotent, cheap).
+  try {
+    const { syncPaymentLedger } = await import("@/lib/psams/bootstrap")
+    const ledger = await syncPaymentLedger()
+    if (ledger.added > 0) {
+      console.warn(`[PS-AMS] demo ledger reconciled — ${ledger.added} allocation row(s) backfilled`)
+    }
+  } catch (e) {
+    console.warn("[PS-AMS] demo ledger sync skipped:", e instanceof Error ? e.message : e)
+  }
+
   return { students: demoStudentIds.length, committee: demoCommitteeIds.length }
 }
