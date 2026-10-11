@@ -1,7 +1,7 @@
 {
   "name": "ps-ams",
   "version": "1.6.4",
-  "description": "Pattern Sports Academy Management System \u2014 offline-first academy suite (Next.js SPA + Tauri v2 desktop shell, Clean Court / Dark Court themes)",
+  "description": "Pattern Sports Academy Management System — offline-first academy suite (Next.js SPA + Tauri v2 desktop shell, Clean Court / Dark Court themes)",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
@@ -18,7 +18,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check:parity": "node scripts/check-parity.mjs",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run check:parity"
+    "verify": "npm run check:tracked && npm run lint && npm run typecheck && npm run test && npm run check:parity",
+    "check:tracked": "node scripts/check-tracked-files.mjs"
   },
   "dependencies": {
     "@fontsource/poppins": "^5.3.0",
