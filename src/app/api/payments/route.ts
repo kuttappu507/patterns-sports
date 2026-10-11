@@ -106,8 +106,19 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const { studentId, months, amount } = body
-    if (!studentId || !Array.isArray(months) || months.length === 0) {
-      return NextResponse.json({ error: "studentId and at least one billing month are required" }, { status: 400 })
+    // Month TYPE is checked here (not just shape): a numeric/garbage entry
+    // would otherwise crash the Prisma query build (500) instead of a clean
+    // 400 — the ledger `in` filter below requires strings.
+    if (
+      !studentId ||
+      !Array.isArray(months) ||
+      months.length === 0 ||
+      !months.every((m) => typeof m === "string")
+    ) {
+      return NextResponse.json(
+        { error: "studentId and at least one billing month (YYYY-MM) are required" },
+        { status: 400 }
+      )
     }
     const amountNum = Number(amount)
     const now = new Date()
