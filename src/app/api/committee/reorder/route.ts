@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { mapApiError } from "@/lib/psams/api-error"
 
 // POST /api/committee/reorder — persist new display order
 export async function POST(req: NextRequest) {
@@ -11,7 +12,6 @@ export async function POST(req: NextRequest) {
     )
     return NextResponse.json({ ok: true })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Failed to reorder committee"
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return mapApiError(e, "Failed to reorder committee")
   }
 }

@@ -439,6 +439,41 @@ describe("assertValidStudentInput", () => {
   it("rejects missing required fields", () => {
     expect(() => assertValidStudentInput({ ...base, mobile: undefined })).toThrow(/Missing required field: mobile/)
   })
+
+  // PS-025 — registration-date bounds (a future registration makes a real
+  // defaulter display as fully paid, indefinitely)
+  it("rejects a future registration date", () => {
+    expect(() => assertValidStudentInput({ ...base, registrationDate: "2999-01-01" })).toThrow(/Registration date cannot be in the future/)
+  })
+
+  it("rejects a registration date before the date of birth", () => {
+    expect(() => assertValidStudentInput({ ...base, registrationDate: "2005-01-01" })).toThrow(/before the date of birth/)
+  })
+
+  it("rejects a calendar-impossible registration date", () => {
+    expect(() => assertValidStudentInput({ ...base, registrationDate: "2026-02-31" })).toThrow(/Registration date is invalid/)
+  })
+
+  it("accepts a today-or-past registration date after the DOB", () => {
+    const today = new Date()
+    const key = `${today.getFullYear()}-01-15`
+    expect(() => assertValidStudentInput({ ...base, dateOfBirth: "2005-01-01", registrationDate: key })).not.toThrow()
+  })
+
+  // PS-017 support — measurement bounds
+  it("rejects garbage/negative measurements", () => {
+    expect(() => assertValidStudentInput({ ...base, heightCm: "abc" })).toThrow(/positive numbers/)
+    expect(() => assertValidStudentInput({ ...base, weightKg: -30 })).toThrow(/positive numbers/)
+  })
+
+  it("exposes ValidationError as the error name (PS-050 contract)", () => {
+    try {
+      assertValidStudentInput({ ...base, mobile: "nope" })
+      expect.unreachable()
+    } catch (e) {
+      expect((e as Error).name).toBe("ValidationError")
+    }
+  })
 })
 
 describe("assertValidAttendanceRecords", () => {
@@ -451,6 +486,19 @@ describe("assertValidAttendanceRecords", () => {
   it("rejects a bad date or status in ANY record", () => {
     expect(() => assertValidAttendanceRecords([rec, { ...rec, date: "05/01/2026" }])).toThrow(/YYYY-MM-DD/)
     expect(() => assertValidAttendanceRecords([{ ...rec, status: "Late" }])).toThrow(/Present or Absent/)
+  })
+
+  // PS-026 — calendar-real + future-date guards
+  it("rejects calendar-impossible and future dates", () => {
+    expect(() => assertValidAttendanceRecords([{ ...rec, date: "2026-02-31" }])).toThrow(/real calendar date/)
+    expect(() => assertValidAttendanceRecords([{ ...rec, date: "2999-01-01" }])).toThrow(/future/)
+  })
+
+  it("rejects an empty/oversized batch and oversized batches of records", () => {
+    expect(() => assertValidAttendanceRecords([{ ...rec, batch: "   " }])).toThrow(/batch name/)
+    expect(() => assertValidAttendanceRecords([{ ...rec, batch: "b".repeat(41) }])).toThrow(/batch name/)
+    const many = Array.from({ length: 501 }, () => rec)
+    expect(() => assertValidAttendanceRecords(many)).toThrow(/max 500/)
   })
 })
 
@@ -661,6 +709,17 @@ describe("phoneDigits", () => {
     expect(phoneDigits("+91 98765 43210")).toBe("9876543210")
     expect(phoneDigits("09876543210")).toBe("9876543210")
     expect(phoneDigits("919876543210")).toBe("9876543210")
+  })
+
+  // PS-033 — the double-prefix paste must not corrupt into a wrong-but-valid
+  // number. "0" + "91" + the real 10-digit number = 13 digits; the loop
+  // strips 0 → 91 → bare 10. (An ambiguous 12-digit paste degrades to a
+  // 9-digit value the form rejects — never to a WRONG valid number.)
+  it("loops the prefix strip (091… pastes never yield a wrong 10-digit number)", () => {
+    expect(phoneDigits("0919876543210")).toBe("9876543210")
+    expect(phoneDigits("0091 98765 43210")).toBe("9876543210")
+    expect(phoneDigits("9198765432")).toBe("9198765432") // genuine 10-digit, untouched
+    expect(phoneDigits("091987654321")).not.toMatch(/^\d{10}$/) // ambiguous paste → rejected by the form, not corrupted
   })
 
   it("strips every non-digit character", () => {

@@ -16,6 +16,11 @@ export async function GET() {
   ])
 
   const active = students.filter((s) => s.status === "Active")
+  // PS-026 — the attendance ratio must reflect ACTIVE players only: a stale
+  // mark left behind by a student who later became Inactive/Alumni used to
+  // count in present/absent/marked against the totalActive denominator.
+  const activeIds = new Set(active.map((s) => s.id))
+  const attendanceTodayActive = attendanceToday.filter((a) => activeIds.has(a.studentId))
 
   const categories = ["Mini", "Sub-Junior", "Junior", "Youth", "Senior"]
   const categoryBreakdown = categories.map((category) => ({
@@ -41,8 +46,8 @@ export async function GET() {
   const monthRevenue = payments.reduce((sum, p) => sum + p.amount, 0)
   const todayRevenue = payments.filter((p) => new Date(p.paymentDate) >= dayStart).reduce((sum, p) => sum + p.amount, 0)
 
-  const present = attendanceToday.filter((a) => a.status === "Present").length
-  const absent = attendanceToday.filter((a) => a.status === "Absent").length
+  const present = attendanceTodayActive.filter((a) => a.status === "Present").length
+  const absent = attendanceTodayActive.filter((a) => a.status === "Absent").length
 
   // Recent payments (latest 6)
   const recentPayments = payments.slice(0, 6).map((p) => ({
@@ -78,7 +83,7 @@ export async function GET() {
     },
     monthRevenue,
     todayRevenue,
-    attendanceToday: { present, absent, marked: attendanceToday.length, totalActive: active.length },
+    attendanceToday: { present, absent, marked: attendanceTodayActive.length, totalActive: active.length },
     recentPayments,
     upcomingBirthdays,
     committee,

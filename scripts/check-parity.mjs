@@ -213,6 +213,102 @@ for (const table of tables.keys()) {
   }
 }
 
+// ---------------- 1b. Index / composite-unique / FK-action parity (PS-044) ----------------
+//
+// Columns alone are not enough: an index that exists only in schema.sql (or
+// only in the bootstrap copy) boots one backend with fast, indexed month
+// filtering and the other with full-table scans. Compare:
+//   - @@index([a, b])  ↔ CREATE INDEX … ON Table (a, b)      (both DDL copies)
+//   - @@unique([a, b]) ↔ UNIQUE (a, b) table constraint
+//   - onDelete: Cascade/Restrict ↔ ON DELETE CASCADE/RESTRICT
+
+const normCols = (s) =>
+  s
+    .replace(/[[\]()]/g, " ")
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .join(",")
+
+const prismaIndexes = [] // { table, cols }
+const prismaUniques = [] // { table, cols }
+const prismaFks = [] // { table, col, onDelete }
+for (const m of prismaSrc.matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm)) {
+  const [, name, body] = m
+  for (const raw of body.split("\n")) {
+    const line = raw.trim()
+    const im = line.match(/^@@index\(\[([^\]]*)\]\)/)
+    if (im) prismaIndexes.push({ table: name, cols: normCols(im[1]) })
+    const um = line.match(/^@@unique\(\[([^\]]*)\]\)/)
+    if (um) prismaUniques.push({ table: name, cols: normCols(um[1]) })
+    // `student Student @relation(fields: [studentId], …, onDelete: Cascade)`
+    // — the FK COLUMN is the fields:[…] entry, not the relation field name.
+    const fm = line.match(
+      /^(\w+)\s+\w+\s+@relation\(.*?fields:\s*\[(\w+)\].*?onDelete:\s*(Cascade|Restrict|SetNull|NoAction)/
+    )
+    if (fm) prismaFks.push({ table: name, col: fm[2], onDelete: fm[3].toUpperCase() })
+  }
+}
+
+function parseSqlIndexes(src) {
+  const idx = []
+  const uniq = []
+  const fks = []
+  for (const m of src.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)\s*\(([\s\S]*?)\n\);/g)) {
+    const [, name, body] = m
+    for (const raw of body.split("\n")) {
+      const line = raw.split("--")[0].trim()
+      const um = line.match(/^UNIQUE\s*\(([^)]*)\)/i)
+      if (um) uniq.push({ table: name, cols: normCols(um[1]) })
+      const fkm = line.match(/^(\w+)\s+\w+.*?REFERENCES\s+\w+\s*\(\w+\)(.*?)(,)?$/i)
+      if (fkm) {
+        const del = fkm[2].match(/ON DELETE\s+(CASCADE|RESTRICT|SET NULL|NO ACTION)/i)
+        fks.push({ table: name, col: fkm[1], onDelete: del ? del[1].toUpperCase() : "NO ACTION" })
+      }
+    }
+  }
+  for (const m of src.matchAll(/CREATE INDEX IF NOT EXISTS (\w+)\s+ON\s+(\w+)\s*\(([^)]*)\)/gi)) {
+    idx.push({ table: m[2], cols: normCols(m[3]) })
+  }
+  return { idx, uniq, fks }
+}
+
+const sqlSchema = parseSqlIndexes(sqlSrc)
+const bootSql = bootDdl ? parseSqlIndexes(bootDdl[1]) : { idx: [], uniq: [], fks: [] }
+
+const idxKey = (r) => `${r.table}(${r.cols})`
+const sqlIdxSet = new Set(sqlSchema.idx.map(idxKey))
+for (const pi of prismaIndexes) {
+  if (!sqlIdxSet.has(idxKey(pi))) {
+    errors.push(`schema: index ${idxKey(pi)} exists in prisma but has no CREATE INDEX in schema.sql`)
+  }
+}
+const bootIdxSet = new Set(bootSql.idx.map(idxKey))
+for (const key of [...sqlIdxSet, ...bootIdxSet]) {
+  if (sqlIdxSet.has(key) !== bootIdxSet.has(key)) {
+    errors.push(`schema: index ${key} exists in only ONE of schema.sql / bootstrap.ts SCHEMA_DDL`)
+  }
+}
+
+const uniqKey = (r) => `${r.table}(${r.cols})`
+const sqlUniqSet = new Set(sqlSchema.uniq.map(uniqKey))
+for (const pu of prismaUniques) {
+  if (!sqlUniqSet.has(uniqKey(pu))) {
+    errors.push(`schema: composite @@unique ${uniqKey(pu)} in prisma has no UNIQUE table constraint in schema.sql`)
+  }
+}
+
+const fkKey = (r) => `${r.table}.${r.col}`
+const sqlFkMap = new Map(sqlSchema.fks.map((f) => [fkKey(f), f.onDelete]))
+for (const pf of prismaFks) {
+  const sqlAction = sqlFkMap.get(fkKey(pf))
+  if (sqlAction === undefined) {
+    errors.push(`schema: FK ${fkKey(pf)} has onDelete:${pf.onDelete} in prisma but no REFERENCES in schema.sql`)
+  } else if (sqlAction !== pf.onDelete) {
+    errors.push(`schema: FK ${fkKey(pf)} delete action mismatch — prisma ${pf.onDelete} vs schema.sql ${sqlAction}`)
+  }
+}
+
 // ---------------- 2. API surface parity ----------------
 
 const apiSrc = readFileSync(join(root, "src/lib/psams/api.ts"), "utf8")

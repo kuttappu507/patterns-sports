@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { monthLabel, parsePaidMonths, nextReceiptNo, computeFeeStatus, assertValidPayment } from "@/lib/psams/domain"
+import { monthLabel, nextReceiptNo, computeFeeStatus, assertValidPayment } from "@/lib/psams/domain"
+import { mapApiError } from "@/lib/psams/api-error"
 import { toWirePayment, type FeePaymentRow } from "@/lib/psams/serialize"
 
 function isUniqueViolation(e: unknown): boolean {
@@ -43,22 +44,42 @@ export async function GET(req: NextRequest) {
   const month = sp.get("month") || undefined
   const limit = sp.get("limit") ? Number(sp.get("limit")) : undefined
 
-  const where: Record<string, unknown> = {}
-  if (studentId) where.studentId = studentId
-  if (month) {
-    // payments whose JSON months array contains the given "YYYY-MM"
-    const all = await db.feePayment.findMany({ where: studentId ? { studentId } : {}, include: { student: true }, orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }] })
-    const filtered = all.filter((p) => parsePaidMonths(p.months).includes(month))
-    return NextResponse.json(filtered.map(toWirePaymentWithStudent))
-  }
+  // PS-029 parity — the desktop orders by paymentDate DESC, createdAt DESC,
+  // receiptNo DESC; the web side now uses the identical tiebreak.
+  const orderBy: Prisma.FeePaymentOrderByWithRelationInput[] = [
+    { paymentDate: "desc" },
+    { createdAt: "desc" },
+    { receiptNo: "desc" },
+  ]
 
-  const rows = await db.feePayment.findMany({
-    where,
-    include: { student: true },
-    orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
-    ...(limit ? { take: limit } : {}),
-  })
-  return NextResponse.json(rows.map(toWirePaymentWithStudent))
+  try {
+    if (month) {
+      // PS-030 — month filtering rides the PaymentMonth ledger index
+      // (idx_paymentmonth_month) instead of loading EVERY payment and
+      // JSON-parsing the months column row by row. The ledger is kept in
+      // sync by the transactional collect (PS-001) and reconciled at boot,
+      // so it is the authoritative month index. `limit` now also applies
+      // here (the desktop always applied it — the web dropped it).
+      const allocs = await db.paymentMonth.findMany({ where: { month }, select: { paymentId: true } })
+      const rows = await db.feePayment.findMany({
+        where: { id: { in: allocs.map((a) => a.paymentId) }, ...(studentId ? { studentId } : {}) },
+        include: { student: true },
+        orderBy,
+        ...(limit ? { take: limit } : {}),
+      })
+      return NextResponse.json(rows.map(toWirePaymentWithStudent))
+    }
+
+    const rows = await db.feePayment.findMany({
+      where: studentId ? { studentId } : {},
+      include: { student: true },
+      orderBy,
+      ...(limit ? { take: limit } : {}),
+    })
+    return NextResponse.json(rows.map(toWirePaymentWithStudent))
+  } catch (e) {
+    return mapApiError(e, "Failed to load payments")
+  }
 }
 
 type PaymentWithStudent = Prisma.FeePaymentGetPayload<{ include: { student: { select: { fullName: true; admissionNo: true } } } }>

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client"
+import type { PrismaClient, Prisma } from "@prisma/client"
 import { nextAdmissionNo, nextReceiptNo } from "@/lib/psams/domain"
 import {
   DEMO_STUDENTS,
@@ -28,7 +28,16 @@ export const AUTO_SEED_KEY = "autoSeedDone"
  * client. Idempotency and admission/receipt numbering continue from
  * the current maxima, so it is safe on a populated database too.
  */
-export async function loadDemoDataset(db: PrismaClient): Promise<{ students: number; committee: number }> {
+/**
+ * Client accepted here is EITHER the plain PrismaClient OR an interactive
+ * transaction client (PS-021): the web POST /api/demo route runs the whole
+ * load inside ONE $transaction and writes the tracking flag inside it, so
+ * a mid-load failure (or a concurrent double-load) can never leave fake
+ * students/payments permanently mixed into a real academy's ledger.
+ */
+type DemoClient = PrismaClient | Prisma.TransactionClient
+
+export async function loadDemoDataset(db: DemoClient): Promise<{ students: number; committee: number }> {
   const demoStudentIds: string[] = []
   const demoCommitteeIds: string[] = []
 

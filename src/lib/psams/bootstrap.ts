@@ -2,6 +2,7 @@ import { createClient } from "@libsql/client"
 import fs from "node:fs"
 import path from "node:path"
 import { planLedgerBackfill } from "@/lib/psams/ledger"
+import { applyMigrations, type MigrationClient } from "@/lib/psams/migrations"
 
 // ============================================================
 // PS-AMS :: boot-time database bootstrap (web / preview server).
@@ -199,7 +200,6 @@ export async function syncPaymentLedger(): Promise<{ added: number; orphans: num
  */
 export async function bootstrapDatabase(): Promise<void> {
   if (bootstrapped) return
-  bootstrapped = true
 
   try {
     const dbFile = resolveDbFile()
@@ -210,12 +210,40 @@ export async function bootstrapDatabase(): Promise<void> {
     fs.mkdirSync(path.dirname(dbFile), { recursive: true })
 
     // ---- 1 + 2: idempotent DDL through a raw libsql connection ----
+    // PS-023 — a failed DDL statement is a HARD boot error, not a warn: a
+    // locked or full disk previously booted an app with missing tables that
+    // then failed far from the cause. The failing statement is NAMED in the
+    // error; `bootstrapped` latches success only, so a later call retries.
     const client = createClient({ url: `file:${dbFile}` })
-    for (const stmt of SCHEMA_DDL.split(";")) {
-      const sql = stmt.trim()
-      if (sql) await client.execute(sql)
+    try {
+      const statements = SCHEMA_DDL.split(";")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+      for (let i = 0; i < statements.length; i++) {
+        const sql = statements[i]
+        try {
+          await client.execute(sql)
+        } catch (e) {
+          throw new Error(
+            `bootstrap DDL #${i + 1}/${statements.length} failed: ${e instanceof Error ? e.message : e} — statement: ${sql.slice(0, 100)}`
+          )
+        }
+      }
+      // MN-2 / PS-019 — versioned migrations for EXISTING databases: the
+      // idempotent DDL above only creates MISSING tables; column additions
+      // to tables an older release created are applied from the shared
+      // MIGRATIONS list, tracked by PRAGMA user_version. A failing migration
+      // is a LOUD boot error (never swallowed).
+      const migClient: MigrationClient = {
+        execute: async (sql) => {
+          await client.execute(sql)
+        },
+        select: async <T>(sql: string) => (await client.execute(sql)).rows as unknown as T[],
+      }
+      await applyMigrations(migClient, "web")
+    } finally {
+      client.close()
     }
-    client.close()
 
     // ---- 3: auto-seed demo content once, only when truly empty ----
     const { db } = await import("@/lib/db")
@@ -227,7 +255,11 @@ export async function bootstrapDatabase(): Promise<void> {
       db.setting.findUnique({ where: { key: AUTO_SEED_KEY } }),
     ])
 
-    if (studentCount === 0 && !demoFlag?.value && !autoSeedFlag?.value) {
+    // PS-022 (§6 Q4): production boots NEVER auto-seed. A real academy's
+    // first launch must not start with 12 fake players consuming real
+    // admission/receipt numbers — Settings → Demo Data loads it on demand.
+    const isProd = process.env.NODE_ENV === "production"
+    if (!isProd && studentCount === 0 && !demoFlag?.value && !autoSeedFlag?.value) {
       const res = await loadDemoDataset(db)
       await db.setting.upsert({
         where: { key: AUTO_SEED_KEY },
@@ -237,6 +269,8 @@ export async function bootstrapDatabase(): Promise<void> {
       console.warn(
         `[PS-AMS] empty database — seeded demo academy (${res.students} players, ${res.committee} committee members)`
       )
+    } else if (isProd && studentCount === 0 && !demoFlag?.value) {
+      console.warn("[PS-AMS] empty database — auto-seed is disabled in production; load demo data from Settings → Demo Data if needed")
     } else {
       console.warn(`[PS-AMS] database ready — ${studentCount} student record(s) present`)
     }
@@ -248,7 +282,11 @@ export async function bootstrapDatabase(): Promise<void> {
         `[PS-AMS] ledger reconciled — ${ledger.added} allocation row(s) backfilled, ${ledger.orphans} orphan(s) removed`
       )
     }
+
+    // PS-023 — success is latched ONLY after every step above completed.
+    bootstrapped = true
   } catch (e) {
     console.error("[PS-AMS] database bootstrap failed:", e instanceof Error ? e.message : e)
+    throw e
   }
 }

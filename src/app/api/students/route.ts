@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
 import { computeAge, nextAdmissionNo, assertValidStudentInput } from "@/lib/psams/domain"
+import { mapApiError } from "@/lib/psams/api-error"
 
 function isUniqueViolation(e: unknown): boolean {
   return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002"
@@ -19,6 +20,12 @@ export async function GET(req: NextRequest) {
   const minAge = sp.get("minAge") ? Number(sp.get("minAge")) : undefined
   const maxAge = sp.get("maxAge") ? Number(sp.get("maxAge")) : undefined
   const minHeight = sp.get("minHeight") ? Number(sp.get("minHeight")) : undefined
+  // PS-030 — optional server-side pagination (validated bounds); the UI may
+  // stay on full-list mode, but the endpoint no longer FORCES full loads.
+  const rawTake = sp.get("take") ? Number(sp.get("take")) : undefined
+  const rawSkip = sp.get("skip") ? Number(sp.get("skip")) : undefined
+  const take = rawTake !== undefined && Number.isFinite(rawTake) ? Math.min(Math.max(Math.floor(rawTake), 1), 1000) : undefined
+  const skip = rawSkip !== undefined && Number.isFinite(rawSkip) ? Math.max(Math.floor(rawSkip), 0) : undefined
 
   const where: Record<string, unknown> = {}
   if (q) {
@@ -36,7 +43,12 @@ export async function GET(req: NextRequest) {
   if (batch) where.trainingBatch = batch
   if (minHeight) where.heightCm = { gte: minHeight }
 
-  const rows = await db.student.findMany({ where, orderBy: { fullName: "asc" } })
+  const rows = await db.student.findMany({
+    where,
+    orderBy: { fullName: "asc" },
+    ...(take ? { take } : {}),
+    ...(skip ? { skip } : {}),
+  })
 
   const filtered = rows.filter((s) => {
     if (minAge !== undefined || maxAge !== undefined) {
@@ -55,7 +67,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     // Shared sanity guards (also enforced by the desktop createStudent):
-    // required fields, future-DOB guard, mobile digits, non-negative fee.
+    // required fields, future-DOB guard, mobile digits, non-negative fee,
+    // registration-date bounds (PS-025). ValidationError → 400 via mapper.
     try {
       assertValidStudentInput(body as Record<string, unknown>)
     } catch (v) {
@@ -107,7 +120,6 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: "Failed to create student" }, { status: 500 })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Failed to create student"
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return mapApiError(e, "Failed to create student")
   }
 }

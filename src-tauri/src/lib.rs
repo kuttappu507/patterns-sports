@@ -209,8 +209,12 @@ fn validate_pams_db(path: &PathBuf) -> Result<u64, String> {
         return Err("file is too small to be a PS-AMS database".into());
     }
     let probe: Result<(String, i64), String> = tauri::async_runtime::block_on(async move {
+        // PS-024 — FK enforcement is explicit on every connection this app
+        // opens (sqlx's own default is already ON; pinning it here keeps the
+        // guarantee independent of sqlx version changes).
         let opts = sqlx::sqlite::SqliteConnectOptions::new()
             .filename(path)
+            .foreign_keys(true)
             .busy_timeout(std::time::Duration::from_secs(15));
         let mut conn = match sqlx::SqliteConnection::connect_with(&opts).await {
             Ok(c) => c,
@@ -288,8 +292,10 @@ fn checkpoint_wal(db: &PathBuf) -> Result<(), String> {
 /// VACUUM INTO / WAL checkpoint on the app's own live database).
 fn sqlite_connect(path: &PathBuf, _read_only: bool) -> Result<sqlx::SqliteConnection, String> {
     use sqlx::Connection;
+    // PS-024 — explicit FK enforcement on our own connections (see probe site).
     let opts = sqlx::sqlite::SqliteConnectOptions::new()
         .filename(path)
+        .foreign_keys(true)
         .busy_timeout(std::time::Duration::from_secs(15));
     tauri::async_runtime::block_on(sqlx::SqliteConnection::connect_with(&opts))
         .map_err(|e| format!("could not open {}: {e}", path.display()))

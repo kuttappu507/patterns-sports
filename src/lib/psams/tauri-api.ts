@@ -27,7 +27,6 @@ import {
   computeFeeStatus,
   classifyFeeCycle,
   monthLabel,
-  parsePaidMonths,
   sanitizeFileName,
   todayKey,
   nextAdmissionNo,
@@ -36,10 +35,12 @@ import {
   assertValidStudentInput,
   assertValidAttendanceRecords,
   assertValidUpload,
+  ValidationError,
   isSafeMediaPath,
   DEFAULT_SETTINGS,
 } from "./domain"
 import { planLedgerBackfill } from "./ledger"
+import { applyMigrations, type MigrationClient } from "./migrations"
 import {
   DEMO_STUDENTS,
   DEMO_COMMITTEE,
@@ -85,58 +86,63 @@ export async function getDb(): Promise<DB> {
 }
 
 async function ensureSchema(db: DB): Promise<void> {
-  try {
-    // Schema DDL is embedded in the Rust binary (include_str!) and served
-    // by the `schema_sql` command — no runtime resource files needed, so
-    // the portable exe works with zero sidecar assets.
-    const sql = await invoke<string>("schema_sql")
-    // IMPORTANT: strip comment-only lines BEFORE splitting on ";".
-    // schema.sql places a "-- ----------" banner above every CREATE TABLE;
-    // naive splitting lumps the banner into the statement that follows, and
-    // filtering chunks that start with "--" silently dropped EVERY
-    // CREATE TABLE — the desktop DB booted with zero tables, which looked
-    // like "demo data not coming / dashboard / pages not loading".
-    const cleaned = sql
-      .split("\n")
-      .filter((line) => !line.trim().startsWith("--"))
-      .join("\n")
-    const statements = cleaned
-      .split(";")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0)
-    for (const stmt of statements) {
-      try {
-        await db.execute(stmt)
-      } catch (e) {
-        // Idempotent DDL — "already exists" is expected on later boots.
-        // Anything else is a REAL failure that used to vanish silently;
-        // surface it so boot problems are diagnosable from the console.
-        console.warn("[PS-AMS] schema statement failed:", e instanceof Error ? e.message : e, "→", stmt.slice(0, 90))
-      }
+  // Schema DDL is embedded in the Rust binary (include_str!) and served
+  // by the `schema_sql` command — no runtime resource files needed, so
+  // the portable exe works with zero sidecar assets.
+  const sql = await invoke<string>("schema_sql")
+  // IMPORTANT: strip comment-only lines BEFORE splitting on ";".
+  // schema.sql places a "-- ----------" banner above every CREATE TABLE;
+  // naive splitting lumps the banner into the statement that follows, and
+  // filtering chunks that start with "--" silently dropped EVERY
+  // CREATE TABLE — the desktop DB booted with zero tables, which looked
+  // like "demo data not coming / dashboard / pages not loading".
+  const cleaned = sql
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("--"))
+    .join("\n")
+  const statements = cleaned
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+  // PS-023 — a failed DDL statement is a HARD boot error surfaced through
+  // the existing bootError channel (initBackend → page.tsx → splash + shell
+  // badge). It previously vanished into a console.warn and the app booted
+  // with missing tables that failed far from the cause. (The old "already
+  // exists" concern does not apply — every statement is IF NOT EXISTS.)
+  const failures: string[] = []
+  for (const stmt of statements) {
+    try {
+      await db.execute(stmt)
+    } catch (e) {
+      failures.push(`${e instanceof Error ? e.message : e} → ${stmt.slice(0, 90)}`)
     }
-    await runMigrations(db)
-  } catch (e) {
-    console.warn("[PS-AMS] schema bootstrap unavailable:", e instanceof Error ? e.message : e)
   }
+  if (failures.length > 0) {
+    throw new Error(
+      `Schema bootstrap failed (${failures.length}/${statements.length} statement(s)): ${failures.join(" | ")}`
+    )
+  }
+  await runMigrations(db)
 }
 
 /**
- * Column migrations for databases created by older versions.
- * CREATE TABLE IF NOT EXISTS cannot add columns to an existing table,
- * so each migration is guarded by a PRAGMA table_info lookup.
+ * Versioned migrations for databases created by older versions — the shared
+ * runner in migrations.ts (guarded ALTERs, PRAGMA user_version frontier).
  */
 async function runMigrations(db: DB): Promise<void> {
-  try {
-    const cols = await db.select<{ name: string }[]>("PRAGMA table_info(Student)", [])
-    const names = new Set(cols.map((c) => c.name))
-    // v1.6.0 — gender selection on the player profile
-    if (!names.has("gender")) {
-      await db.execute("ALTER TABLE Student ADD COLUMN gender TEXT NOT NULL DEFAULT ''", [])
-      console.warn("[PS-AMS] migrated: Student.gender added")
-    }
-  } catch (e) {
-    console.warn("[PS-AMS] migration check failed:", e instanceof Error ? e.message : e)
+  // MN-2 / PS-020 — the SHARED versioned migration runner (migrations.ts)
+  // drives BOTH backends from one list. Each entry applies at most once,
+  // tracked by PRAGMA user_version; guards skip columns an older repair
+  // already added; a failing statement is a LOUD boot error (it previously
+  // vanished into a console.warn, booting the app without the column).
+  const migClient: MigrationClient = {
+    execute: async (sql) => {
+      await db.execute(sql, [])
+    },
+    select: async <T>(sql: string) => db.select<T[]>(sql, []),
   }
+  await applyMigrations(migClient, "desktop")
+
   // v1.7 — billing allocation ledger (PS-001): reconcile PaymentMonth with
   // the receipts' JSON months on every boot. Idempotent; also repairs the
   // crash window of an interrupted collect (payment row without allocations).
@@ -211,6 +217,10 @@ const AUTO_SEED_KEY = "autoSeedDone"
 
 async function autoSeedDemoIfEmpty(db: DB): Promise<void> {
   try {
+    // PS-022 (§6 Q4): production builds NEVER auto-seed. A real academy's
+    // first launch must not start with 12 fake players consuming real
+    // admission/receipt numbers — Settings → Demo Data loads it on demand.
+    if (process.env.NODE_ENV === "production") return
     const flag = await db.select<{ value: string }[]>("SELECT value FROM Setting WHERE key = $1", [AUTO_SEED_KEY])
     if (flag[0]?.value) return
     const count = await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM Student", [])
@@ -386,38 +396,50 @@ export async function createStudent(input: Partial<StudentInput>): Promise<Stude
 
 export async function updateStudent(id: string, input: Partial<StudentInput>): Promise<Student> {
   const db = await getDb()
-  const sets: string[] = []
-  const params: unknown[] = []
+  const currentRows = await db.select<Record<string, unknown>[]>("SELECT * FROM Student WHERE id = $1", [id])
+  const current = currentRows[0]
+  if (!current) throw new Error("Student not found")
   const body = input as Record<string, unknown>
+
+  // Coerce the patch exactly the way the UPDATE below will write it.
+  const overlay: Record<string, unknown> = {}
   const strFields = [
     "fullName", "parentName", "mobile", "emergencyContact", "address", "schoolName",
-    "classGrade", "division", "bloodGroup", "gender", "primarySport", "playingPosition",
+    "classGrade", "division", "bloodGroup", "primarySport", "playingPosition",
     "ageCategory", "trainingBatch", "photoPath", "birthCertPath", "idCardPath", "status",
   ]
   for (const f of strFields) {
-    if (f in body) {
-      // gender is NOT NULL DEFAULT '' — keep the empty string instead of NULL
-      params.push(f === "gender" ? String(body[f] ?? "") : body[f] === "" ? null : body[f])
-      sets.push(`${f} = $${params.length}`)
-    }
+    if (f in body) overlay[f] = body[f] === "" ? null : body[f]
   }
-  if ("dateOfBirth" in body) {
-    params.push(new Date(String(body.dateOfBirth)).toISOString())
-    sets.push(`dateOfBirth = $${params.length}`)
+  if ("gender" in body) {
+    // gender is NOT NULL DEFAULT '' — keep the empty string instead of NULL
+    overlay.gender = String(body.gender ?? "")
   }
+  for (const f of ["fullName", "parentName", "mobile"]) {
+    if (f in overlay && overlay[f] != null) overlay[f] = String(overlay[f]).trim()
+  }
+  if ("dateOfBirth" in body) overlay.dateOfBirth = body.dateOfBirth ? new Date(String(body.dateOfBirth)) : null
   if ("registrationDate" in body && body.registrationDate) {
-    params.push(new Date(String(body.registrationDate)).toISOString())
-    sets.push(`registrationDate = $${params.length}`)
+    overlay.registrationDate = new Date(String(body.registrationDate))
   }
-  if ("monthlyFee" in body) {
-    params.push(Number(body.monthlyFee ?? 0))
-    sets.push(`monthlyFee = $${params.length}`)
-  }
+  if ("monthlyFee" in body) overlay.monthlyFee = Number(body.monthlyFee ?? 0)
   for (const f of ["heightCm", "weightKg", "standingReachCm", "spikeReachCm", "jumpReachCm"]) {
-    if (f in body) {
-      params.push(body[f] === null || body[f] === "" ? null : Number(body[f]))
-      sets.push(`${f} = $${params.length}`)
-    }
+    if (f in body) overlay[f] = body[f] === null || body[f] === "" ? null : Number(body[f])
+  }
+
+  // PS-017 — validate the MERGED record (current row + patch) with the same
+  // shared guard the web PUT /api/students/:id route uses: the edit screen
+  // previously persisted garbage mobile (breaking WhatsApp targeting),
+  // negative/NaN fee, future DOB or a blank name. Legacy rows that pre-date
+  // validation are checked too — the edit form shows every field, so a
+  // rejected legacy value can be fixed in place.
+  assertValidStudentInput({ ...current, ...overlay })
+
+  const sets: string[] = []
+  const params: unknown[] = []
+  for (const [k, v] of Object.entries(overlay)) {
+    params.push((k === "dateOfBirth" || k === "registrationDate") && v instanceof Date ? v.toISOString() : v)
+    sets.push(`${k} = $${params.length}`)
   }
   params.push(new Date().toISOString())
   sets.push(`updatedAt = $${params.length}`)
@@ -697,15 +719,26 @@ export async function fetchPayments(
   params: { studentId?: string; month?: string; limit?: number } = {}
 ): Promise<FeePaymentWithStudent[]> {
   const db = await getDb()
-  let rows = await db.select<FeePaymentWithStudent[]>(
+  // PS-030 — month filtering rides the PaymentMonth ledger index (the same
+  // indexed path the web GET /api/payments?month= route uses) instead of
+  // loading every payment and JSON-parsing the months column per row.
+  if (params.month) {
+    const sql = `SELECT p.*, s.fullName AS studentName, s.admissionNo
+     FROM FeePayment p JOIN Student s ON s.id = p.studentId
+     WHERE p.id IN (SELECT paymentId FROM PaymentMonth WHERE month = $1)
+     ${params.studentId ? "AND p.studentId = $2" : ""}
+     ORDER BY p.paymentDate DESC, p.createdAt DESC, p.receiptNo DESC
+     ${params.limit ? `LIMIT ${Math.max(1, Math.floor(params.limit))}` : ""}`
+    return db.select<FeePaymentWithStudent[]>(sql, params.studentId ? [params.month, params.studentId] : [params.month])
+  }
+  const rows = await db.select<FeePaymentWithStudent[]>(
     `SELECT p.*, s.fullName AS studentName, s.admissionNo
      FROM FeePayment p JOIN Student s ON s.id = p.studentId
+     ${params.studentId ? "WHERE p.studentId = $1" : ""}
      ORDER BY p.paymentDate DESC, p.createdAt DESC, p.receiptNo DESC`,
-    []
+    params.studentId ? [params.studentId] : []
   )
-  if (params.studentId) rows = rows.filter((p) => p.studentId === params.studentId)
-  if (params.month) rows = rows.filter((p) => parsePaidMonths(p.months).includes(params.month!))
-  if (params.limit) rows = rows.slice(0, params.limit)
+  if (params.limit) return rows.slice(0, params.limit)
   return rows
 }
 
@@ -746,6 +779,9 @@ export async function fetchDashboard(): Promise<DashboardStats> {
   }
 
   const active = students.filter((s) => s.status === "Active")
+  // PS-026 — same Active-only attendance ratio as the web dashboard.
+  const activeIds = new Set(active.map((s) => s.id))
+  const attendanceTodayActive = attendanceToday.filter((a) => activeIds.has(a.studentId))
   const categories = ["Mini", "Sub-Junior", "Junior", "Youth", "Senior"]
   const categoryBreakdown = categories.map((category) => ({
     category,
@@ -771,8 +807,8 @@ export async function fetchDashboard(): Promise<DashboardStats> {
     .filter((p) => new Date(p.paymentDate) >= dayStart)
     .reduce((sum, p) => sum + p.amount, 0)
 
-  const present = attendanceToday.filter((a) => a.status === "Present").length
-  const absent = attendanceToday.filter((a) => a.status === "Absent").length
+  const present = attendanceTodayActive.filter((a) => a.status === "Present").length
+  const absent = attendanceTodayActive.filter((a) => a.status === "Absent").length
 
   const recentPayments = monthPaymentsFiltered.slice(0, 6)
 
@@ -804,7 +840,7 @@ export async function fetchDashboard(): Promise<DashboardStats> {
     },
     monthRevenue,
     todayRevenue,
-    attendanceToday: { present, absent, marked: attendanceToday.length, totalActive: active.length },
+    attendanceToday: { present, absent, marked: attendanceTodayActive.length, totalActive: active.length },
     recentPayments,
     upcomingBirthdays,
     committee,
@@ -873,6 +909,9 @@ export async function deleteCommitteeMember(id: string): Promise<void> {
 
 export async function reorderCommittee(ids: string[]): Promise<void> {
   const db = await getDb()
+  // PS-029 parity — the same guard the web POST /api/committee/reorder
+  // route enforces (the desktop previously reordered whatever it was given).
+  if (!Array.isArray(ids)) throw new ValidationError("ids array required")
   for (let idx = 0; idx < ids.length; idx++) {
     await db.execute("UPDATE CommitteeMember SET displayOrder = $1, updatedAt = $2 WHERE id = $3", [
       idx,
@@ -942,6 +981,17 @@ export async function fetchSettings(): Promise<AcademySettings> {
 
 export async function saveSettings(settings: AcademySettings): Promise<AcademySettings> {
   const db = await getDb()
+  // PS-027 parity — the same core rejects the web PUT /api/settings route
+  // enforces: the letterhead name must exist and the default fee must be a
+  // real, non-negative number (a NaN previously reached the Setting table,
+  // made fetchSettings() return null and broke every letterhead).
+  if (!String(settings.academyName ?? "").trim()) {
+    throw new ValidationError("Academy name cannot be empty")
+  }
+  const fee = Number(settings.defaultMonthlyFee)
+  if (!Number.isFinite(fee) || fee < 0) {
+    throw new ValidationError("Default monthly fee must be a non-negative number")
+  }
   for (const [key, value] of Object.entries(settings)) {
     if (value === undefined) continue
     await db.execute(
@@ -1084,12 +1134,43 @@ export async function demoStatus(): Promise<{ loaded: boolean; students: number;
 
 export async function loadDemoData(): Promise<{ students: number; committee: number }> {
   const db = await getDb()
-  const flag = await db.select<{ value: string }[]>("SELECT value FROM Setting WHERE key = $1", [DEMO_KEY])
-  if (flag[0]?.value) throw new Error("Demo data is already loaded — remove it first if you want a fresh copy.")
+  // PS-021 — atomic claim: the tracking row is written FIRST as a "loading"
+  // marker (the plugin pool cannot host BEGIN…COMMIT — verified against
+  // tauri-plugin-sql 2.2.0 during 3A-4), so two concurrent loads can never
+  // both pass a read-then-write check: exactly one INSERT wins.
+  const claim = await db.execute(
+    `INSERT INTO Setting (key, value) VALUES ($1, $2) ON CONFLICT(key) DO NOTHING`,
+    [DEMO_KEY, JSON.stringify({ loading: true, students: [], committee: [] })]
+  )
+  if ((claim.rowsAffected ?? 0) === 0) {
+    throw new Error("Demo data is already loaded — remove it first if you want a fresh copy.")
+  }
+  try {
+    return await loadDemoDataInner(db)
+  } catch (e) {
+    // PS-021 — compensating cleanup: a real academy's ledger must never keep
+    // partially-loaded fake rows. removeDemoData() reads the checkpointed ids
+    // and deletes exactly those (+ the marker), so a retry starts clean.
+    try {
+      await removeDemoData()
+    } catch {
+      /* boot-time syncPaymentLedger sweeps any orphaned allocation rows */
+    }
+    throw e
+  }
+}
 
+async function loadDemoDataInner(db: DB): Promise<{ students: number; committee: number }> {
   const demoStudentIds: string[] = []
   const demoCommitteeIds: string[] = []
   const nowIso = new Date().toISOString()
+  // Checkpoint the created ids into the tracking row as the load progresses —
+  // a mid-load failure hands removeDemoData() the EXACT set to compensate.
+  const checkpoint = () =>
+    db.execute(`UPDATE Setting SET value = $1 WHERE key = $2`, [
+      JSON.stringify({ loading: true, students: demoStudentIds, committee: demoCommitteeIds }),
+      DEMO_KEY,
+    ])
 
   const committeeCount = await db.select<{ n: number }[]>("SELECT COUNT(*) AS n FROM CommitteeMember", [])
   if ((committeeCount[0]?.n ?? 0) === 0) {
@@ -1103,6 +1184,7 @@ export async function loadDemoData(): Promise<{ students: number; committee: num
       demoCommitteeIds.push(id)
     }
   }
+  await checkpoint()
 
   const usedAdmissionNos = (await db.select<{ admissionNo: string }[]>("SELECT admissionNo FROM Student", [])).map((r) => r.admissionNo)
   const usedReceiptNos = (await db.select<{ receiptNo: string }[]>("SELECT receiptNo FROM FeePayment", [])).map((r) => r.receiptNo)
@@ -1169,6 +1251,7 @@ export async function loadDemoData(): Promise<{ students: number; committee: num
         [uuid(), id, a.date, s.trainingBatch, a.status]
       )
     }
+    await checkpoint()
   }
 
   for (const a of DEMO_ACHIEVEMENTS) {

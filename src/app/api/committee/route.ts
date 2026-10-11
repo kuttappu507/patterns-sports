@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { mapApiError } from "@/lib/psams/api-error"
 
 // GET /api/committee — ordered for dashboard showcase
 export async function GET() {
-  const rows = await db.committeeMember.findMany({ orderBy: { displayOrder: "asc" } })
-  return NextResponse.json(rows)
+  try {
+    const rows = await db.committeeMember.findMany({ orderBy: { displayOrder: "asc" } })
+    return NextResponse.json(rows)
+  } catch (e) {
+    return mapApiError(e, "Failed to load committee")
+  }
 }
 
 // POST /api/committee
@@ -18,7 +23,7 @@ export async function POST(req: NextRequest) {
     const member = await db.committeeMember.create({
       data: {
         fullName: String(body.fullName).trim(),
-        role: body.role,
+        role: String(body.role).trim(),
         phone: String(body.phone).trim(),
         responsibilities: body.responsibilities || null,
         photoPath: body.photoPath || null,
@@ -27,7 +32,6 @@ export async function POST(req: NextRequest) {
     })
     return NextResponse.json(member, { status: 201 })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Failed to add committee member"
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return mapApiError(e, "Failed to add committee member")
   }
 }

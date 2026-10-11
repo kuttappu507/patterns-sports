@@ -82,18 +82,28 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
   const onMouseMove = useRevealMouse()
 
   useEffect(() => {
+    // PS-018 — stale-response guard: navigating A→(slow)→B must never let A's
+    // late response overwrite B's hero/ledger (the old race printed student
+    // A's PII under student B's record in printProfile()/downloadProfilePdf()).
+    // Same pattern as fees-view.tsx: setState only while this effect is alive.
+    let alive = true
     // Async data fetch: setState only after the await (no cascading renders).
     void (async () => {
       try {
         const [s, st] = await Promise.all([fetchStudent(studentId), fetchSettings()])
+        if (!alive) return
         setStudent(s)
         setSettings(st)
       } catch {
+        if (!alive) return
         setStudent(null)
       } finally {
-        setLoading(false)
+        if (alive) setLoading(false)
       }
     })()
+    return () => {
+      alive = false
+    }
   }, [studentId, dataVersion])
 
   if (loading && !student) {

@@ -5,12 +5,61 @@
 
 import { PAYMENT_MODES, type AcademySettings } from "./types"
 
+// ---------- Error contract (PS-050) ----------
+
+/**
+ * Thrown by every assertValid* guard on BOTH backends. The web API mapper
+ * (api-error.ts) turns it into HTTP 400 — a plain Error stays an unexpected
+ * 500. Desktop surfaces the same message through the rejected invoke promise.
+ */
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "ValidationError"
+  }
+}
+
+/** Re-throw a guard's plain Error as a ValidationError, keeping the message. */
+function validationError(e: unknown): ValidationError {
+  return e instanceof ValidationError ? e : new ValidationError(e instanceof Error ? e.message : String(e))
+}
+
+// ---------- Dates (PS-034) ----------
+
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Parse a date-only value the way the UI means it (PS-034): "YYYY-MM-DD"
+ * becomes LOCAL midnight — never the UTC-midnight instant that
+ * `new Date("YYYY-MM-DD")` produces, which local getters in UTC-negative
+ * timezones read as the PREVIOUS day. Calendar-impossible days
+ * ("2025-02-31", Feb-29 on non-leap years) are rejected (returning null)
+ * instead of silently rolling into the next month. Absolute timestamps
+ * ("…T…Z") still parse as instants. Date instances pass through untouched.
+ */
+export function parseLocalDate(raw: string | Date): Date | null {
+  if (raw instanceof Date) return isNaN(raw.getTime()) ? null : raw
+  const s = String(raw).trim()
+  if (DATE_ONLY_RE.test(s)) {
+    const [y, m, d] = s.split("-").map(Number)
+    const dt = new Date(y, m - 1, d)
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d ? dt : null
+  }
+  const dt = new Date(s)
+  return isNaN(dt.getTime()) ? null : dt
+}
+
+/** Coerce an unknown field into a Date (Date passes through). */
+function toDate(v: unknown): Date {
+  return v instanceof Date ? v : new Date(String(v))
+}
+
 // ---------- Age & category ----------
 
 /** Compute precise age in whole years from a date of birth (live, timezone-safe). */
 export function computeAge(dateOfBirth: string | Date, at: Date = new Date()): number {
-  const dob = new Date(dateOfBirth)
-  if (isNaN(dob.getTime())) return 0
+  const dob = parseLocalDate(dateOfBirth)
+  if (!dob) return 0
   let age = at.getFullYear() - dob.getFullYear()
   const m = at.getMonth() - dob.getMonth()
   if (m < 0 || (m === 0 && at.getDate() < dob.getDate())) age--
@@ -19,8 +68,8 @@ export function computeAge(dateOfBirth: string | Date, at: Date = new Date()): n
 
 /** Detailed age like "14 yrs 3 mos". */
 export function ageDetailed(dateOfBirth: string | Date, at: Date = new Date()): string {
-  const dob = new Date(dateOfBirth)
-  if (isNaN(dob.getTime())) return "—"
+  const dob = parseLocalDate(dateOfBirth)
+  if (!dob) return "—"
   let years = at.getFullYear() - dob.getFullYear()
   let months = at.getMonth() - dob.getMonth()
   if (at.getDate() < dob.getDate()) months--
@@ -226,7 +275,11 @@ export function computeFeeStatus(
   payments: PaymentLite[],
   now: Date = new Date()
 ) {
-  const reg = new Date(student.registrationDate)
+  // PS-034: date-only registration strings parse as LOCAL midnight (a
+  // UTC-midnight instant would shift the joining month a day early in
+  // UTC-negative timezones). A corrupt/absent value behaves like "joined
+  // today" — billing starts next month, never an indefinite false "paid".
+  const reg = parseLocalDate(student.registrationDate) ?? new Date(student.registrationDate)
   const billingStart = new Date(reg.getFullYear(), reg.getMonth() + 1, 1)
   const paidMonths = new Set<string>()
   let lastPayment: PaymentLite | null = null
@@ -306,8 +359,15 @@ export const MOBILE_DIGITS_RE = /^(\d{10}|0\d{10}|91\d{10})$/
  */
 export function phoneDigits(value: string): string {
   let d = value.replace(/\D/g, "")
-  if (d.length > 10 && d.startsWith("91")) d = d.slice(2)
-  if (d.length > 10 && d.startsWith("0")) d = d.slice(1)
+  // PS-033: LOOP the prefix strip. A single pass corrupted "091987654321"
+  // (0-stripped to 12 digits starting "91", then sliced to the wrong but
+  // valid-shaped "9198765432"). Strip repeatedly while a country-code or
+  // leading-zero prefix remains; a genuine 10-digit number is never touched.
+  while (d.length > 10) {
+    if (d.startsWith("91")) d = d.slice(2)
+    else if (d.startsWith("0")) d = d.slice(1)
+    else break
+  }
   return d.slice(0, 10)
 }
 
@@ -332,23 +392,62 @@ export function decimalOnly(value: string, maxDigits = 5): string {
 
 /**
  * Sanity guards for a student record — mirrored by the web POST /api/students
- * route and the desktop createStudent. Throws with a user-facing message.
+ * route, the desktop createStudent AND both UPDATE paths (PS-017 validates
+ * the MERGED record: current row + patch, so an edit screen can no longer
+ * persist garbage the create path rejects).
+ *
+ * Also enforces the registration-date bounds (PS-025): a FUTURE
+ * registrationDate makes computeFeeStatus() derive `billingStart` in the
+ * future ⇒ `monthsBetween` returns [] ⇒ a real defaulter displays as fully
+ * paid indefinitely. registrationDate must be calendar-real, not in the
+ * future, and not before the date of birth.
  */
 export function assertValidStudentInput(input: Record<string, unknown>): void {
-  const required = ["fullName", "dateOfBirth", "parentName", "mobile", "ageCategory"] as const
-  for (const k of required) {
-    if (!input[k]) throw new Error(`Missing required field: ${k}`)
-  }
-  const dob = new Date(String(input.dateOfBirth))
-  if (Number.isNaN(dob.getTime()) || dob > new Date()) {
-    throw new Error("Date of birth is invalid or in the future")
-  }
-  if (!MOBILE_DIGITS_RE.test(String(input.mobile).replace(/\D/g, ""))) {
-    throw new Error("Mobile number must be 10 digits (country code / leading 0 accepted)")
-  }
-  const fee = Number(input.monthlyFee ?? 0)
-  if (!Number.isFinite(fee) || fee < 0) {
-    throw new Error("Monthly fee cannot be negative")
+  try {
+    const required = ["fullName", "dateOfBirth", "parentName", "mobile", "ageCategory"] as const
+    for (const k of required) {
+      const v = input[k]
+      if (v === undefined || v === null || String(v).trim() === "") {
+        throw new Error(`Missing required field: ${k}`)
+      }
+    }
+    const dob = toDate(input.dateOfBirth)
+    if (Number.isNaN(dob.getTime()) || dob > new Date()) {
+      throw new Error("Date of birth is invalid or in the future")
+    }
+    if (!MOBILE_DIGITS_RE.test(String(input.mobile).replace(/\D/g, ""))) {
+      throw new Error("Mobile number must be 10 digits (country code / leading 0 accepted)")
+    }
+    const fee = Number(input.monthlyFee ?? 0)
+    if (!Number.isFinite(fee) || fee < 0) {
+      throw new Error("Monthly fee cannot be negative")
+    }
+    // PS-025 — registration date bounds (create AND merged-update).
+    const rawReg = input.registrationDate
+    if (rawReg !== undefined && rawReg !== null && rawReg !== "") {
+      const reg = parseLocalDate(rawReg as string | Date)
+      if (!reg) {
+        throw new Error("Registration date is invalid")
+      }
+      if (reg > new Date()) {
+        throw new Error("Registration date cannot be in the future")
+      }
+      if (reg < dob) {
+        throw new Error("Registration date cannot be before the date of birth")
+      }
+    }
+    // PS-017 support — physical measurements must be positive numbers when
+    // provided (the edit screen previously accepted negative/garbage values).
+    for (const k of ["heightCm", "weightKg", "standingReachCm", "spikeReachCm", "jumpReachCm"]) {
+      const v = input[k]
+      if (v === undefined || v === null || v === "") continue
+      const n = Number(v)
+      if (!Number.isFinite(n) || n <= 0 || n > 500) {
+        throw new Error("Height, weight and reach measurements must be positive numbers")
+      }
+    }
+  } catch (e) {
+    throw validationError(e)
   }
 }
 
@@ -396,6 +495,20 @@ function parseReceiptDate(raw: string | Date): Date | null {
  * student row — recompute it server-side, never trust the client.
  */
 export function assertValidPayment(
+  months: unknown[],
+  amount: number,
+  monthlyFee: number,
+  alreadyPaidMonths: string[] = [],
+  bounds: PaymentBounds = {}
+): void {
+  try {
+    assertValidPaymentRules(months, amount, monthlyFee, alreadyPaidMonths, bounds)
+  } catch (e) {
+    throw validationError(e)
+  }
+}
+
+function assertValidPaymentRules(
   months: unknown[],
   amount: number,
   monthlyFee: number,
@@ -471,17 +584,37 @@ export function assertValidPayment(
   }
 }
 
-const ATT_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-
-/** Whole-batch attendance validation — a bad record must abort the entire register save. */
+/**
+ * Whole-batch attendance validation (PS-026) — a bad record must abort the
+ * entire register save. Dates are calendar-real ("2025-02-31" is rejected
+ * instead of rolling into March) and never in the future; the batch is a
+ * bounded free-text name (training batches are user-defined, but control
+ * characters / absurd lengths are not); a hard record cap keeps one stuck
+ * client from shipping an unbounded payload.
+ */
 export function assertValidAttendanceRecords(
   records: { studentId?: string; date?: string; batch?: string; status?: string }[]
 ): void {
-  if (!Array.isArray(records)) throw new Error("records array required")
-  for (const r of records) {
-    if (!r?.studentId) throw new Error("Each attendance record needs a student")
-    if (!r?.date || !ATT_DATE_RE.test(r.date)) throw new Error("Attendance date must be in YYYY-MM-DD format")
-    if (r?.status !== "Present" && r?.status !== "Absent") throw new Error("Attendance status must be Present or Absent")
+  try {
+    if (!Array.isArray(records)) throw new Error("records array required")
+    if (records.length > 500) throw new Error("Too many attendance records in one save (max 500)")
+    const now = new Date()
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+    for (const r of records) {
+      if (!r?.studentId) throw new Error("Each attendance record needs a student")
+      if (typeof r?.date !== "string" || !DATE_ONLY_RE.test(r.date)) {
+        throw new Error("Attendance date must be a real calendar date in YYYY-MM-DD format")
+      }
+      const d = parseLocalDate(r.date)
+      if (!d) throw new Error("Attendance date must be a real calendar date in YYYY-MM-DD format")
+      if (d > todayEnd) throw new Error("Attendance date cannot be in the future")
+      if (typeof r?.batch !== "string" || !r.batch.trim() || r.batch.trim().length > 40 || /[\u0000-\u001f]/.test(r.batch)) {
+        throw new Error("Attendance batch must be a training batch name (max 40 characters)")
+      }
+      if (r?.status !== "Present" && r?.status !== "Absent") throw new Error("Attendance status must be Present or Absent")
+    }
+  } catch (e) {
+    throw validationError(e)
   }
 }
 
@@ -495,14 +628,18 @@ export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
  * (the desktop previously checked the extension only, with no size cap).
  */
 export function assertValidUpload(file: { name: string; type?: string; size: number }): void {
-  if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("File exceeds the 10 MB limit")
-  }
-  const safe = sanitizeFileName(file.name || "upload")
-  const dot = safe.lastIndexOf(".")
-  const ext = dot >= 0 ? safe.slice(dot).toLowerCase() : ""
-  if (!ALLOWED_UPLOAD_EXT.has(ext) || (file.type && !ALLOWED_UPLOAD_MIME.has(file.type))) {
-    throw new Error("Unsupported file type — allowed: PNG, JPG, WEBP or PDF")
+  try {
+    if (file.size > MAX_UPLOAD_BYTES) {
+      throw new Error("File exceeds the 10 MB limit")
+    }
+    const safe = sanitizeFileName(file.name || "upload")
+    const dot = safe.lastIndexOf(".")
+    const ext = dot >= 0 ? safe.slice(dot).toLowerCase() : ""
+    if (!ALLOWED_UPLOAD_EXT.has(ext) || (file.type && !ALLOWED_UPLOAD_MIME.has(file.type))) {
+      throw new Error("Unsupported file type — allowed: PNG, JPG, WEBP or PDF")
+    }
+  } catch (e) {
+    throw validationError(e)
   }
 }
 

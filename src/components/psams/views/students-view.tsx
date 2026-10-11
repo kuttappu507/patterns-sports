@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, UserPlus, GraduationCap, Eye, Pencil, Trash2, Users, Sparkles } from "lucide-react"
 import { fetchStudents, deleteStudent, mediaUrl } from "@/lib/psams/api"
@@ -32,8 +32,13 @@ export function StudentsView() {
   const [deleteBusy, setDeleteBusy] = useState(false)
   const { navigate, refresh, dataVersion, openStudentForm } = useAppStore()
   const { toast } = useToast()
+  const searchSeq = useRef(0)
 
   const load = useCallback(async () => {
+    // PS-031 — sequence token: a slow OLDER search response must never
+    // overwrite the results of a newer one (debounce narrows but does not
+    // close the race — out-of-order resolutions still happened).
+    const seq = ++searchSeq.current
     setLoading(true)
     try {
       const rows = await fetchStudents({
@@ -42,11 +47,13 @@ export function StudentsView() {
         status: status === "all" ? undefined : status,
         batch: batch === "all" ? undefined : batch,
       })
+      if (seq !== searchSeq.current) return
       setStudents(rows)
     } catch (e) {
+      if (seq !== searchSeq.current) return
       toast({ title: "Could not load students", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
     } finally {
-      setLoading(false)
+      if (seq === searchSeq.current) setLoading(false)
     }
   }, [q, category, status, batch, toast])
 

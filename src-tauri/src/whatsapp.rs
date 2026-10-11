@@ -30,7 +30,7 @@ use tauri_plugin_shell::process::{Command, CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
 pub struct WaState {
-    child: Mutex<Option<CommandChild>>,
+    child: Mutex<SidecarSlot>,
     status: Mutex<String>,
     qr: Mutex<Option<String>>,
     me: Mutex<Option<String>>,
@@ -50,7 +50,7 @@ pub struct WaState {
 impl Default for WaState {
     fn default() -> Self {
         Self {
-            child: Mutex::new(None),
+            child: Mutex::new(SidecarSlot::None),
             status: Mutex::new("stopped".into()),
             qr: Mutex::new(None),
             me: Mutex::new(None),
@@ -109,18 +109,70 @@ fn resolve_command(app: &AppHandle) -> Result<Command, String> {
         .args(["--auth-dir", &auth_dir(app)]))
 }
 
-/// Spawn the sidecar (no-op when already running) and start the reader loop.
+/// The live sidecar slot (PS-028). `Starting` is a placeholder held across
+/// the asynchronous spawn: a concurrent `spawn_sidecar` (autostart racing a
+/// user click) sees it and no-ops instead of leaking a second process that
+/// would silently hold the academy's WhatsApp session until exit.
+enum SidecarSlot {
+    None,
+    Starting,
+    Running(CommandChild),
+}
+
+impl SidecarSlot {
+    fn running(&mut self) -> Option<&mut CommandChild> {
+        match self {
+            SidecarSlot::Running(c) => Some(c),
+            _ => None,
+        }
+    }
+
+    /// Take the running child (leaving Starting untouched — a spawn in
+    /// flight must not be clobbered by an exit event from a previous run).
+    fn take_running(&mut self) -> Option<CommandChild> {
+        match std::mem::replace(self, SidecarSlot::None) {
+            SidecarSlot::Running(c) => Some(c),
+            other => {
+                *self = other;
+                None
+            }
+        }
+    }
+}
+
+/// Spawn the sidecar (no-op when already running or spawning) and start the
+/// reader loop.
 pub fn spawn_sidecar(app: &AppHandle) -> Result<(), String> {
     {
         let state = app.state::<WaState>();
         let mut guard = state.child.lock().unwrap();
-        if guard.is_some() {
-            return Ok(()); // already connected / pairing
+        // PS-028 — the check AND the claim happen under ONE lock hold: the
+        // Starting placeholder stays in the slot across the async spawn, so
+        // the old check-release-store window (both callers see None, both
+        // spawn, the first child leaks) is gone.
+        if matches!(*guard, SidecarSlot::Running(_) | SidecarSlot::Starting) {
+            return Ok(()); // already connected / pairing / spawning
         }
+        *guard = SidecarSlot::Starting;
     }
 
-    let cmd = resolve_command(app)?;
-    let (mut rx, child) = cmd.spawn().map_err(|e| format!("sidecar spawn failed: {e}"))?;
+    let spawned = resolve_command(app).and_then(|cmd| {
+        cmd.spawn()
+            .map_err(|e| format!("sidecar spawn failed: {e}"))
+    });
+
+    let (mut rx, child) = match spawned {
+        Ok(pair) => pair,
+        Err(e) => {
+            // Release the claim so a later retry can spawn.
+            let state = app.state::<WaState>();
+            let mut guard = state.child.lock().unwrap();
+            if matches!(*guard, SidecarSlot::Starting) {
+                *guard = SidecarSlot::None;
+            }
+            return Err(e);
+        }
+    };
     log_line("whatsapp-bot sidecar spawned");
 
     let my_gen = {
@@ -133,7 +185,7 @@ pub fn spawn_sidecar(app: &AppHandle) -> Result<(), String> {
 
     {
         let state = app.state::<WaState>();
-        *state.child.lock().unwrap() = Some(child);
+        *state.child.lock().unwrap() = SidecarSlot::Running(child);
         *state.status.lock().unwrap() = "starting".into();
         let _ = app.emit("wa://event", serde_json::json!({ "type": "status", "value": "starting" }));
     }
@@ -156,7 +208,7 @@ pub fn spawn_sidecar(app: &AppHandle) -> Result<(), String> {
                     if *state.generation.lock().unwrap() != my_gen {
                         break;
                     }
-                    if let Some(c) = state.child.lock().unwrap().take() {
+                    if let Some(c) = state.child.lock().unwrap().take_running() {
                         let _ = c.kill();
                     }
                     let was_logged_out = *state.status.lock().unwrap() == "logged_out";
@@ -277,7 +329,7 @@ pub async fn wa_start(app: AppHandle) -> Result<WaSnapshot, String> {
 pub async fn wa_send(app: AppHandle, to: String, text: String, id: Option<String>) -> Result<(), String> {
     let state = app.state::<WaState>();
     let mut guard = state.child.lock().unwrap();
-    let Some(child) = guard.as_mut() else {
+    let Some(child) = guard.running() else {
         return Err("WhatsApp is not connected".into());
     };
     let digits: String = to.chars().filter(|c| c.is_ascii_digit()).collect();
@@ -303,7 +355,7 @@ pub async fn wa_send_document(
 ) -> Result<(), String> {
     let state = app.state::<WaState>();
     let mut guard = state.child.lock().unwrap();
-    let Some(child) = guard.as_mut() else {
+    let Some(child) = guard.running() else {
         return Err("WhatsApp is not connected".into());
     };
     let digits: String = to.chars().filter(|c| c.is_ascii_digit()).collect();
@@ -345,7 +397,7 @@ pub async fn wa_logout(app: AppHandle) -> Result<(), String> {
     let running = {
         let state = app.state::<WaState>();
         let mut guard = state.child.lock().unwrap();
-        match guard.as_mut() {
+        match guard.running() {
             Some(child) => {
                 let _ = child.write(b"{\"type\":\"logout\"}\n");
                 true
@@ -365,7 +417,7 @@ pub async fn wa_logout(app: AppHandle) -> Result<(), String> {
     let handle = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(2500));
-        let pending = handle.state::<WaState>().child.lock().unwrap().take();
+        let pending = handle.state::<WaState>().child.lock().unwrap().take_running();
         if let Some(c) = pending {
             log_line("wa-bot did not exit after logout — killing");
             let _ = c.kill();
@@ -385,7 +437,7 @@ pub async fn wa_restart(app: AppHandle, force_relink: Option<bool>) -> Result<Wa
     {
         let state = app.state::<WaState>();
         let mut guard = state.child.lock().unwrap();
-        if let Some(c) = guard.take() {
+        if let Some(c) = guard.take_running() {
             log_line("wa_restart — killing running sidecar");
             let _ = c.kill();
         }
@@ -413,7 +465,7 @@ pub async fn wa_restart(app: AppHandle, force_relink: Option<bool>) -> Result<Wa
 /// Kill the sidecar on app exit (no orphaned sockets).
 pub fn kill_sidecar(app: &AppHandle) {
     let state = app.state::<WaState>();
-    let orphan = state.child.lock().unwrap().take();
+    let orphan = state.child.lock().unwrap().take_running();
     if let Some(c) = orphan {
         log_line("killing whatsapp-bot sidecar on exit");
         let _ = c.kill();
