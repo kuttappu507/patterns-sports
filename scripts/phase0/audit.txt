@@ -1,0 +1,113 @@
+— routing targets —
+  ✓ all navigate targets valid: reports, attendance, students, fees, settings, student-detail
+  ✓ hash router recognises every ViewKey
+  ✓ hash mapping covers students
+— store actions —
+  ✓ setPrint exists in store
+  ✓ setBootError exists in store
+  ✓ closeStudentForm exists in store
+  ✓ closeCollectFee exists in store
+  ✓ refresh exists in store
+  ✓ closeCollectFee exists in store
+  ✓ refresh exists in store
+  ✓ closeStudentForm exists in store
+  ✓ refresh exists in store
+  ✓ refresh exists in store
+— print pipeline —
+  ✓ every produced kind is typed: attendance-sheet, receipt-a5, receipt-thermal, defaulters, report, profile-a4
+  ✓ print-root renders "attendance-sheet"
+  ✓ print-root renders "receipt-a5"
+  ✓ print-root renders "receipt-thermal"
+  ✓ print-root renders "defaulters"
+  ✓ print-root renders "report"
+  ✓ print-root renders "profile-a4"
+  ✓ direct payloads skip the preview overlay
+— global popups mounted once —
+  ✓ StudentFormDialog mounted at app root
+  ✓ CollectFeeDialog mounted at app root
+  ✓ PrintRoot mounted at app root
+— scrollability (collect fee dialog) —
+  ✓ grid row capped so both columns scroll internally
+  ✓ picker column has min-h-0
+— external links —
+  ✓ wa.me deep-link builder present
+  ✓ Tauri shell open used for external URLs
+  ✓ window.open guarded by openExternal fallback
+  ✓ window.open guarded by openExternal fallback
+  ✓ window.open guarded by openExternal fallback
+  ✓ academy Google Maps link registered
+— frameless window —
+  ✓ two-window boot: dedicated splash + main app window
+  ✓ decorations:false (frameless)
+  ✓ main window boots hidden (no maximized flash before the splash)
+  ✓ main window hidden until splash finishes the handshake
+  ✓ splash window OPAQUE + frameless (no translucent box on Windows)
+  ✓ splash floats centered above the desktop
+  ✓ whatsapp-bot sidecar bundled with installers
+  ✓ Rust maximizes the still-hidden main window (full screen on first start)
+  ✓ finish_boot command reveals main + closes splash
+  ✓ 30s failsafe reveals main if splash never finishes
+  ✓ whatsapp sidecar auto-start + exit kill wired
+  ✓ header is the drag region
+  ✓ custom window controls wired
+  ✓ whatsapp bridge initialized in app shell
+  ✓ capability covers the splash window
+  ✓ capability granted: core:window:allow-minimize
+  ✓ capability granted: core:window:allow-toggle-maximize
+  ✓ capability granted: core:window:allow-close
+  ✓ capability granted: core:window:allow-start-dragging
+  ✓ capability granted: shell:allow-open
+— splash gating —
+  ✓ web splash stays ≥ 2.2 s
+  ✓ desktop splash: ≥ 2.2 s gate then finish_boot
+  ✓ splash waits for the main window booted event
+  ✓ main window broadcasts boot result
+  ✓ splash backdrop transparent (web overlay keeps the floating card)
+  ✓ desktop splash window page OPAQUE (transparent box fixed)
+  ✓ splash card fills the opaque window edge-to-edge
+  ✓ print @page margin 0 → no headers/footers
+  ✓ desktop print: native WebView2 silent print (no browser dialog)
+  ✓ desktop print: true-to-paper PDF via WebView2 + native save dialog
+  ✓ Rust print commands registered
+  ✓ in-app updater commands registered
+— whatsapp linked device —
+  ✓ bridge listens for sidecar events
+  ✓ dispatch: linked-device first, wa.me fallback
+  ✓ all four rust commands invoked
+  ✓ QR payload rendered for pairing
+  ✓ settings pairing card mounted
+  ✓ pairing CTA present
+  ✓ receipt + reminder sends go through dispatchWa
+  ✓ native sidecar persists the pairing session (scan once)
+  ✓ sidecar speaks the NDJSON stdio bridge (100% Rust, no Node)
+  ✓ in-process engine spawn/kill wired
+— v1.6.1 correctness pass —
+  ✓ classifyFeeCycle lives in domain.ts (ONE fee-cycle rule)
+  ✓ web dashboard no longer counts by paid-this-month
+  ✓ desktop dashboard uses the shared classifyFeeCycle rule
+  ✓ Register/Collect popups have their own error boundaries (close-and-continue reset)
+  ✓ shared payment validator in domain.ts
+  ✓ web payments route enforces the shared validator (no double receipt, exact amount)
+  ✓ desktop collectPayment enforces the same validator
+  ✓ web students route uses the shared student validator
+  ✓ desktop createStudent uses the same rejects
+  ✓ desktop upload enforces size cap + MIME (shared validator)
+  ✓ desktop attendance validated as a whole batch
+  ✓ desktop attendance writes ONE statement (all-or-nothing)
+  ✓ mediaUrl refuses unsafe stored paths on BOTH runtimes
+  ✓ single shared letterhead address constant
+  ✓ web letterhead defaults come from the shared constant
+  ✓ demo letterhead uses the shared constant (no second copy)
+  ✓ web demo loader skips already-saved settings keys
+  ✓ desktop demo loader skips already-saved settings keys
+  ✓ Backup now invokes the Rust backup_now command and names the folder
+  ✓ JSON export is labeled as a snapshot, not the database backup
+  ✓ restore is a real staged restore + restart (no fake toast)
+  ✓ backup target picker writes ps-ams-backup-target.txt next to the database
+  ✓ no hardcoded %APPDATA%\PS-AMS\ on the Settings screen
+  ✓ Settings shows the real data location (data_paths / DATABASE_URL)
+  ✓ Rust stages the restore and applies it before the SQL plugin opens the db
+  ✓ Rust set_backup_target command registered
+  ✓ check:parity guards the bootstrap.ts DDL copy
+
+AUDIT PASS — all wiring checks green

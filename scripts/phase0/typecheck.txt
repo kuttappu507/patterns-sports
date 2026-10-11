@@ -1,0 +1,4 @@
+
+> ps-ams@1.6.4 typecheck
+> tsc --noEmit
+

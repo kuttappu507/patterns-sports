@@ -1,0 +1,5 @@
+
+> ps-ams@1.6.4 check:parity
+> node scripts/check-parity.mjs
+
+✓ backend parity OK — 6 models ↔ 6 tables (66 columns), 29 native delegations ↔ 30 tauri exports
