@@ -44,9 +44,20 @@ export async function GET(req: NextRequest) {
   const month = sp.get("month") || undefined
   const limit = sp.get("limit") ? Number(sp.get("limit")) : undefined
 
-  // PS-029 parity — the desktop orders by paymentDate DESC, createdAt DESC,
-  // receiptNo DESC; the web side now uses the identical tiebreak.
-  const orderBy: Prisma.FeePaymentOrderByWithRelationInput[] = [
+  // PS-029 parity — BOTH backends order the receipt ledger identically.
+  // The default listing (Receipt History / overview) is ISSUANCE order:
+  // receiptNo DESC (the RC number on the paper receipt), createdAt DESC as
+  // the tiebreak, then paymentDate. Ordering by paymentDate alone buried a
+  // just-issued receipt whenever its payment date was backdated (arrears
+  // settle) — "receipt history not showing recent one first". The
+  // month-filtered and per-student views keep paymentDate DESC (period
+  // listings); the desktop SQL in tauri-api.ts must mirror this exactly.
+  const issuanceOrder: Prisma.FeePaymentOrderByWithRelationInput[] = [
+    { receiptNo: "desc" },
+    { createdAt: "desc" },
+    { paymentDate: "desc" },
+  ]
+  const dateOrder: Prisma.FeePaymentOrderByWithRelationInput[] = [
     { paymentDate: "desc" },
     { createdAt: "desc" },
     { receiptNo: "desc" },
@@ -64,7 +75,7 @@ export async function GET(req: NextRequest) {
       const rows = await db.feePayment.findMany({
         where: { id: { in: allocs.map((a) => a.paymentId) }, ...(studentId ? { studentId } : {}) },
         include: { student: true },
-        orderBy,
+        orderBy: dateOrder,
         ...(limit ? { take: limit } : {}),
       })
       return NextResponse.json(rows.map(toWirePaymentWithStudent))
@@ -73,7 +84,9 @@ export async function GET(req: NextRequest) {
     const rows = await db.feePayment.findMany({
       where: studentId ? { studentId } : {},
       include: { student: true },
-      orderBy,
+      // The default listing is issuance-ordered when UNFILTERED (receipt
+      // ledger); a per-student listing stays payment-date ordered.
+      orderBy: studentId ? dateOrder : issuanceOrder,
       ...(limit ? { take: limit } : {}),
     })
     return NextResponse.json(rows.map(toWirePaymentWithStudent))

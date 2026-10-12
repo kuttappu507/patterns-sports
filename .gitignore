@@ -93,3 +93,4 @@ scripts/pr2.diff
 
 # Native WhatsApp sidecar crate (built per-target, never committed)
 src-tauri/binaries/
+scripts/wa-engine-check/target/

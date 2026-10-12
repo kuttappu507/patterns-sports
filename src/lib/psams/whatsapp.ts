@@ -3,8 +3,8 @@
 //
 // Two delivery paths, chosen automatically per message:
 //
-//  1. LINKED DEVICE (desktop, preferred) — the bundled whatsapp-bot
-//     sidecar (Baileys) holds a "linked device" session with the
+//  1. LINKED DEVICE (desktop, preferred) — the in-process WhatsApp engine
+//     (whatsapp-rust protocol stack, PS-055) holds a "linked device" session with the
 //     academy's WhatsApp (scan the QR once in Settings). Messages go
 //     straight to the recipient's chat with one click — no WhatsApp
 //     Web, no phone in hand.
@@ -93,11 +93,11 @@ export function reminderWaMessage(opts: {
   return lines.join("\n")
 }
 
-/* ============ linked-device bridge (Baileys sidecar) ============ */
+/* ============ linked-device bridge (in-process engine) ============ */
 
 export type WaStatus =
-  | "unsupported" // web build — sidecar path does not exist
-  | "stopped" // sidecar not running / not yet paired
+  | "unsupported" // web build — the engine is desktop-only
+  | "stopped" // engine not running / not yet paired
   | "starting" // process spawned, handshake in progress
   | "pairing" // socket connecting
   | "waiting_scan" // QR issued — waiting for the phone to scan
@@ -111,7 +111,7 @@ interface WaStore {
   me: string | null // linked account's phone number, when connected
   refresh: () => Promise<void>
   connect: () => Promise<void>
-  /** Kill and respawn the sidecar; use when pairing/connecting seems stuck. */
+  /** Restart the engine; use when pairing/connecting seems stuck. */
   restart: () => Promise<void>
   disconnect: () => Promise<void>
   send: (to: string, text: string) => Promise<{ ok: boolean; error?: string }>
@@ -148,7 +148,7 @@ export const useWaStore = create<WaStore>(() => ({
   restart: async () => {
     if (!isTauri()) return
     const { invoke } = await import("@tauri-apps/api/core")
-    // Kill + respawn the sidecar. The fresh process re-emits its status/QR
+    // Restart the engine. The fresh run re-emits its status/QR
     // frames, so the card follows along through starting → pairing → QR.
     const snap = await invoke<{ status: WaStatus; qr: string | null; me: string | null }>(
       "wa_restart",
@@ -208,11 +208,11 @@ function waitWaAck(id: string, timeoutMs: number): Promise<{ ok: boolean; error?
 
 let bridgeReady = false
 
-/** Listen for sidecar events and seed the store. Call once (AppShell). */
+/** Listen for engine events and seed the store. Call once (AppShell). */
 export function initWaBridge(): void {
   if (bridgeReady) return
   if (!isTauri()) {
-    // web build — no sidecar path; the Settings card explains desktop-only
+    // web build — no engine; the Settings card explains desktop-only
     useWaStore.setState({ status: "unsupported" })
     return
   }

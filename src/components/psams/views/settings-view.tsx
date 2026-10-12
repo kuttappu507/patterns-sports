@@ -244,7 +244,7 @@ function WhatsAppCard() {
             </div>
           )}
           {/* Escape hatch while a connection attempt or auto-reconnect is in
-              flight: kill and respawn the sidecar. The saved pairing survives,
+              flight: restart the engine. The saved pairing survives,
               so a healthy session is back in one click (or a fresh QR if the
               pairing itself was revoked — that wipes itself and re-issues a QR
               automatically). */}
@@ -998,6 +998,9 @@ function DataSafety() {
   const [restoreMediaDir, setRestoreMediaDir] = useState<string | null>(null)
   const [restoreStatus, setRestoreStatus] = useState<RestoreStatusRecord | null>(null)
   const [restartAsk, setRestartAsk] = useState(false)
+  // PS-057 — the raw AppData paths are support information; they stay
+  // collapsed behind a disclosure so the card reads friendly by default.
+  const [showPaths, setShowPaths] = useState(false)
   const desktop = isTauri()
 
   useEffect(() => {
@@ -1236,16 +1239,32 @@ function DataSafety() {
           </>
         )}
       </div>
-      <div className="mt-3 space-y-0.5 rounded-lg border bg-muted/40 p-2.5 text-[14.5px] text-muted-foreground">
+      {/* PS-057 — a friendly one-liner by default; the raw folder paths are
+          one click away for support tickets and manual backup checks. */}
+      <div className="mt-3 rounded-lg border bg-muted/40 p-2.5 text-[14.5px] text-muted-foreground">
         {paths ? (
           paths.mode === "desktop" ? (
-            <>
-              <div>Data folder: <span className="font-mono">{paths.appData}</span></div>
-              <div>Database: <span className="font-mono">{paths.database}</span></div>
-              <div>Media: <span className="font-mono">{paths.media}</span></div>
-              <div>Backups → <span className="font-mono">{paths.backupTarget}</span></div>
-              {paths.logFile && <div>Boot log: <span className="font-mono">{paths.logFile}</span></div>}
-            </>
+            <div className="space-y-1.5">
+              <div>
+                Your data stays <b className="text-foreground">on this PC</b> — the academy database, media library and backups live inside the app data folder. Nothing is uploaded anywhere.
+              </div>
+              <button
+                type="button"
+                className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                onClick={() => setShowPaths((v) => !v)}
+              >
+                {showPaths ? "Hide folder paths" : "Show folder paths"}
+              </button>
+              {showPaths && (
+                <div className="space-y-0.5 border-t pt-1.5">
+                  <div>Data folder: <span className="font-mono">{paths.appData}</span></div>
+                  <div>Database: <span className="font-mono">{paths.database}</span></div>
+                  <div>Media: <span className="font-mono">{paths.media}</span></div>
+                  <div>Backups → <span className="font-mono">{paths.backupTarget}</span></div>
+                  {paths.logFile && <div>Boot log: <span className="font-mono">{paths.logFile}</span></div>}
+                </div>
+              )}
+            </div>
           ) : (
             <div>Web preview database: <span className="font-mono">{paths.database}</span> — desktop builds store data in the app data folder instead.</div>
           )

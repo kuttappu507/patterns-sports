@@ -55,12 +55,14 @@ patterns-sports/
 │                                   # CommitteeMember, Attendance, Setting
 ├── scripts/seed.ts                 # realistic demo dataset
 ├── scripts/check-parity.mjs        # prisma ↔ schema.sql ↔ bootstrap.ts DDL ↔ API surface
-├── whatsapp-bot/                   # native Rust WhatsApp sidecar (linked devices,
-│                                   # NDJSON stdio bridge, wa-store.db session)
 ├── src-tauri/                      # Tauri v2 shell: tauri.conf.json, Cargo.toml,
 │                                   # capabilities, icons; shell logic lives in
 │                                   # src-tauri/src/lib.rs (data-dir bootstrap,
 │                                   # backup-on-exit, restore + WhatsApp commands)
+│   └── src/wa_engine.rs            # in-process WhatsApp linked-device engine
+│                                   # (whatsapp-rust) + JSON-file session store
+│                                   # (wa_json_store.rs) — no sidecar exe since
+│                                   # v1.9.0; legacy sidecar sessions auto-import
 │   └── resources/schema.sql        # canonical SQLite DDL (indexes + FK cascades)
 ├── docs/
 │   ├── PORTING_GUIDE.md            # desktop build & porting guide

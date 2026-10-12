@@ -34,7 +34,6 @@ jobs:
         with:
           workspaces: |
             src-tauri
-            whatsapp-bot
 
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
@@ -46,19 +45,8 @@ jobs:
       - name: Generate Prisma client
         run: bunx prisma generate
 
-      # Native Rust WhatsApp linked-device sidecar (whatsapp-rust engine —
-      # no Node.js). Lives OUTSIDE the src-tauri workspace with its own
-      # Cargo.lock: the app links libsqlite3-sys 0.28 (sqlx) while the
-      # engine links 0.37 (diesel) — Cargo's `links` rule forbids both in
-      # one dependency graph. Must exist before `tauri build`
-      # (bundle.externalBin expects it with the target-triple suffix).
-      - name: Build WhatsApp sidecar (native Rust)
-        shell: bash
-        run: |
-          cd whatsapp-bot
-          cargo build --release
-          mkdir -p ../src-tauri/binaries
-          cp target/release/whatsapp-bot.exe ../src-tauri/binaries/whatsapp-bot-x86_64-pc-windows-msvc.exe
+      # The WhatsApp linked-device engine runs IN-PROCESS since PS-055
+      # (no sidecar exe is built or bundled anymore).
 
       - name: Build Tauri app (static export + NSIS/MSI)
         run: bun run tauri build
@@ -69,7 +57,6 @@ jobs:
           $stage = "portable-stage/PS-AMS-Portable"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item "src-tauri/target/release/ps-ams.exe" "$stage/PS-AMS.exe"
-          Copy-Item "src-tauri/binaries/whatsapp-bot-x86_64-pc-windows-msvc.exe" "$stage/whatsapp-bot.exe"
           New-Item -ItemType File -Force -Path "$stage/portable.flag" | Out-Null
           Copy-Item "docs/README-portable.txt" "$stage/README.txt"
           $zip = if ($env:GITHUB_REF_NAME -like "v*") { "PS-AMS_${env:GITHUB_REF_NAME}_portable_x64.zip" } else { "PS-AMS_portable_x64.zip" }

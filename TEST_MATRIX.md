@@ -2,6 +2,27 @@
 
 Status keys: ✅ **executed** (with result) · 📋 **planned** (Phase 4, after the corresponding fix lands) · 🪟 **requires Windows runtime**. All tests use disposable databases and deterministic synthetic fixtures — never real academy data.
 
+## 0h. v1.9.0 WhatsApp-engine + receipt-ordering battery (executed 2026-10-12 — all green)
+
+New: `tests/receipt-ordering.test.ts` (route-level, disposable DB) wired into `npm run verify` — suite total now **232/232 across 15 files**. New Rust harness `scripts/wa-engine-check` `#[path]`-includes the REAL `src-tauri/src/wa_json_store.rs` + `wa_engine.rs` and runs 4 behavioural tests (`cargo test`; also run by the new `verify.yml` `rust` job on every push, together with a full `cargo check` of src-tauri).
+
+| ID | Check | Result |
+|---|---|---|
+| T-WA-S1 | JSON session store round-trip: device row + every sub-store (identities, sessions, prekeys+uploaded flags, signed prekeys, sender keys, sync keys, versions+mutation MACs, LID-PN, base keys, device registry, tc tokens, sent messages, pending inbound, msg secrets) survives a flush→reload cycle | ✅ |
+| T-WA-S2 | Reference semantics preserved: mark_prekeys_uploaded is UPDATE-only (never resurrects consumed ids); mutation-MAC upsert; latest sync key = lexicographic max key_id | ✅ |
+| T-WA-S3 | Expiry rules match the reference: tc tokens dropped only when BOTH buckets are expired-or-absent; sent messages and pending-inbound swept by cutoff; msg-secret `expires_at=0` never expires | ✅ |
+| T-WA-S4 | Msg-secret merge on key conflict: newest secret bytes win, `expires_at` never shortens (0 = never), later non-zero `message_ts` wins | ✅ |
+| T-WA-M1 | LEGACY MIGRATION: a wa-store.db built with the sidecar's exact Diesel schema (paired device row incl. 64-byte keypair blobs + account NULL + protobuf app-state key/version blobs) is imported on first boot — pairing preserved, all stores readable, wa-store.db renamed `.migrated` so the import runs exactly once | ✅ |
+| T-WA-M2 | Legacy DBs missing newer tables (no such table) are tolerated — those stores import empty instead of failing the whole migration | ✅ |
+| T-WA-R1 | Corrupt `wa-session.json` is retired (`.corrupt`) and the engine starts fresh instead of failing the boot | ✅ |
+| T-WA-C1 | Engine module compiles clean (`cargo check`) with the app's exact feature set (no sqlite-storage; wacore without simd) — no diesel/libsqlite3-sys in the graph | ✅ |
+| T-WA-D1 | Audit gate: no `externalBin` in tauri.conf.json; engine never spawns a process; `wa://event` UI contract + restart/unlink/auto-respawn flows preserved (client-audit PS-055 section) | ✅ |
+| T-PS056-1 | A just-issued BACKDATED receipt (collected today, paymentDate 10 days ago) tops the UNFILTERED receipt ledger on BOTH backends (web route + desktop SQL) | ✅ |
+| T-PS056-2 | Month-filtered and per-student listings keep paymentDate DESC (period semantics) — verified web + desktop | ✅ |
+| T-PS056-3 | Issuance order is receiptNo DESC (the RC number printed on the receipt), createdAt tiebreak, paymentDate last — identical ORDER BY in route.ts and tauri-api.ts | ✅ |
+
+🪟 Windows-runtime additions for v1.9.0 (acceptance checklist §0 in RELEASE_REPORT): legacy-pairing auto-import on a real v1.8.0 install; no `whatsapp-bot.exe` in the install folder / portable zip; live QR pairing + receipt send with the in-process engine.
+
 ## 0g. v1.8.0 BMI & updater battery (executed 2026-10-12 — all green)
 
 New suites: `tests/bmi-domain.test.ts` (35 tests) · `tests/bmi-integration.test.ts` (11 tests) — wired into `npm run verify`; suite total now **230/230 across 14 files**. Regression fixtures for the migration battery updated to the REAL v1.5 schema shape (v1.5 shipped heightCm/weightKg/updatedAt — verified against `git show v1.5.0:prisma/schema.prisma`).

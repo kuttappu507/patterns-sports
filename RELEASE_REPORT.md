@@ -1,10 +1,53 @@
-# PS-AMS — Release Report (v1.8.0)
+# PS-AMS — Release Report (v1.9.0)
 
-**Date:** 2026-10-12 · **Release:** `v1.8.0` · **Baseline:** v1.7.0 @ `ecbf448` · **Audit baseline:** v1.6.4 @ `63bf119`
-**Nature:** schema addition + scientific-accuracy rework → minor version bump. v1.8.0 ships the age-specific WHO BMI-for-age assessment (PS-053), the dated measurement-history migration, and the updater Install-button fix (PS-054). The v1.7.0 six-phase audit pipeline (PS-001…PS-052, all closed) remains the baseline below.
-**Process:** six-phase audit-and-fix pipeline (Phase 1 audit A–J → Phase 2 defect register → Phase 3 fixes 3A/3B/3C/3D → Phase 4 regression battery → Phase 5 parity walkthrough → this report). Owner decisions Q1a/Q2a/Q3a/Q6a/Q7a + Q5a adopted and documented in README "Fee & Billing Rules".
+**Date:** 2026-10-12 · **Release:** `v1.9.0` · **Baseline:** v1.8.0 @ `4554f7e` · **Audit baseline:** v1.6.4 @ `63bf119`
+**Nature:** architecture + owner-reported fixes → minor version bump. v1.9.0 brings the WhatsApp linked-device engine IN-PROCESS (PS-055 — no more sidecar exe in the install folder, existing pairings auto-migrate), fixes the receipt-history ordering (PS-056) and tucks the raw data-folder paths behind a disclosure (PS-057). The v1.7.0 six-phase audit pipeline (PS-001…PS-052, all closed) and v1.8.0 (PS-053/054) remain the baseline below.
 
-## 0. v1.8.0 — age-specific BMI (PS-053) & updater install fix (PS-054)
+## 0. v1.9.0 — in-process WhatsApp engine (PS-055), receipt ordering (PS-056), data-location disclosure (PS-057)
+
+### PS-055 — WhatsApp bot exe removed: the engine is now part of the app
+
+**Owner report:** "some whatsapp bot exe is there installed folder, can u avoid and integrate whatsapp thing inside code".
+
+**Why a separate exe existed:** the engine (the `whatsapp-rust` crate — a native Rust port of the Baileys protocol stack, zero Node.js) persisted its pairing session through `whatsapp-rust-sqlite-storage`, which pulls **diesel → libsqlite3-sys 0.37**, while the app links **sqlx → libsqlite3-sys 0.30**. Cargo's `links` rule forbids two versions of one `-sys` crate in a single dependency graph — so the engine shipped as a second binary (`whatsapp-bot.exe`) driven over NDJSON stdio.
+
+**The fix (verified, not just planned):**
+- New `src-tauri/src/wa_json_store.rs` (~1.6 k lines): a **JSON-file session store** implementing wacore's FULL `Backend` surface (SignalStore + AppSyncStore + ProtocolStore + MsgSecretStore + DeviceStore — every method ported method-by-method from the reference SqliteStore, including prekey UPDATE-only semantics, mutation-MAC upserts, tc-token dual-bucket expiry, msg-secret merge rules, sent-message atomic take). Zero libsqlite3-sys in this module → the dependency conflict is gone at the root. Debounced atomic writes (tmp + rename, 400 ms coalescing), corrupt-file recovery (retire + fresh), and a **legacy importer** that reads the old sidecar's `wa-store.db` (all 17 tables incl. a minimal protobuf reader for the app-state key/version blobs) and renames it — **existing academies keep their WhatsApp pairing through the upgrade; no QR re-scan**.
+- New `src-tauri/src/wa_engine.rs`: the engine as a plain tokio task inside the app (Bot::builder with the JSON store, supervised auto-reconnect loop, abortable shutdown, generation-gated events). `wa_send` / `wa_send_document` / `wa_logout` / `wa_restart` keep their exact command signatures and the `wa://event` payloads are byte-identical — **the frontend bridge (tauri-api.ts, whatsapp.ts, Settings card) is untouched**.
+- `whatsapp-bot/` crate DELETED; `externalBin` removed from tauri.conf.json; the CI sidecar build step and the portable-zip copy are gone. The install folder now contains ONLY the app binary (portable zip: PS-AMS.exe + README + portable.flag).
+- Behaviour preserved: revoked-pairing wipe + capped auto-respawn, unlink guard, restart connection, 20 MB document cap, receipt-number-as-id send events.
+
+**Verified (executed in this sandbox):** `scripts/wa-engine-check` — a standalone cargo harness that `#[path]`-includes the REAL module files — passes `cargo check` clean and runs **4 behavioural tests**: full-store round-trip across reload, prekey/expiry/merge semantics, **legacy SQLite session import** (builds a wa-store.db with the sidecar's exact Diesel schema + paired device row + protobuf app-state blobs → import preserves the pairing → wa-store.db renamed `.migrated`), and corrupt-JSON recovery. Rust toolchain installed in-sandbox for this purpose (rustup stable 1.99.0). The tauri glue (whatsapp.rs/lib.rs) is review-verified against the sidecar-era API usage; a new `verify.yml` `rust` job now compiles src-tauri (`cargo check`) and runs the engine tests on **every push** — Windows-only breakage can no longer wait for a tag to surface.
+
+### PS-056 — "receipt history not showing recent one first"
+
+**Root cause (reproduced before fixing):** the receipt ledger ordered by `paymentDate DESC, createdAt DESC, receiptNo DESC`. A receipt collected TODAY for a backdated month (the arrears-settle flow) landed at its backdated position — with 3 receipts seeded, a probe receipt issued last sat 10th in the list.
+
+**Fix (both backends, PS-029 parity kept):** the UNFILTERED ledger (Receipt History tab, overview "Recent receipts") now lists by **issuance order — `receiptNo DESC`** (the RC number printed on the paper receipt; its YYYYMM prefix + global running suffix are monotonic in issuance order), `createdAt DESC` tiebreak, `paymentDate DESC` last. Month-filtered and per-student listings keep `paymentDate DESC` (period semantics). `src/app/api/payments/route.ts` + `src/lib/psams/tauri-api.ts` mirror each other exactly.
+
+**Verified:** new regression battery `tests/receipt-ordering.test.ts` (executed against the REAL route handler on a disposable DB + the REAL desktop SQL text via libsql): a just-issued backdated receipt tops the unfiltered ledger; month and student views stay date-ordered; desktop and web agree. Suite now **232/232 across 15 files**.
+
+### PS-057 — "why data folder location show in in app"
+
+The Data Safety card printed raw AppData paths (`C:\Users\…\AppData\Roaming\…`) permanently. The card now leads with a friendly one-liner ("Your data stays on this PC — the academy database, media library and backups live inside the app data folder. Nothing is uploaded anywhere.") and the exact paths sit behind a **"Show folder paths"** disclosure (kept intentionally — support tickets and manual backup checks still need them).
+
+### v1.9.0 verification evidence
+
+- `npm run verify` exit 0: tracked-files gate (267 paths) · ESLint 0 errors (4 pre-existing warnings) · tsc clean · **vitest 232/232 across 15 suites** · parity 8↔8 models / 77 columns · client-audit PASS with NEW PS-055 invariants (no externalBin, JSON store implements the full Backend surface, engine never spawns a process, legacy-import resilience).
+- Rust: `wa-engine-check` cargo check clean + 4/4 behavioural tests (round-trip, semantics, legacy import, corrupt-file recovery).
+- **Local `next build` blocked by the sandbox** (Turbopack CSS worker OOM-killed at 4 GB — reproduced at clean v1.8.0 HEAD, i.e. environmental, not introduced here; the Windows tag-CI build remains the authoritative production build, as for v1.7.0/v1.8.0). CI compensations: the new rust check job runs `cargo check src-tauri` + engine tests on every push, and build-exe.yml compiles the full Windows app on the tag.
+- **CI fix found during this cycle:** `verify.yml` had a corrupted push trigger (`branches: ain]`) — verify had silently stopped running on main pushes. Fixed to `branches: [main]`.
+
+### v1.9.0 Windows acceptance additions (run with §5 below)
+
+11. WhatsApp: after upgrading from v1.8.0 with a linked device, the boot log shows the legacy import line and the device reconnects WITHOUT re-scanning; Settings shows the connected number.
+12. The install folder (and the portable zip) contains NO `whatsapp-bot.exe`; receipts + reminders still send; Unlink → fresh QR; "Restart connection" recovers from any transient state.
+
+---
+
+## v1.8.0 record (baseline — unchanged)
+
+### v1.8.0 — age-specific BMI (PS-053) & updater install fix (PS-054)
 
 ### PS-053 — scientifically valid, age-specific BMI assessment
 

@@ -58,9 +58,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => clearInterval(id)
   }, [])
 
-  // WhatsApp linked-device bridge — listen for sidecar events (status,
+  // WhatsApp linked-device bridge — listen for engine events (status,
   // QR, connected, send acks) and seed the store from the Rust snapshot.
-  // Desktop only; the sidecar itself auto-connects at boot (lib.rs setup).
+  // Desktop only; the engine itself auto-connects at boot (lib.rs setup).
   useEffect(() => {
     initWaBridge()
   }, [])

@@ -765,6 +765,10 @@ export async function fetchPayments(
   // PS-030 — month filtering rides the PaymentMonth ledger index (the same
   // indexed path the web GET /api/payments?month= route uses) instead of
   // loading every payment and JSON-parsing the months column per row.
+  // PS-056 ordering parity with the web route: the UNFILTERED receipt
+  // ledger lists by ISSUANCE (receiptNo DESC — the number printed on the
+  // paper receipt), so a just-issued backdated receipt still tops the
+  // list; month-filtered and per-student views stay paymentDate DESC.
   if (params.month) {
     const sql = `SELECT p.*, s.fullName AS studentName, s.admissionNo
      FROM FeePayment p JOIN Student s ON s.id = p.studentId
@@ -774,11 +778,14 @@ export async function fetchPayments(
      ${params.limit ? `LIMIT ${Math.max(1, Math.floor(params.limit))}` : ""}`
     return db.select<FeePaymentWithStudent[]>(sql, params.studentId ? [params.month, params.studentId] : [params.month])
   }
+  const order = params.studentId
+    ? "ORDER BY p.paymentDate DESC, p.createdAt DESC, p.receiptNo DESC"
+    : "ORDER BY p.receiptNo DESC, p.createdAt DESC, p.paymentDate DESC"
   const rows = await db.select<FeePaymentWithStudent[]>(
     `SELECT p.*, s.fullName AS studentName, s.admissionNo
      FROM FeePayment p JOIN Student s ON s.id = p.studentId
      ${params.studentId ? "WHERE p.studentId = $1" : ""}
-     ORDER BY p.paymentDate DESC, p.createdAt DESC, p.receiptNo DESC`,
+     ${order}`,
     params.studentId ? [params.studentId] : []
   )
   if (params.limit) return rows.slice(0, params.limit)

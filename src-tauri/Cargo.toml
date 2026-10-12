@@ -1,15 +1,17 @@
 [package]
 name = "ps-ams"
-version = "1.8.0"
+version = "1.9.0"
 description = "Pattern Sports Academy Management System — offline-first academy suite"
 authors = ["Pattern Sports Academy"]
 edition = "2021"
 
-# Standalone package (NOT a workspace with the whatsapp-bot sidecar):
-# the app links sqlx (libsqlite3-sys 0.28) while the native sidecar links
-# diesel (libsqlite3-sys 0.37) — Cargo's `links` rule forbids both in one
-# dependency graph, so the sidecar lives in its own crate at ../whatsapp-bot
-# with its own Cargo.lock and is built separately by CI.
+# Standalone package. Since PS-055 the WhatsApp linked-device engine runs
+# IN-PROCESS (src/wa_engine.rs) on the whatsapp-rust crate WITHOUT its
+# sqlite-storage feature — the pairing session is persisted by our own
+# JSON-file backend (src/wa_json_store.rs). That keeps diesel and its
+# libsqlite3-sys 0.37 out of this dependency graph (sqlx pins
+# libsqlite3-sys 0.30 here; Cargo's `links` rule forbids both in one graph
+# — the very reason a sidecar exe existed before v1.9.0).
 [workspace]
 
 [lib]
@@ -32,6 +34,23 @@ tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# In-process WhatsApp engine (PS-055) — no default features: the simd path
+# of wacore-binary is nightly-only (stable MSVC), and sqlite-storage would
+# pull diesel/libsqlite3-sys 0.37 (see the workspace note above).
+wacore = { version = "0.7", default-features = false }
+wacore-binary = { version = "0.7", default-features = false }
+whatsapp-rust = { version = "0.7", default-features = false, features = [
+    "tokio-transport",
+    "tokio-runtime",
+    "tokio-native",
+    "ureq-client",
+    "signal",
+] }
+async-trait = "0.1"
+# Engine tasks ride tauri::async_runtime (tokio): spawns, Notify, timers.
+tokio = { version = "1", default-features = false, features = ["rt", "sync", "time"] }
+bytes = "1"
+log = "0.4"
 chrono = "0.4"
 dirs = "5"
 # Updater integrity (PS-015): sha256 of the downloaded installer, compared
