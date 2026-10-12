@@ -13,7 +13,9 @@ export const SELECTION_LEVELS = ["School", "District", "State", "National"] as c
 
 export const COMMITTEE_ROLES = [
   "President",
+  "Vice President",
   "General Secretary",
+  "Joint Secretary",
   "Treasurer",
   "Executive Member",
 ] as const

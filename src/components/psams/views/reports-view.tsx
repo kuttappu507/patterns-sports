@@ -156,42 +156,44 @@ export function ReportsView() {
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input className="h-8 rounded-lg border-border bg-card pl-8 text-xs placeholder:text-muted-foreground focus-visible:border-primary/50" placeholder="Real-time search — name, admission number, parent mobile…" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
         </div>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
+        {/* flex-wrap deck — grid-cols-7 (minmax(0,1fr)) squeezed the closed
+            triggers into truncated text; a wrapping bar can never cut a value. */}
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={filters.category} onValueChange={(v) => setFilters({ ...filters, category: v })}>
-            <SelectTrigger className="h-8 border-border bg-card text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
+            <SelectTrigger className="h-8 min-w-[164px] border-border bg-card text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All categories</SelectItem>
               {AGE_CATEGORIES.map((c) => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
             </SelectContent>
           </Select>
           <div className="flex gap-1">
-            <Input inputMode="numeric" placeholder="Min age" className="h-8 border-border bg-card text-xs" value={filters.minAge} onChange={(e) => setFilters({ ...filters, minAge: intOnly(e.target.value, 2) })} />
-            <Input inputMode="numeric" placeholder="Max age" className="h-8 border-border bg-card text-xs" value={filters.maxAge} onChange={(e) => setFilters({ ...filters, maxAge: intOnly(e.target.value, 2) })} />
+            <Input inputMode="numeric" placeholder="Min age" className="h-8 w-[104px] border-border bg-card text-xs" value={filters.minAge} onChange={(e) => setFilters({ ...filters, minAge: intOnly(e.target.value, 2) })} />
+            <Input inputMode="numeric" placeholder="Max age" className="h-8 w-[104px] border-border bg-card text-xs" value={filters.maxAge} onChange={(e) => setFilters({ ...filters, maxAge: intOnly(e.target.value, 2) })} />
           </div>
-          <Input inputMode="numeric" placeholder="Height > (cm)" className="h-8 border-border bg-card text-xs" value={filters.minHeight} onChange={(e) => setFilters({ ...filters, minHeight: intOnly(e.target.value, 3) })} />
+          <Input inputMode="numeric" placeholder="Height > (cm)" className="h-8 w-[152px] border-border bg-card text-xs" value={filters.minHeight} onChange={(e) => setFilters({ ...filters, minHeight: intOnly(e.target.value, 3) })} />
           <Select value={filters.school} onValueChange={(v) => setFilters({ ...filters, school: v })}>
-            <SelectTrigger className="h-8 border-border bg-card text-xs"><SelectValue placeholder="School" /></SelectTrigger>
+            <SelectTrigger className="h-8 min-w-[214px] border-border bg-card text-xs"><SelectValue placeholder="School" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All schools</SelectItem>
               {schools.map((s) => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filters.sport} onValueChange={(v) => setFilters({ ...filters, sport: v, position: "all" })}>
-            <SelectTrigger className="h-8 border-border bg-card text-xs"><SelectValue placeholder="Sport" /></SelectTrigger>
+            <SelectTrigger className="h-8 min-w-[152px] border-border bg-card text-xs"><SelectValue placeholder="Sport" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All sports</SelectItem>
               {SPORTS.map((s) => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filters.position} onValueChange={(v) => setFilters({ ...filters, position: v })}>
-            <SelectTrigger className="h-8 border-border bg-card text-xs"><SelectValue placeholder="Position" /></SelectTrigger>
+            <SelectTrigger className="h-8 min-w-[164px] border-border bg-card text-xs"><SelectValue placeholder="Position" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All positions</SelectItem>
               {positions.map((p) => <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filters.batch} onValueChange={(v) => setFilters({ ...filters, batch: v })}>
-            <SelectTrigger className="h-8 border-border bg-card text-xs"><SelectValue placeholder="Batch" /></SelectTrigger>
+            <SelectTrigger className="h-8 min-w-[152px] border-border bg-card text-xs"><SelectValue placeholder="Batch" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All batches</SelectItem>
               <SelectItem value="Morning" className="text-xs">Morning</SelectItem>

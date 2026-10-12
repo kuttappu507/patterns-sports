@@ -437,7 +437,8 @@ fn run_backup(handle: &tauri::AppHandle) -> BackupOutcome {
         Ok(bytes) => match fs::rename(&partial, &final_path) {
             Ok(_) => {
                 out.ok = true;
-                out.db_file = Some(final_name);
+                // cloned — `final_name` is still logged in the summary below
+                out.db_file = Some(final_name.clone());
                 out.db_bytes = bytes;
             }
             Err(e) => {

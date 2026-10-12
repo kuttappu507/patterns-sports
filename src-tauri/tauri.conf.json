@@ -16,7 +16,7 @@
         "title": "PS-AMS",
         "url": "index.html?boot=splash",
         "width": 460,
-        "height": 680,
+        "height": 560,
         "center": true,
         "resizable": false,
         "decorations": false,

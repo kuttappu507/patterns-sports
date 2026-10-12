@@ -124,7 +124,7 @@ model PaymentMonth {
 model CommitteeMember {
   id              String  @id @default(cuid())
   fullName        String
-  role            String // President | General Secretary | Treasurer | Executive Member
+  role            String // President | Vice President | General Secretary | Joint Secretary | Treasurer | Executive Member
   phone           String
   responsibilities String?
   photoPath       String?

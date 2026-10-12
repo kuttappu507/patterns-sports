@@ -753,6 +753,12 @@ html.splash-window .splash {
   color: #ffccd6;
 }
 
+/* closing dialogue pinned at the bottom edge of the boot card */
+.splash-signoff {
+  color: rgba(255, 209, 102, 0.68);
+  text-shadow: 0 1px 10px rgba(255, 209, 102, 0.14);
+}
+
 .splash-progress {
   background: rgba(255, 255, 255, 0.10);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset;

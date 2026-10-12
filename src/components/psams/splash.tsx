@@ -79,89 +79,100 @@ export function Splash({ error }: { error: string | null }) {
           style={{ animationDelay: "0.9s" }}
         />
 
-        {/* ---------- bouncing volleyball ---------- */}
-        <div className="relative flex h-28 w-28 items-end justify-center">
-          <motion.div
-            animate={{ y: [0, -22, 0] }}
-            transition={{ duration: 1.05, repeat: Infinity, ease: [0.28, 0, 0.42, 1], times: [0, 0.55, 1] }}
-            className="relative"
-          >
+        {/* ---------- main block — vertically centered in the card ---------- */}
+        <div className="relative z-10 flex w-full flex-1 flex-col items-center justify-center">
+          {/* ---------- bouncing volleyball ---------- */}
+          <div className="relative flex h-28 w-28 items-end justify-center">
             <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
-              className="h-16 w-16 drop-shadow-[0_0_18px_rgba(255,107,141,0.65)]"
+              animate={{ y: [0, -22, 0] }}
+              transition={{ duration: 1.05, repeat: Infinity, ease: [0.28, 0, 0.42, 1], times: [0, 0.55, 1] }}
+              className="relative"
             >
-              <Volleyball className="h-full w-full" />
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
+                className="h-16 w-16 drop-shadow-[0_0_18px_rgba(255,107,141,0.65)]"
+              >
+                <Volleyball className="h-full w-full" />
+              </motion.div>
+              {/* pulse rings on impact */}
+              <span className="splash-ring absolute inset-0 rounded-full border-2 border-rose-300/60" />
+              <span className="splash-ring absolute inset-0 rounded-full border border-yellow-300/50" style={{ animationDelay: "0.95s" }} />
             </motion.div>
-            {/* pulse rings on impact */}
-            <span className="splash-ring absolute inset-0 rounded-full border-2 border-rose-300/60" />
-            <span className="splash-ring absolute inset-0 rounded-full border border-yellow-300/50" style={{ animationDelay: "0.95s" }} />
-          </motion.div>
-          {/* ground shadow */}
+            {/* ground shadow */}
+            <motion.div
+              animate={{ scaleX: [1, 0.72, 1], opacity: [0.5, 0.28, 0.5] }}
+              transition={{ duration: 1.05, repeat: Infinity, ease: [0.28, 0, 0.42, 1], times: [0, 0.55, 1] }}
+              className="splash-ball-shadow absolute -bottom-1.5 h-3 w-16 rounded-[100%]"
+            />
+          </div>
+
+          {/* ---------- brand ---------- */}
           <motion.div
-            animate={{ scaleX: [1, 0.72, 1], opacity: [0.5, 0.28, 0.5] }}
-            transition={{ duration: 1.05, repeat: Infinity, ease: [0.28, 0, 0.42, 1], times: [0, 0.55, 1] }}
-            className="splash-ball-shadow absolute -bottom-1.5 h-3 w-16 rounded-[100%]"
-          />
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.5, ease: "easeOut" }}
+            className="relative z-10 mt-2"
+          >
+            <div className="splash-chip mx-auto mb-2.5 inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.28em]">
+              <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-yellow-300" />
+              Volleyball Academy
+            </div>
+            <h1 className="splash-title text-[27px] leading-none">PATTERN SPORTS</h1>
+            <p className="mt-1.5 text-[10.5px] font-medium uppercase tracking-[0.34em] text-rose-200/80">
+              Academy Management Suite
+            </p>
+          </motion.div>
+
+          {/* ---------- progress ---------- */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.45 }}
+            className="relative z-10 mt-6 w-56"
+          >
+            <div className="splash-progress h-1.5 overflow-hidden rounded-full">
+              <motion.span
+                initial={{ width: "4%" }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 2.1, ease: [0.3, 0.5, 0.4, 1] }}
+                className="block h-full rounded-full"
+              />
+            </div>
+            <div className="mt-2 h-4 text-[11px] font-medium text-rose-200/70" aria-live="polite">
+              {error ? "Almost there…" : STATUS_LINES[statusIdx]}
+            </div>
+          </motion.div>
+
+          {/* ---------- boot warning (desktop shell only) ---------- */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="relative z-10 mt-3 w-full rounded-xl border border-amber-400/30 bg-amber-400/[0.08] p-3"
+            >
+              <p className="text-[12px] font-semibold text-amber-300">Offline backend warning</p>
+              <p className="mt-1 break-words text-[11px] leading-relaxed text-amber-100/80">{error}</p>
+              <p className="mt-1 text-[10.5px] text-rose-200/60">
+                The interface will still load — data operations may be unavailable.
+              </p>
+            </motion.div>
+          )}
         </div>
 
-        {/* ---------- brand ---------- */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25, duration: 0.5, ease: "easeOut" }}
-          className="relative z-10 mt-2"
-        >
-          <div className="splash-chip mx-auto mb-2.5 inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.28em]">
-            <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-yellow-300" />
-            Volleyball Academy
-          </div>
-          <h1 className="splash-title text-[27px] leading-none">PATTERN SPORTS</h1>
-          <p className="mt-1.5 text-[10.5px] font-medium uppercase tracking-[0.34em] text-rose-200/80">
-            Academy Management Suite
-          </p>
-        </motion.div>
-
-        {/* ---------- progress ---------- */}
+        {/* ---------- closing dialogue — pinned to the bottom edge ---------- */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.45 }}
-          className="relative z-10 mt-6 w-56"
+          transition={{ delay: 0.6 }}
+          className="relative z-10 mt-auto w-full pt-3"
         >
-          <div className="splash-progress h-1.5 overflow-hidden rounded-full">
-            <motion.span
-              initial={{ width: "4%" }}
-              animate={{ width: "100%" }}
-              transition={{ duration: 2.1, ease: [0.3, 0.5, 0.4, 1] }}
-              className="block h-full rounded-full"
-            />
-          </div>
-          <div className="mt-2 h-4 text-[11px] font-medium text-rose-200/70" aria-live="polite">
-            {error ? "Almost there…" : STATUS_LINES[statusIdx]}
+          <p className="splash-signoff text-[11px] font-medium italic">“Serve hard, dream big — see you on the court.”</p>
+          <div className="mt-1.5 text-[9.5px] font-semibold uppercase tracking-[0.24em] text-rose-200/40">
+            PS-AMS v{APP_VERSION} · Offline-first
           </div>
         </motion.div>
-
-        {/* ---------- boot warning (desktop shell only) ---------- */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="relative z-10 mt-3 w-full rounded-xl border border-amber-400/30 bg-amber-400/[0.08] p-3"
-          >
-            <p className="text-[12px] font-semibold text-amber-300">Offline backend warning</p>
-            <p className="mt-1 break-words text-[11px] leading-relaxed text-amber-100/80">{error}</p>
-            <p className="mt-1 text-[10.5px] text-rose-200/60">
-              The interface will still load — data operations may be unavailable.
-            </p>
-          </motion.div>
-        )}
-
-        {/* footer line */}
-        <div className="relative z-10 mt-5 text-[9.5px] font-semibold uppercase tracking-[0.24em] text-rose-200/40">
-          PS-AMS v{APP_VERSION} · Offline-first
-        </div>
       </motion.div>
     </motion.div>
   )

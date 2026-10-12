@@ -247,6 +247,12 @@ describe("T-S8 · attendance stats exclude Inactive students (PS-026)", () => {
     const inactive = await createStudent({ status: "Inactive" })
     const today = new Date()
     const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+    // T-S1's bootstrapDatabase() auto-seeds the demo academy on the disposable
+    // database, and planDemoAttendance() writes marks for the last 3 non-Sunday
+    // days — INCLUDING today whenever the suite runs Monday-Saturday (CI's
+    // green runs happened to fall on a Sunday, which hid this for a week).
+    // This test owns the day's register: clear the date before marking.
+    await db.attendance.deleteMany({ where: { date } })
     const req = new NextRequest("http://localhost:3000/api/attendance", {
       method: "POST",
       body: JSON.stringify({

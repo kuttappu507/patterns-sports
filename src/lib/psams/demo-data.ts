@@ -63,10 +63,12 @@ export interface DemoPaymentPlan {
 
 export const DEMO_COMMITTEE: DemoCommitteeMember[] = [
   { fullName: "Suresh Kumar Pillai", role: "President", phone: "+91 94470 12345", responsibilities: "Overall academy governance and external liaison", displayOrder: 0 },
-  { fullName: "Anitha Raghavan", role: "General Secretary", phone: "+91 98470 22334", responsibilities: "Day-to-day administration, tournaments and records", displayOrder: 1 },
-  { fullName: "Rajesh Menon", role: "Treasurer", phone: "+91 99461 55667", responsibilities: "Fee oversight, budgets and annual audit", displayOrder: 2 },
-  { fullName: "Deepa Krishnan", role: "Executive Member", phone: "+91 94950 33445", responsibilities: "Coaching coordination and camp logistics", displayOrder: 3 },
-  { fullName: "Vikram Shetty", role: "Executive Member", phone: "+91 96330 77889", responsibilities: "Equipment, ground maintenance and transport", displayOrder: 4 },
+  { fullName: "Pradeep Varma", role: "Vice President", phone: "+91 94470 51234", responsibilities: "Event partnerships and academy outreach", displayOrder: 1 },
+  { fullName: "Anitha Raghavan", role: "General Secretary", phone: "+91 98470 22334", responsibilities: "Day-to-day administration, tournaments and records", displayOrder: 2 },
+  { fullName: "Vinod Joseph", role: "Joint Secretary", phone: "+91 98470 62234", responsibilities: "Attendance registers and member communications", displayOrder: 3 },
+  { fullName: "Rajesh Menon", role: "Treasurer", phone: "+91 99461 55667", responsibilities: "Fee oversight, budgets and annual audit", displayOrder: 4 },
+  { fullName: "Deepa Krishnan", role: "Executive Member", phone: "+91 94950 33445", responsibilities: "Coaching coordination and camp logistics", displayOrder: 5 },
+  { fullName: "Vikram Shetty", role: "Executive Member", phone: "+91 96330 77889", responsibilities: "Equipment, ground maintenance and transport", displayOrder: 6 },
 ]
 
 export const DEMO_SETTINGS: Record<string, string> = {
