@@ -137,6 +137,9 @@ ok(settingsView.includes("WhatsApp Linked Device") && settingsView.includes("<Wh
 ok(settingsView.includes("Link a device"), "pairing CTA present")
 const fees = readFileSync("src/components/psams/views/fees-view.tsx", "utf8")
 ok(fees.includes("dispatchWa"), "receipt + reminder sends go through dispatchWa")
+// PS-057 — the data card leads friendly, paths behind a disclosure
+ok(settingsView.includes('"Show folder paths"') && settingsView.includes('"Hide folder paths"') && settingsView.includes("showPaths"), "PS-057: raw data paths collapsed behind a disclosure")
+ok(settingsView.includes("Nothing is uploaded anywhere"), "PS-057: friendly data-location one-liner present")
 // PS-055 — the engine is IN-PROCESS: the JSON session store + engine glue
 // are audited directly (the whatsapp-bot crate is gone from the repo).
 const wajson = readFileSync("src-tauri/src/wa_json_store.rs", "utf8")

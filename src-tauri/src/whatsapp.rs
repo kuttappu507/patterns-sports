@@ -248,7 +248,7 @@ pub async fn start_engine(app: &AppHandle) -> Result<(), String> {
         generation,
     });
 
-    let result = wa_engine::WaEngine::start(&dir, events, generation).await;
+    let result = WaEngine::start(&dir, events, generation).await;
 
     let state = app.state::<WaState>();
     match result {
@@ -287,11 +287,10 @@ pub async fn wa_start(app: AppHandle) -> Result<WaSnapshot, String> {
 pub async fn wa_send(app: AppHandle, to: String, text: String, id: Option<String>) -> Result<(), String> {
     let engine = {
         let state = app.state::<WaState>();
-        state
-            .engine
-            .lock()
-            .unwrap()
-            .clone()
+        // Bind first: the MutexGuard temporary must drop BEFORE `state`
+        // (a State<'_, WaState> borrow) leaves the block (E0597).
+        let slot = state.engine.lock().unwrap().clone();
+        slot
     };
     let Some(engine) = engine else {
         return Err("WhatsApp is not connected".into());
@@ -323,7 +322,10 @@ pub async fn wa_send_document(
     }
     let engine = {
         let state = app.state::<WaState>();
-        state.engine.lock().unwrap().clone()
+        // Bind first: the MutexGuard temporary must drop BEFORE `state`
+        // (a State<'_, WaState> borrow) leaves the block (E0597).
+        let slot = state.engine.lock().unwrap().clone();
+        slot
     };
     let Some(engine) = engine else {
         return Err("WhatsApp is not connected".into());
