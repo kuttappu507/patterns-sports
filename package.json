@@ -1,6 +1,6 @@
 {
   "name": "ps-ams",
-  "version": "1.6.4",
+  "version": "1.7.0",
   "engines": {
     "node": ">=20.9.0"
   },

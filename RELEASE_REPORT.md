@@ -1,7 +1,7 @@
-# PS-AMS — Release Report (v1.7.0-rc.1)
+# PS-AMS — Release Report (v1.7.0)
 
-**Date:** 2026-10-12 · **Commit:** `553c33e` (main) · **Baseline audited:** v1.6.4 @ `63bf119`
-**Nature:** behavioral + schema changes → minor version bump, release-candidate.
+**Date:** 2026-10-12 · **Release:** `v1.7.0` · **Fix head:** `2c48952` + release bump · **Baseline audited:** v1.6.4 @ `63bf119`
+**Nature:** behavioral + schema changes → minor version bump. The rc.1 build breaker (Rust E0382) was fixed at `2c48952` together with the owner-reported UX fixes: splash closing dialogue, committee Vice President / Joint Secretary roles + one-click filtered PDF/XLS export, and dropdown text truncation.
 **Process:** six-phase audit-and-fix pipeline (Phase 1 audit A–J → Phase 2 defect register → Phase 3 fixes 3A/3B/3C/3D → Phase 4 regression battery → Phase 5 parity walkthrough → this report). Owner decisions Q1a/Q2a/Q3a/Q6a/Q7a + Q5a adopted and documented in README "Fee & Billing Rules".
 
 ## 1. Fixed defects (PS-001…PS-052 — all 52 closed)
