@@ -62,11 +62,14 @@ describe("T-M1 · legacy database upgrade (PS-019/020/MN-2)", () => {
         dateOfBirth TEXT NOT NULL,
         parentName TEXT NOT NULL,
         mobile TEXT NOT NULL,
+        heightCm REAL,
+        weightKg REAL,
         ageCategory TEXT NOT NULL,
         monthlyFee REAL NOT NULL DEFAULT 0,
         registrationDate TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'Active',
-        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `)
     await client.execute({
@@ -84,7 +87,8 @@ describe("T-M1 · legacy database upgrade (PS-019/020/MN-2)", () => {
     const { applyMigrations } = await import("@/lib/psams/migrations")
     const applied = await applyMigrations(migrationAdapter(client), "test-web")
     expect(applied).toContain("v1.6.0: Student.gender")
-    expect(await userVersion(client)).toBe(1)
+    expect(applied).toContain("v1.8.0: Measurement history + backfill")
+    expect(await userVersion(client)).toBe(2)
 
     const cols = await client.execute("PRAGMA table_info(Student)")
     expect(cols.rows.map((r) => String(r.name))).toContain("gender")
@@ -105,14 +109,18 @@ describe("T-M1 · legacy database upgrade (PS-019/020/MN-2)", () => {
         id TEXT PRIMARY KEY,
         admissionNo TEXT NOT NULL UNIQUE,
         fullName TEXT NOT NULL,
-        gender TEXT NOT NULL DEFAULT ''
+        heightCm REAL,
+        weightKg REAL,
+        gender TEXT NOT NULL DEFAULT '',
+        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `)
     const { applyMigrations } = await import("@/lib/psams/migrations")
     const applied = await applyMigrations(migrationAdapter(client), "test-web")
     // the guard marks it applied WITHOUT running the ALTER (no duplicate-column error)
     expect(applied).toContain("v1.6.0: Student.gender")
-    expect(await userVersion(client)).toBe(1)
+    expect(await userVersion(client)).toBe(2)
   })
 
   it("a failing migration is LOUD, names itself, and leaves the frontier untouched (PS-023)", async () => {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
 import { computeAge, nextAdmissionNo, assertValidStudentInput } from "@/lib/psams/domain"
+import { localYMD } from "@/lib/psams/bmi"
 import { mapApiError } from "@/lib/psams/api-error"
 
 function isUniqueViolation(e: unknown): boolean {
@@ -112,6 +113,20 @@ export async function POST(req: NextRequest) {
             status: body.status || "Active",
           },
         })
+        // v1.8.0 — first dated measurement row for the new athlete.
+        if (student.heightCm != null || student.weightKg != null) {
+          await db.measurement.upsert({
+            where: { studentId_date: { studentId: student.id, date: localYMD(new Date()) } },
+            create: {
+              studentId: student.id,
+              date: localYMD(new Date()),
+              heightCm: student.heightCm,
+              weightKg: student.weightKg,
+              source: "create",
+            },
+            update: { heightCm: student.heightCm, weightKg: student.weightKg, source: "create" },
+          })
+        }
         return NextResponse.json(student, { status: 201 })
       } catch (e) {
         const raced = attempt < 3 && !body.admissionNo && isUniqueViolation(e)

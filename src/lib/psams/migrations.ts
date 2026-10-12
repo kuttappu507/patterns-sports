@@ -61,6 +61,35 @@ export const MIGRATIONS: Migration[] = [
     statements: ["ALTER TABLE Student ADD COLUMN gender TEXT NOT NULL DEFAULT ''"],
     skipWhen: async (client) => (await tableColumns(client, "Student")).has("gender"),
   },
+  {
+    // v1.8.0 — dated height/weight history for age-specific BMI-for-age.
+    // The Student row had always OVERWRITTEN height/weight, so before this
+    // migration the best-known measurement date of an existing student is
+    // the row's last update; each student's current values are backfilled
+    // as one 'backfill' row (INSERT OR IGNORE → idempotent, UNIQUE guard).
+    // Fresh installs get the same table through the idempotent DDL and have
+    // no legacy rows to backfill.
+    version: 2,
+    name: "v1.8.0: Measurement history + backfill",
+    statements: [
+      `CREATE TABLE IF NOT EXISTS Measurement (
+  id        TEXT PRIMARY KEY,
+  studentId TEXT NOT NULL REFERENCES Student(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  date      TEXT NOT NULL,
+  heightCm  REAL,
+  weightKg  REAL,
+  source    TEXT NOT NULL DEFAULT 'edit',
+  createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (studentId, date)
+)`,
+      "CREATE INDEX IF NOT EXISTS idx_measurement_student ON Measurement(studentId)",
+      "CREATE INDEX IF NOT EXISTS idx_measurement_date    ON Measurement(date)",
+      `INSERT OR IGNORE INTO Measurement (id, studentId, date, heightCm, weightKg, source)
+SELECT 'm' || lower(hex(randomblob(16))), id, substr(updatedAt, 1, 10), heightCm, weightKg, 'backfill'
+FROM Student
+WHERE heightCm IS NOT NULL OR weightKg IS NOT NULL`,
+    ],
+  },
 ]
 
 // ---- runner ----------------------------------------------------------

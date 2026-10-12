@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS Student (
   dateOfBirth      TEXT NOT NULL,
   parentName       TEXT NOT NULL,
   mobile           TEXT NOT NULL,
+  heightCm         REAL,
+  weightKg         REAL,
   primarySport     TEXT NOT NULL DEFAULT 'Volleyball',
   ageCategory      TEXT NOT NULL,
   monthlyFee       REAL NOT NULL DEFAULT 0,

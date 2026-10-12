@@ -131,6 +131,19 @@ CREATE TABLE IF NOT EXISTS Setting (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS Measurement (
+  id        TEXT PRIMARY KEY,
+  studentId TEXT NOT NULL REFERENCES Student(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  date      TEXT NOT NULL,
+  heightCm  REAL,
+  weightKg  REAL,
+  source    TEXT NOT NULL DEFAULT 'edit',
+  createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (studentId, date)
+);
+CREATE INDEX IF NOT EXISTS idx_measurement_student ON Measurement(studentId);
+CREATE INDEX IF NOT EXISTS idx_measurement_date    ON Measurement(date);
 `
 
 /** Resolve the SQLite file path exactly like src/lib/db.ts does for libsql. */

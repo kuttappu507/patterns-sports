@@ -2,6 +2,39 @@
 
 Status keys: ✅ **executed** (with result) · 📋 **planned** (Phase 4, after the corresponding fix lands) · 🪟 **requires Windows runtime**. All tests use disposable databases and deterministic synthetic fixtures — never real academy data.
 
+## 0g. v1.8.0 BMI & updater battery (executed 2026-10-12 — all green)
+
+New suites: `tests/bmi-domain.test.ts` (35 tests) · `tests/bmi-integration.test.ts` (11 tests) — wired into `npm run verify`; suite total now **230/230 across 14 files**. Regression fixtures for the migration battery updated to the REAL v1.5 schema shape (v1.5 shipped heightCm/weightKg/updatedAt — verified against `git show v1.5.0:prisma/schema.prisma`).
+
+| ID | Check | Result |
+|---|---|---|
+| T-BMI-F1 | Formula: known value + cm→m conversion; full precision kept, display rounds separately | ✅ |
+| T-BMI-F2 | Rejects 0/negative/NaN/Infinity/missing (typed issues); implausible bounds refuse 1.5 kg & 30 cm while legit juniors pass | ✅ |
+| T-BMI-A1 | Adult cut-offs at/below/above 18.5, 25, 30 (half-open) | ✅ |
+| T-BMI-A2 | Unrounded classification vs rounded display (24.96→"25.0" stays healthy) | ✅ |
+| T-BMI-W1 | WHO anthroplus R-package fixtures reproduced exactly (BAZ −0.58 / +0.42) | ✅ |
+| T-BMI-W2 | 27 cases vs WHO's PUBLISHED SD columns (both sexes, months 61–228, z −3…+3) within rounding | ✅ |
+| T-BMI-W3 | WHO percentile table consistency (P25 ↔ −0.6745, P01=0.1st ↔ −3.0902) | ✅ |
+| T-BMI-W4 | z↔BMI round-trip exact at full precision, both sexes, 10 months × 7 z-levels | ✅ |
+| T-BMI-W5 | Restricted z beyond ±3 SD (z=4 exactly one SD23 span past SD3) | ✅ |
+| T-BMI-C1 | Precedence: severe thinness ⊂ thinness; obesity ⊂ overweight; AT-boundary values classify per WHO definitions | ✅ |
+| T-BMI-C2 | z/percentile/reference metadata attached; implausible \|z\|>5 flagged | ✅ |
+| T-BMI-E1 | Age boundaries: <60 mo unsupported (no category, explicit reason); 60.0 mo supported; 228.98 mo WHO; 229.01 mo adult | ✅ |
+| T-BMI-E2 | Exact age math: leap-day day counts, birthdays, ISO/Date inputs, DOB-after-measurement rejected | ✅ |
+| T-BMI-E3 | Historical measurement assessed at ITS date (8 y ≠ 15 y for the same athlete) | ✅ |
+| T-BMI-S1 | Sex handling: ""/"Other"/unknown → BMI value, NO classification, never adult fallback; full 5–19 age sweep stays on the WHO method | ✅ |
+| T-BMI-P1 | Percentile: standard-normal mapping, monotonic, clamped | ✅ |
+| T-BMI-WB | Weight band: adult 18.5–24.9 scale; junior −2…+1 SD band verified by BAZ round-trip; null for unsupported | ✅ |
+| T-BMI-M1 | Legacy v1.7 DB migration: Measurement created, dated backfill rows (source 'backfill'), data intact, re-run idempotent | ✅ |
+| T-BMI-I1 | API capture: create → 'create' row; weight change → same-day upsert (no duplicates); unrelated edit → NO row; invalid measurement 400 | ✅ |
+| T-BMI-I2 | GET /api/students/:id returns history; report cell ≡ presentation ≡ assessment (junior/adult/unclassified) | ✅ |
+| T-BMI-I3 | Desktop write path mirrors the web capture rule (source contract — tauri-api.ts not executable in sandbox) | ✅ source-level |
+| T-BMI-O1 | Offline source contract: bmi.ts + who2007-bmi-data.ts contain no network APIs; data module import-free; provenance header present | ✅ |
+| T-BMI-B1 | Real browser: profile strip "18.4 · Normal weight", Athletic Lab "WHO 5–19 · BAZ −0.7 · 23rd percentile · age 15 y 5 m" + junior weight band, growth-history backfill row visible | ✅ browser |
+| T-BMI-B2 | Real browser: reports table — juniors get WHO labels, 20-year-old Senior gets adult band, values match hand calculation | ✅ browser |
+| T-BMI-B3 | Real browser OFFLINE (network disabled): form computes 17.1 + classification with zero network; served chunk contains the bundled WHO tables; request log has no external hosts | ✅ browser |
+| T-BMI-🪟 | Desktop EXE: measurement capture via tauri createStudent/updateStudent + Install-button ShellExecuteW flow on real Windows | 🪟 pending next install |
+
 ## 0f. Phase 4 regression battery (executed 2026-10-12 — all green)
 
 The §1–§6 battery below is now CODED (six new suites, 58 tests) and wired into `npm run verify`. Suite map: `tests/phase4-financial.test.ts` (T-F battery, 12) · `tests/phase4-students.test.ts` (T-S/T-R11, 17) · `tests/phase4-media.test.ts` (T-A6/A7, 10) · `tests/phase4-exports.test.ts` (T-R source contracts, 8) · `tests/phase4-migration.test.ts` (T-M1/M2, 5) · `tests/phase4-perf.test.ts` (T-M5/T-S9, 6).

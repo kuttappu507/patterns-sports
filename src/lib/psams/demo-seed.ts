@@ -1,5 +1,6 @@
 import type { PrismaClient, Prisma } from "@prisma/client"
 import { nextAdmissionNo, nextReceiptNo } from "@/lib/psams/domain"
+import { localYMD } from "@/lib/psams/bmi"
 import {
   DEMO_STUDENTS,
   DEMO_COMMITTEE,
@@ -88,6 +89,22 @@ export async function loadDemoDataset(db: DemoClient): Promise<{ students: numbe
     })
     demoStudentIds.push(student.id)
     idByStudentName.set(s.fullName, student.id)
+
+    // v1.8.0 — dated measurement history so demo growth tracking and
+    // age-at-measurement BMI assessments work out of the box.
+    if (s.heightCm != null || s.weightKg != null) {
+      await db.measurement.upsert({
+        where: { studentId_date: { studentId: student.id, date: localYMD(demoRegistrationDate(s)) } },
+        create: {
+          studentId: student.id,
+          date: localYMD(demoRegistrationDate(s)),
+          heightCm: s.heightCm ?? null,
+          weightKg: s.weightKg ?? null,
+          source: "demo",
+        },
+        update: { heightCm: s.heightCm ?? null, weightKg: s.weightKg ?? null, source: "demo" },
+      })
+    }
 
     for (const p of planDemoPayments(s)) {
       const receiptNo = nextReceiptNo(usedReceiptNos, p.paymentDate)

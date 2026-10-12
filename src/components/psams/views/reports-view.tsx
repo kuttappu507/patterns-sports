@@ -8,7 +8,8 @@ import { SafeImg } from "@/components/psams/safe-img"
 import { useEffect, useMemo, useState } from "react"
 import { Search, Filter, Printer, FileSpreadsheet, FileText, Loader2, RotateCcw } from "lucide-react"
 import { fetchStudents, fetchSettings, mediaUrl } from "@/lib/psams/api"
-import { computeAge, computeBMI, CATEGORY_COLORS, formatINR, intOnly } from "@/lib/psams/domain"
+import { computeAge, CATEGORY_COLORS, formatINR, intOnly } from "@/lib/psams/domain"
+import { bmiReportFields } from "@/lib/psams/bmi"
 import { SPORTS, SPORT_POSITIONS, type Student, type AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { useToast } from "@/hooks/use-toast"
@@ -111,26 +112,31 @@ export function ReportsView() {
     { header: "Height (cm)", key: "height", width: 11 },
     { header: "Weight (kg)", key: "weight", width: 11 },
     { header: "BMI", key: "bmi", width: 7 },
+    { header: "BMI class (WHO, age-specific)", key: "bmiClass", width: 16 },
     { header: "Sport / Position", key: "sport", width: 20 },
     { header: "School", key: "school", width: 22 },
     { header: "Parent Mobile", key: "mobile", width: 14 },
     { header: "Monthly Fee (₹)", key: "fee", width: 14 },
   ]
 
-  const exportRows = rows.map((s, i) => ({
-    sl: i + 1,
-    admission: s.admissionNo,
-    name: s.fullName,
-    age: computeAge(s.dateOfBirth),
-    category: s.ageCategory,
-    height: s.heightCm ?? "",
-    weight: s.weightKg ?? "",
-    bmi: computeBMI(s.weightKg, s.heightCm)?.toFixed(1) ?? "",
-    sport: `${s.primarySport}${s.playingPosition ? " - " + s.playingPosition : ""}`,
-    school: s.schoolName || "—",
-    mobile: s.mobile,
-    fee: s.monthlyFee,
-  }))
+  const exportRows = rows.map((s, i) => {
+    const bmiFields = bmiReportFields(s)
+    return {
+      sl: i + 1,
+      admission: s.admissionNo,
+      name: s.fullName,
+      age: computeAge(s.dateOfBirth),
+      category: s.ageCategory,
+      height: s.heightCm ?? "",
+      weight: s.weightKg ?? "",
+      bmi: bmiFields.value,
+      bmiClass: bmiFields.classification,
+      sport: `${s.primarySport}${s.playingPosition ? " - " + s.playingPosition : ""}`,
+      school: s.schoolName || "—",
+      mobile: s.mobile,
+      fee: s.monthlyFee,
+    }
+  })
 
   function printReport() {
     setPrint({ kind: "report", title: "Student Registry Report", data: { rows, settings, filters: { ...filters, category: filters.category === "all" ? "" : filters.category } } })
@@ -236,7 +242,7 @@ export function ReportsView() {
             {loading && <tr><td colSpan={6} className="py-10 text-center"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading…</td></tr>}
             {!loading && rows.length === 0 && <tr><td colSpan={6} className="py-10 text-center text-muted-foreground">No students match these criteria.</td></tr>}
             {rows.map((s) => {
-              const bmi = computeBMI(s.weightKg, s.heightCm)
+              const bmiFields = bmiReportFields(s)
               return (
                 <tr key={s.id} className="cursor-pointer border-b border-border/40 hover:bg-accent/40" onClick={() => navigate("student-detail", s.id)}>
                   <td className="px-4 py-2.5">
@@ -260,7 +266,7 @@ export function ReportsView() {
                     <span className={cn("mt-0.5 inline-block rounded-full border px-2 py-0.5 text-[15.5px] font-medium", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
                   </td>
                   <td className="px-3 py-2.5 tabular-nums">
-                    {s.heightCm ?? "—"} cm · {s.weightKg ?? "—"} kg · <span className="font-medium">{bmi !== null ? bmi.toFixed(1) : "—"}</span>
+                    {s.heightCm ?? "—"} cm · {s.weightKg ?? "—"} kg · <span className="font-medium">{bmiFields.combined}</span>
                   </td>
                   <td className="px-3 py-2.5">
                     <div>{s.primarySport}</div>

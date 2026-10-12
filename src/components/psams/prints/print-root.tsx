@@ -21,7 +21,8 @@ import {
   type PrintPaper,
 } from "@/lib/psams/print-desktop"
 import type { AcademySettings, Achievement, FeePayment, PrintPayload, RosterPrintData, Student } from "@/lib/psams/types"
-import { computeAge, ageDetailed, computeBMI, formatDate, formatINR, monthLabel, parsePaidMonths, categoryBracket, ACADEMY_MAPS_URL } from "@/lib/psams/domain"
+import { computeAge, ageDetailed, formatDate, formatINR, monthLabel, parsePaidMonths, categoryBracket, ACADEMY_MAPS_URL } from "@/lib/psams/domain"
+import { bmiReportFields, BMI_SCREENING_NOTE } from "@/lib/psams/bmi"
 import { mediaUrl } from "@/lib/psams/api"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
@@ -262,7 +263,7 @@ interface ProfileData {
 
 function ProfileA4({ data, preview }: { data: ProfileData; preview?: boolean }) {
   const { student: s, achievements, settings } = data
-  const bmi = computeBMI(s.weightKg, s.heightCm)
+  const bmiFields = bmiReportFields(s)
 
   return (
     <div className={`print-a4-preview ${preview ? "" : "print-page"} p-[10mm] text-[12px] leading-snug text-black`} style={preview ? { zoom: 0.72 } : undefined}>
@@ -302,11 +303,12 @@ function ProfileA4({ data, preview }: { data: ProfileData; preview?: boolean }) 
       <div className="grid grid-cols-6 gap-2 text-center">
         <Metric label="Height" value={s.heightCm ? `${s.heightCm} cm` : "—"} />
         <Metric label="Weight" value={s.weightKg ? `${s.weightKg} kg` : "—"} />
-        <Metric label="BMI" value={bmi !== null ? bmi.toFixed(1) : "—"} />
+        <Metric label="BMI (age-specific)" value={bmiFields.combined} />
         <Metric label="Standing Reach" value={s.standingReachCm ? `${s.standingReachCm} cm` : "—"} />
         <Metric label="Spike Reach" value={s.spikeReachCm ? `${s.spikeReachCm} cm` : "—"} />
         <Metric label="Jump Reach" value={s.jumpReachCm ? `${s.jumpReachCm} cm` : "—"} />
       </div>
+      <p className="mt-1.5 text-[8px] italic leading-snug text-neutral-500">{BMI_SCREENING_NOTE} Classification per WHO: age-specific BMI-for-age (5–19 y) or adult bands (from 19 y 1 m).</p>
 
       <div className="mt-2 flex gap-2">
         <span className="rounded border border-neutral-300 bg-neutral-50 px-2 py-0.5 text-[10.5px]">
@@ -501,7 +503,7 @@ function RosterPrint({ payload, preview }: { payload: PrintPayload; preview?: bo
                 <th className="border border-neutral-400 px-1.5 py-1 text-left">Age</th>
                 <th className="border border-neutral-400 px-1.5 py-1 text-left">Ht (cm)</th>
                 <th className="border border-neutral-400 px-1.5 py-1 text-left">Wt (kg)</th>
-                <th className="border border-neutral-400 px-1.5 py-1 text-left">BMI</th>
+                <th className="border border-neutral-400 px-1.5 py-1 text-left">BMI / class</th>
                 <th className="border border-neutral-400 px-1.5 py-1 text-left">Sport / Position</th>
                 <th className="border border-neutral-400 px-1.5 py-1 text-left">School</th>
                 <th className="border border-neutral-400 px-1.5 py-1 text-left">Mobile</th>
@@ -528,7 +530,7 @@ function RosterPrint({ payload, preview }: { payload: PrintPayload; preview?: bo
                   <td className="border border-neutral-400 px-1.5 py-1">{computeAge(s.dateOfBirth)}</td>
                   <td className="border border-neutral-400 px-1.5 py-1">{s.heightCm ?? "—"}</td>
                   <td className="border border-neutral-400 px-1.5 py-1">{s.weightKg ?? "—"}</td>
-                  <td className="border border-neutral-400 px-1.5 py-1">{computeBMI(s.weightKg, s.heightCm)?.toFixed(1) ?? "—"}</td>
+                  <td className="border border-neutral-400 px-1.5 py-1">{bmiReportFields(s).combined}</td>
                   <td className="border border-neutral-400 px-1.5 py-1">{s.primarySport}{s.playingPosition ? " / " + s.playingPosition : ""}</td>
                   <td className="border border-neutral-400 px-1.5 py-1">{s.schoolName || "—"}</td>
                   <td className="border border-neutral-400 px-1.5 py-1">{s.mobile}</td>

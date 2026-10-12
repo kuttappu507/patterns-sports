@@ -3,6 +3,7 @@ import { rm } from "fs/promises"
 import path from "path"
 import { db } from "@/lib/db"
 import { isSafeMediaPath, assertValidStudentInput } from "@/lib/psams/domain"
+import { localYMD } from "@/lib/psams/bmi"
 import { mapApiError } from "@/lib/psams/api-error"
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -15,7 +16,11 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   try {
     const student = await db.student.findUnique({
       where: { id },
-      include: { achievements: { orderBy: { eventDate: "desc" } }, payments: { orderBy: { paymentDate: "desc" } } },
+      include: {
+        achievements: { orderBy: { eventDate: "desc" } },
+        payments: { orderBy: { paymentDate: "desc" } },
+        measurements: { orderBy: { date: "desc" } },
+      },
     })
     if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
     return NextResponse.json(student)
@@ -60,6 +65,27 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     assertValidStudentInput({ ...current, ...data })
 
     const student = await db.student.update({ where: { id }, data })
+
+    // v1.8.0 — dated measurement history: when the save CHANGED height or
+    // weight, the day's measurement row lands in Measurement (one per day,
+    // upsert). Historical BMI is then recomputed from raw values + date —
+    // never stored, never stale.
+    const heightChanged = "heightCm" in data && data.heightCm !== current.heightCm
+    const weightChanged = "weightKg" in data && data.weightKg !== current.weightKg
+    if ((heightChanged || weightChanged) && (student.heightCm != null || student.weightKg != null)) {
+      await db.measurement.upsert({
+        where: { studentId_date: { studentId: id, date: localYMD(new Date()) } },
+        create: {
+          studentId: id,
+          date: localYMD(new Date()),
+          heightCm: student.heightCm,
+          weightKg: student.weightKg,
+          source: "edit",
+        },
+        update: { heightCm: student.heightCm, weightKg: student.weightKg, source: "edit" },
+      })
+    }
+
     return NextResponse.json(student)
   } catch (e) {
     return mapApiError(e, "Failed to update student")

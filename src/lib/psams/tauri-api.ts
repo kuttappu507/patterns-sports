@@ -17,6 +17,7 @@ import type {
   DashboardStats,
   FeePayment,
   FeePaymentWithStudent,
+  Measurement,
   Student,
   StudentFeeStatus,
   StudentWithRelations,
@@ -41,6 +42,7 @@ import {
 } from "./domain"
 import { planLedgerBackfill } from "./ledger"
 import { applyMigrations, type MigrationClient } from "./migrations"
+import { localYMD } from "./bmi"
 import {
   DEMO_STUDENTS,
   DEMO_COMMITTEE,
@@ -316,6 +318,27 @@ async function getStudentRow(id: string): Promise<Student> {
   return rows[0]
 }
 
+/**
+ * v1.8.0 — insert/update the student's measurement row for a day
+ * (UNIQUE(studentId, date) — a same-day re-save replaces the day's values).
+ */
+async function upsertMeasurement(
+  db: DB,
+  studentId: string,
+  date: string,
+  heightCm: number | null,
+  weightKg: number | null,
+  source: string
+): Promise<void> {
+  await db.execute(
+    `INSERT INTO Measurement (id, studentId, date, heightCm, weightKg, source)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT(studentId, date) DO UPDATE SET
+       heightCm = excluded.heightCm, weightKg = excluded.weightKg, source = excluded.source`,
+    [uuid(), studentId, date, heightCm, weightKg, source]
+  )
+}
+
 export async function fetchStudent(id: string): Promise<StudentWithRelations> {
   const db = await getDb()
   const student = await getStudentRow(id)
@@ -327,7 +350,11 @@ export async function fetchStudent(id: string): Promise<StudentWithRelations> {
     "SELECT * FROM FeePayment WHERE studentId = $1 ORDER BY paymentDate DESC",
     [id]
   )
-  return { ...student, achievements, payments }
+  const measurements = await db.select<Measurement[]>(
+    "SELECT * FROM Measurement WHERE studentId = $1 ORDER BY date DESC",
+    [id]
+  )
+  return { ...student, achievements, payments, measurements }
 }
 
 export type StudentInput = Partial<Omit<Student, "id" | "createdAt" | "updatedAt">> & {
@@ -391,6 +418,10 @@ export async function createStudent(input: Partial<StudentInput>): Promise<Stude
       nowIso,
     ]
   )
+  // v1.8.0 — first dated measurement row for the new athlete.
+  if (input.heightCm != null || input.weightKg != null) {
+    await upsertMeasurement(db, id, localYMD(new Date()), input.heightCm ?? null, input.weightKg ?? null, "create")
+  }
   return getStudentRow(id)
 }
 
@@ -445,6 +476,18 @@ export async function updateStudent(id: string, input: Partial<StudentInput>): P
   sets.push(`updatedAt = $${params.length}`)
   params.push(id)
   await db.execute(`UPDATE Student SET ${sets.join(", ")} WHERE id = $${params.length}`, params)
+
+  // v1.8.0 — dated measurement history: capture when this save CHANGED the
+  // height/weight (mirrors the web PUT route's rule exactly).
+  const heightChanged = "heightCm" in overlay && overlay.heightCm !== current.heightCm
+  const weightChanged = "weightKg" in overlay && overlay.weightKg !== current.weightKg
+  if (heightChanged || weightChanged) {
+    const merged = { ...current, ...overlay } as { heightCm?: number | null; weightKg?: number | null }
+    if (merged.heightCm != null || merged.weightKg != null) {
+      await upsertMeasurement(db, id, localYMD(new Date()), merged.heightCm ?? null, merged.weightKg ?? null, "edit")
+    }
+  }
+
   return getStudentRow(id)
 }
 
@@ -1233,6 +1276,18 @@ async function loadDemoDataInner(db: DB): Promise<{ students: number; committee:
     )
     demoStudentIds.push(id)
     idByStudentName.set(s.fullName, id)
+
+    // v1.8.0 — dated measurement row per demo athlete (mirrors the web seed).
+    if (s.heightCm != null || s.weightKg != null) {
+      await upsertMeasurement(
+        db,
+        id,
+        localYMD(demoRegistrationDate(s)),
+        s.heightCm ?? null,
+        s.weightKg ?? null,
+        "demo"
+      )
+    }
 
     for (const p of planDemoPayments(s)) {
       const receiptNo = nextReceiptNo(usedReceiptNos, p.paymentDate)

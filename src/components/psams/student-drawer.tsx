@@ -17,7 +17,8 @@ import {
   TRAINING_BATCHES,
   type Student,
 } from "@/lib/psams/types"
-import { computeAge, suggestAgeCategory, computeBMI, bmiBand, ageDetailed } from "@/lib/psams/domain"
+import { computeAge, suggestAgeCategory, ageDetailed } from "@/lib/psams/domain"
+import { assessBmi, presentBmi } from "@/lib/psams/bmi"
 import { MediaUpload } from "@/components/psams/media-upload"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -129,11 +130,22 @@ export function StudentDrawer({
   const ageText = useMemo(() => (form.dateOfBirth ? ageDetailed(form.dateOfBirth) : "—"), [form.dateOfBirth])
   const suggestedCategory = useMemo(() => (age !== null ? suggestAgeCategory(age) : ""), [age])
   const effectiveCategory = form.ageCategoryTouched && form.ageCategory ? form.ageCategory : suggestedCategory
-  const bmi = useMemo(
-    () => computeBMI(Number(form.weightKg) || null, Number(form.heightCm) || null),
-    [form.weightKg, form.heightCm]
+  // Live BMI preview — the SAME authoritative assessment the profile and
+  // reports use (age-specific WHO reference; no adult bands for minors).
+  // The drawer has no gender editor — the recorded gender is the input.
+  const bmiView = useMemo(
+    () =>
+      presentBmi(
+        assessBmi({
+          weightKg: Number(form.weightKg) || null,
+          heightCm: Number(form.heightCm) || null,
+          dateOfBirth: form.dateOfBirth || null,
+          gender: editing?.gender,
+          measurementDate: new Date(),
+        })
+      ),
+    [form.weightKg, form.heightCm, form.dateOfBirth, editing?.gender]
   )
-  const band = bmiBand(bmi)
   const jumpGain = useMemo(() => {
     const s = Number(form.spikeReachCm), st = Number(form.standingReachCm)
     return s > 0 && st > 0 ? s - st : null
@@ -323,10 +335,10 @@ export function StudentDrawer({
               <Input className="h-8 text-xs" type="number" min="0" value={form.weightKg} onChange={(e) => set("weightKg", e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">BMI — auto</Label>
-              <div className="flex h-8 items-center justify-between rounded-md border bg-muted px-2.5 text-xs">
-                <span className={`font-bold tabular-nums ${band.color}`}>{bmi !== null ? bmi.toFixed(1) : "—"}</span>
-                <span className="text-[15.5px] text-muted-foreground">{band.label}</span>
+              <Label className="text-xs">BMI — auto (age-specific)</Label>
+              <div className="flex h-8 items-center justify-between rounded-md border bg-muted px-2.5 text-xs" title={bmiView.hint}>
+                <span className={`font-bold tabular-nums ${bmiView.color}`}>{bmiView.value}</span>
+                <span className="text-[15.5px] text-muted-foreground">{bmiView.label}</span>
               </div>
             </div>
             <div className="space-y-1">

@@ -128,3 +128,20 @@ CREATE TABLE IF NOT EXISTS Setting (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- ---------- Measurement history (v1.8.0, BMI-for-age longitudinal) ----------
+-- Dated height/weight rows; Student keeps the CURRENT values. One row per
+-- student per day (UNIQUE) — a same-day re-save updates the day's row.
+-- Categories are never stored; BMI is recomputed from raw values + date.
+CREATE TABLE IF NOT EXISTS Measurement (
+  id        TEXT PRIMARY KEY,
+  studentId TEXT NOT NULL REFERENCES Student(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  date      TEXT NOT NULL,                       -- "YYYY-MM-DD" local measurement date
+  heightCm  REAL,
+  weightKg  REAL,
+  source    TEXT NOT NULL DEFAULT 'edit',        -- create|edit|backfill|demo
+  createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (studentId, date)
+);
+CREATE INDEX IF NOT EXISTS idx_measurement_student ON Measurement(studentId);
+CREATE INDEX IF NOT EXISTS idx_measurement_date    ON Measurement(date);

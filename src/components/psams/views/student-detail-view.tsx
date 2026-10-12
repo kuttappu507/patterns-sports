@@ -37,8 +37,6 @@ import {
 import {
   computeAge,
   ageDetailed,
-  computeBMI,
-  bmiBand,
   computeFeeStatus,
   formatINR,
   formatDate,
@@ -51,9 +49,16 @@ import {
   verticalJumpRating,
   reachRatio,
   trainingAge,
-  healthyWeightBand,
   NET_HEIGHT_M,
 } from "@/lib/psams/domain"
+import {
+  assessCurrentBmi,
+  assessStudentBmi,
+  presentBmi,
+  weightBandFor,
+  latestUsableMeasurement,
+  type BmiAssessment,
+} from "@/lib/psams/bmi"
 import type {
   AcademySettings,
   Achievement,
@@ -129,8 +134,10 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
   }
 
   const age = computeAge(student.dateOfBirth)
-  const bmi = computeBMI(student.weightKg, student.heightCm)
-  const band = bmiBand(bmi)
+  // v1.8.0 — age-specific WHO assessment from the latest dated measurement
+  // (falls back to the student fields when no history row exists yet).
+  const bmiAssessment = assessCurrentBmi(student, student.measurements ?? [])
+  const bmiView = presentBmi(bmiAssessment)
   const jumpGain = student.spikeReachCm && student.standingReachCm ? student.spikeReachCm - student.standingReachCm : null
   const fee = computeFeeStatus(student, student.payments)
 
@@ -214,7 +221,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatTile icon={<Ruler className="h-3.5 w-3.5" />} label="Height" value={student.heightCm ? `${student.heightCm} cm` : "—"} />
         <StatTile icon={<Weight className="h-3.5 w-3.5" />} label="Weight" value={student.weightKg ? `${student.weightKg} kg` : "—"} />
-        <StatTile icon={<ShieldAlert className="h-3.5 w-3.5" />} label="BMI" value={bmi !== null ? bmi.toFixed(1) : "—"} sub={band.label} tone={band.color} />
+        <StatTile icon={<ShieldAlert className="h-3.5 w-3.5" />} label="BMI" value={bmiView.value} sub={bmiView.label} tone={bmiView.color} />
         <StatTile icon={<Ruler className="h-3.5 w-3.5" />} label="Spike reach" value={student.spikeReachCm ? `${student.spikeReachCm} cm` : "—"} sub={jumpGain ? `+${jumpGain} cm over standing` : undefined} />
         <StatTile icon={<Receipt className="h-3.5 w-3.5" />} label="Fee dues" value={formatINR(fee.dueAmount)} sub={fee.pendingMonths.length ? `${fee.pendingMonths.length} month(s) pending` : "All settled"} tone={fee.isDefaulter ? "text-rose-600 dark:text-rose-300" : fee.dueAmount > 0 ? "text-amber-600 dark:text-amber-300" : "text-emerald-600 dark:text-emerald-300"} />
       </div>
@@ -280,7 +287,7 @@ export function StudentDetailView({ studentId }: { studentId: string }) {
 
         {/* athletic lab — sports-science insights derived from recorded facts */}
         <TabsContent value="athletic-lab">
-          <AthleticLab student={student} age={age} bmi={bmi} band={band} />
+          <AthleticLab student={student} age={age} bmiAssessment={bmiAssessment} />
         </TabsContent>
 
         {/* fee history */}
@@ -430,20 +437,26 @@ function LabTile({ icon, label, value, sub, tone }: { icon: React.ReactNode; lab
 function AthleticLab({
   student: s,
   age,
-  bmi,
-  band,
+  bmiAssessment,
 }: {
   student: StudentWithRelations
   age: number
-  bmi: number | null
-  band: { label: string; color: string }
+  bmiAssessment: BmiAssessment
 }) {
   const jump = jumpDelta(s.spikeReachCm, s.standingReachCm)
   const jumpRate = verticalJumpRating(jump)
   const clearance = spikeClearance(s.spikeReachCm, s.ageCategory)
   const ratio = reachRatio(s.standingReachCm, s.heightCm)
   const tAge = trainingAge(s.registrationDate)
-  const weightBand = healthyWeightBand(s.heightCm)
+  const bmiView = presentBmi(bmiAssessment)
+  const history = s.measurements ?? []
+  const latestM = latestUsableMeasurement(history)
+  const weightBand = weightBandFor({
+    heightCm: s.heightCm,
+    dateOfBirth: s.dateOfBirth,
+    gender: s.gender,
+    measurementDate: latestM?.date ?? new Date(),
+  })
 
   return (
     <div className="space-y-3">
@@ -472,8 +485,12 @@ function AthleticLab({
         <LabTile
           icon={<Scale className="h-3.5 w-3.5" />}
           label="Body composition"
-          value={bmi !== null ? `BMI ${bmi.toFixed(1)}` : "—"}
-          sub={bmi !== null ? `${band.label} · healthy weight for ${s.heightCm ?? "—"} cm ≈ ${weightBand ? `${weightBand[0]}–${weightBand[1]} kg (adult scale)` : "—"}` : "Record height & weight to unlock"}
+          value={bmiView.value !== "—" ? `BMI ${bmiView.value}` : "—"}
+          sub={
+            bmiAssessment.ok
+              ? `${bmiView.label} · ${bmiView.hint}${weightBand ? ` · healthy weight ≈ ${weightBand.lo}–${weightBand.hi} kg (${weightBand.note})` : ""}`
+              : bmiView.hint
+          }
         />
         <LabTile
           icon={<Timer className="h-3.5 w-3.5" />}
@@ -487,6 +504,35 @@ function AthleticLab({
           value={`${age < 14 ? "Skill-first" : age < 17 ? "Build base" : "Sharpen power"}`}
           sub={`Age ${age} · ${age < 14 ? "prioritise coordination & ball feel over heavy strength work" : age < 17 ? "bodyweight strength plus plyometrics in a controlled progression" : "progressive loading with jump-landing technique supervision"}`}
         />
+      </div>
+      {/* growth & BMI history (v1.8.0) */}
+      <div className="rounded-xl border bg-card/60 backdrop-blur">
+        <div className="flex items-center justify-between border-b px-4 py-2.5">
+          <div>
+            <div className="text-xs font-semibold">Growth &amp; BMI-for-age history</div>
+            <div className="text-[15px] text-muted-foreground">Every saved height/weight change keeps its date — assessments are recomputed at the measurement age, never stored</div>
+          </div>
+        </div>
+        {history.length === 0 ? (
+          <div className="py-8 text-center text-xs text-muted-foreground">No measurement history yet — it builds automatically when height or weight changes are saved.</div>
+        ) : (
+          <div className="max-h-64 divide-y overflow-y-auto">
+            {history.map((m) => {
+              const a = assessStudentBmi(s, m.date)
+              const v = presentBmi(a)
+              return (
+                <div key={m.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-xs">
+                  <span className="w-24 shrink-0 font-medium">{formatDate(m.date)}</span>
+                  <span className="w-16 shrink-0 tabular-nums text-muted-foreground">{m.heightCm != null ? `${m.heightCm} cm` : "—"}</span>
+                  <span className="w-16 shrink-0 tabular-nums text-muted-foreground">{m.weightKg != null ? `${m.weightKg} kg` : "—"}</span>
+                  <span className={`w-12 shrink-0 font-bold tabular-nums ${v.color}`}>{v.value}</span>
+                  <span className="min-w-0 flex-1 text-muted-foreground">{a.ok && a.classification ? `${a.classification}${a.zScore != null ? ` · BAZ ${a.zScore.toFixed(2)}` : ""}` : v.label}</span>
+                  <span className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">{m.source || "edit"}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
       <div className="flex items-start gap-2 rounded-xl border border-sky-500/25 bg-sky-500/[0.06] p-3">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-300" />

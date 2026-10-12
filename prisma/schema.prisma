@@ -56,6 +56,7 @@ model Student {
   payments    FeePayment[]
   attendance  Attendance[]
   paymentMonths PaymentMonth[]
+  measurements Measurement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -153,4 +154,24 @@ model Attendance {
 model Setting {
   key   String @id
   value String
+}
+
+/// Dated height/weight measurement history (v1.8.0, BMI-for-age).
+/// The Student row keeps the CURRENT height/weight (overwritten on edit);
+/// every save that CHANGES height or weight also lands here so longitudinal
+/// growth tracking and age-at-measurement BMI assessments stay possible.
+/// BMI categories are NEVER stored — they are recomputed from the raw
+/// values + measurement date + bundled WHO reference (no stale data).
+model Measurement {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      String // "YYYY-MM-DD" local measurement date
+  heightCm  Float?
+  weightKg  Float?
+  source    String   @default("edit") // create | edit | backfill | demo
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, date])
+  @@index([date])
 }

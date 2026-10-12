@@ -87,6 +87,17 @@ export interface Achievement {
   createdAt: string
 }
 
+/** Dated height/weight history row (v1.8.0) — one per student per day. */
+export interface Measurement {
+  id: string
+  studentId: string
+  date: string // "YYYY-MM-DD" local measurement date
+  heightCm?: number | null
+  weightKg?: number | null
+  source: string // create | edit | backfill | demo
+  createdAt: string
+}
+
 export interface FeePayment {
   id: string
   receiptNo: string
@@ -111,6 +122,7 @@ export interface FeePaymentWithStudent extends FeePayment {
 export interface StudentWithRelations extends Student {
   achievements: Achievement[]
   payments: FeePayment[]
+  measurements: Measurement[]
 }
 
 export interface CommitteeMember {

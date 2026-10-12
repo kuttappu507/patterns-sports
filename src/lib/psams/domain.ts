@@ -105,21 +105,12 @@ export function categoryBracket(category: string): string {
 }
 
 // ---------- BMI ----------
-
-export function computeBMI(weightKg?: number | null, heightCm?: number | null): number | null {
-  if (!weightKg || !heightCm || heightCm <= 0) return null
-  const m = heightCm / 100
-  return weightKg / (m * m)
-}
-
-export function bmiBand(bmi: number | null): { label: string; color: string } {
-  if (bmi === null) return { label: "—", color: "text-muted-foreground" }
-  if (bmi < 16) return { label: "Severe underweight", color: "text-red-400" }
-  if (bmi < 18.5) return { label: "Underweight", color: "text-amber-300" }
-  if (bmi < 25) return { label: "Healthy", color: "text-emerald-400" }
-  if (bmi < 30) return { label: "Overweight", color: "text-amber-300" }
-  return { label: "Obese", color: "text-red-400" }
-}
+//
+// v1.8.0: BMI calculation, classification and presentation moved to the
+// authoritative, age-specific module ./bmi.ts (WHO 2007 BMI-for-age for
+// 5–19-year-olds + adult bands from 19y1m + bundled reference data).
+// domain.ts no longer exposes any BMI logic — there is exactly ONE
+// implementation in the app (src/lib/psams/bmi.ts).
 
 // ---------- Vertical jump / reach metrics ----------
 
@@ -194,13 +185,6 @@ export function trainingAge(registrationDate: string | Date, at: Date = new Date
   if (isNaN(d.getTime())) return null
   const months = (at.getFullYear() - d.getFullYear()) * 12 + (at.getMonth() - d.getMonth())
   return Math.max(0, months)
-}
-
-/** Healthy weight band (kg) for a height on the adult BMI 18.5–24.9 scale. */
-export function healthyWeightBand(heightCm?: number | null): [number, number] | null {
-  if (!heightCm || heightCm <= 0) return null
-  const m = heightCm / 100
-  return [Math.round(18.5 * m * m), Math.round(24.9 * m * m)]
 }
 
 // ---------- Billing months (YYYY-MM keys) ----------

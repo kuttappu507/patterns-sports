@@ -12,7 +12,8 @@ import Papa from "papaparse"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { saveAs } from "file-saver"
-import { formatINR, monthLabel, parsePaidMonths, computeAge, computeBMI, ageDetailed, categoryBracket, formatDate, ACADEMY_MAPS_URL } from "./domain"
+import { formatINR, monthLabel, parsePaidMonths, computeAge, ageDetailed, categoryBracket, formatDate, ACADEMY_MAPS_URL } from "./domain"
+import { bmiReportFields, BMI_SCREENING_NOTE } from "./bmi"
 import type { AcademySettings, Achievement, FeePayment, Student } from "./types"
 import { mediaUrl } from "./api"
 
@@ -472,7 +473,7 @@ export async function profilePdfA4(
 ): Promise<SaveOutcome> {
   const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" })
   const pageW = doc.internal.pageSize.getWidth()
-  const bmi = computeBMI(student.weightKg, student.heightCm)
+  const bmiFields = bmiReportFields(student)
 
   const y0 = drawLetterhead(doc, settings, "Player Profile Card")
 
@@ -565,7 +566,7 @@ export async function profilePdfA4(
   const metrics: [string, string][] = [
     ["Height", student.heightCm ? `${student.heightCm} cm` : "—"],
     ["Weight", student.weightKg ? `${student.weightKg} kg` : "—"],
-    ["BMI", bmi !== null ? bmi.toFixed(1) : "—"],
+    ["BMI (age-specific)", bmiFields.combined],
     ["Standing Reach", student.standingReachCm ? `${student.standingReachCm} cm` : "—"],
     ["Spike Reach", student.spikeReachCm ? `${student.spikeReachCm} cm` : "—"],
     ["Jump Reach", student.jumpReachCm ? `${student.jumpReachCm} cm` : "—"],
@@ -580,6 +581,13 @@ export async function profilePdfA4(
     body: [metrics.map(([, v]) => v)],
   })
   y = ((doc as WithAuto).lastAutoTable?.finalY ?? y) + 4.5
+
+  // age-specific screening disclaimer (v1.8.0)
+  doc.setFont("helvetica", "italic")
+  doc.setFontSize(6.6)
+  doc.setTextColor(120, 120, 120)
+  doc.text(BMI_SCREENING_NOTE, 14, y, { maxWidth: pageW - 28 })
+  y += 5.5
 
   // sport chips
   doc.setFont("helvetica", "normal")

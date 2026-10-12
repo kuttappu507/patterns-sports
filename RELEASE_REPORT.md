@@ -1,8 +1,44 @@
-# PS-AMS — Release Report (v1.7.0)
+# PS-AMS — Release Report (v1.8.0)
 
-**Date:** 2026-10-12 · **Release:** `v1.7.0` · **Fix head:** `2c48952` + release bump · **Baseline audited:** v1.6.4 @ `63bf119`
-**Nature:** behavioral + schema changes → minor version bump. The rc.1 build breaker (Rust E0382) was fixed at `2c48952` together with the owner-reported UX fixes: splash closing dialogue, committee Vice President / Joint Secretary roles + one-click filtered PDF/XLS export, and dropdown text truncation.
+**Date:** 2026-10-12 · **Release:** `v1.8.0` · **Baseline:** v1.7.0 @ `ecbf448` · **Audit baseline:** v1.6.4 @ `63bf119`
+**Nature:** schema addition + scientific-accuracy rework → minor version bump. v1.8.0 ships the age-specific WHO BMI-for-age assessment (PS-053), the dated measurement-history migration, and the updater Install-button fix (PS-054). The v1.7.0 six-phase audit pipeline (PS-001…PS-052, all closed) remains the baseline below.
 **Process:** six-phase audit-and-fix pipeline (Phase 1 audit A–J → Phase 2 defect register → Phase 3 fixes 3A/3B/3C/3D → Phase 4 regression battery → Phase 5 parity walkthrough → this report). Owner decisions Q1a/Q2a/Q3a/Q6a/Q7a + Q5a adopted and documented in README "Fee & Billing Rules".
+
+## 0. v1.8.0 — age-specific BMI (PS-053) & updater install fix (PS-054)
+
+### PS-053 — scientifically valid, age-specific BMI assessment
+
+**Defects in the original implementation** (audited before any change):
+- `domain.ts bmiBand()` applied ADULT cut-offs (16/18.5/25/30) to every athlete, including 5-year-olds — invalid for minors (WHO 2007 BMI-for-age is the required reference).
+- The "<16 Severe underweight" band was not any WHO adult category (invented threshold).
+- `computeBMI()` accepted negative weight (falsy check only) and non-finite inputs; NaN/Infinity leaked into displays.
+- Height/weight were stored ONLY on the Student row (overwritten on every save) — no measurement history, so no longitudinal tracking and no age-at-measurement assessment was possible.
+- `healthyWeightBand()` used the adult 18.5–24.9 scale for children.
+- Rounding hazard: band decisions ran on the same float later displayed at 1 dp (no explicit full-precision contract).
+
+**Implementation (single authoritative module `src/lib/psams/bmi.ts`):**
+- Formula: `BMI = kg / m²` from cm-stored height; full precision kept, rounding only at display (1 dp); typed rejection of missing/zero/negative/non-finite/implausible inputs (`BMI_PLAUSIBILITY` 2–300 kg, 40–272 cm — configurable, generous).
+- Age at the MEASUREMENT date: exact calendar-day difference ÷ 30.4375 (WHO AnthroPlus convention); reference chosen by that age: **< 60 months → BMI value only, no category** (WHO 0–5 standards not bundled — explicit explanation, never adult fallback); **60 ≤ months < 229 → WHO 2007 BMI-for-age**; **≥ 229 months (~19 y 1 m) → WHO adult bands** (the WHO reference itself ends at 228 completed months — the boundary follows WHO's own software, validated by boundary tests).
+- BAZ: LMS method `z = ((bmi/M)^L − 1)/(S·L)` with WHO's restricted extension beyond ±3 SD and trunc/floor+1 linear interpolation of L/M/S — the exact algorithm of WHO's `anthro`/`anthroplus` R packages. Percentile = Φ(z) (A&S 7.1.26 erfc, |ε| < 1.5e-7).
+- Classification (subset-correct, ε-guarded): z<−3 severe thinness ⊂ z<−2 thinness; −2…+1 normal; z>+1 overweight ⊂ z>+2 obesity. |z|>5 flagged (WHO implausibility rule).
+- Adults: half-open 18.5 / 25 / 30 cut-offs. Sex "" / "Other" → BMI value with NO classification and an explicit reason (never a guessed reference).
+- Reference data BUNDLED (offline): official WHO 2007 LMS tables, months 60–229, both sexes, in `who2007-bmi-data.ts` (~15 KB). Sources cross-validated: WHO AnthroPlus R package 1.1.0 `bfa_growth_standards` vs the published cdn.who.int expanded XLSX tables — **identical to ≤5e-5** (max diff 0.000000 on L/M/S). WHO's own test fixtures reproduce exactly (girl 60.32 mo, 113.8 cm, 18.7 kg → BAZ −0.58; 60.9117 mo → +0.42); round-trip against WHO's published −3…+3 SD columns ≤ 0.0005; the restricted method reproduces WHO's SD4neg column; percentile tables consistent (P25 ↔ z −0.6745, P01 = 0.1st ↔ z −3.0902).
+- License/attribution documented in the data module header (WHO data © WHO, embedded with attribution for offline screening use; methodology per WHO 2007 growth reference).
+
+**Database & history:** new `Measurement` table (studentId, date "YYYY-MM-DD", heightCm, weightKg, source; UNIQUE(studentId,date)) in all three DDL copies (prisma ↔ schema.sql ↔ bootstrap.ts) + migration 2 in the shared versioned runner (backfills one 'backfill' row per existing student from their current values, dated by `updatedAt`, INSERT OR IGNORE — idempotent). Capture hooks in ALL write paths (web POST/PUT routes, desktop createStudent/updateStudent, demo seeders): a save that CHANGES height/weight upserts the day's row; unrelated saves never pollute history. Categories are NEVER stored — recomputed from raw values + date + reference version (no stale data).
+
+**Integration (every surface, one implementation):** registration form + edit drawer live preview ("BMI — auto (age-specific)"), profile metrics strip, Athletic Lab body-composition tile (BAZ + percentile + reference + age-aware weight band), NEW "Growth & BMI-for-age history" panel, reports table ("19.6 (Normal weight)"), Excel + PDF roster exports (new "BMI class (WHO, age-specific)" column), profile PDF + A4 print (age-specific combined cell + screening disclaimer). Old `computeBMI`/`bmiBand`/`healthyWeightBand` deleted from domain.ts — no duplicate logic can reappear.
+
+### PS-054 — updater "Install" button error
+
+`install_update` used `std::process::Command::spawn()` (CreateProcessW), which fails with **os error 740 (ERROR_ELEVATION_REQUIRED)** for the `perMachine` NSIS installer (its manifest requires an elevated token) and cannot start `.msi` packages at all — detect + download worked, Install always errored. Replaced with `ShellExecuteW` ("open" verb): honours the manifest → shows the UAC prompt, and dispatches .msi via the shell association. Friendly SE_ERR_* error mapping added. Verified by review + tag-CI Rust compile (no cargo in sandbox; Windows runtime re-check pending on the next real update — 🪟).
+
+### v1.8.0 verification evidence
+
+- `npm run verify` exit 0: ESLint 0 errors · tsc clean · **vitest 230/230 across 14 suites** (46 new BMI tests) · parity 8↔8 models / 77 columns · client-audit PASS.
+- New batteries: `tests/bmi-domain.test.ts` (35 — formula, adult boundaries, WHO fixtures vs WHO's published columns, restricted z, precedence, 5 y/20 y transitions, birthdays, historical dates, sex handling, percentile, weight band), `tests/bmi-integration.test.ts` (11 — migration backfill on a legacy fixture + idempotence, API capture hooks, measurement-date assessment, cross-surface consistency, offline source contract).
+- Real browser verification (dev server, demo data): profile shows "BMI 18.4 · Normal weight · WHO 5–19 BMI-for-age · BAZ −0.7 · 23rd percentile · age 15 y 5 m" + growth-history backfill row; reports table shows WHO labels for juniors and the adult band for a 20-year-old; live form computes 17.1 for a 13-year-old girl and shows "no category" until sex is recorded; **with browser offline mode ON the BMI still computes** (no network); served JS chunk confirmed to contain the bundled WHO tables; network log shows zero external requests.
+- `next build` ✓. Rust change compile-proven by tag CI (🪟 runtime re-check of the Install flow pending the next real update).
 
 ## 1. Fixed defects (PS-001…PS-052 — all 52 closed)
 

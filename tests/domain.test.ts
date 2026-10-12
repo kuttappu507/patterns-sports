@@ -25,8 +25,8 @@ import {
   spikeClearance,
   reachRatio,
   trainingAge,
-  healthyWeightBand,
 } from "../src/lib/psams/domain"
+import { weightBandFor } from "../src/lib/psams/bmi"
 import { planLedgerBackfill } from "../src/lib/psams/ledger"
 import { DEMO_SETTINGS } from "../src/lib/psams/demo-data"
 import { toIntlPhone, waLink } from "../src/lib/psams/whatsapp"
@@ -295,11 +295,13 @@ describe("sports science helpers", () => {
     expect(trainingAge("bad-date", new Date("2026-07-10"))).toBeNull()
   })
 
-  it("derives the healthy weight band (BMI 18.5–24.9) for a height", () => {
-    const [lo, hi] = healthyWeightBand(170)!
-    expect(lo).toBe(53)
-    expect(hi).toBe(72)
-    expect(healthyWeightBand(null)).toBeNull()
+  it("derives the age-aware healthy weight band (adult = BMI 18.5–24.9 scale)", () => {
+    // adult athlete (26 y at the 2026 measurement date)
+    const b = weightBandFor({ heightCm: 170, dateOfBirth: "2000-01-01", gender: "Male", measurementDate: "2026-07-15" })!
+    expect(b.lo).toBe(53)
+    expect(b.hi).toBe(72)
+    expect(b.note).toMatch(/adult/)
+    expect(weightBandFor({ heightCm: null, dateOfBirth: "2000-01-01", gender: "Male", measurementDate: "2026-07-15" })).toBeNull()
   })
 })
 

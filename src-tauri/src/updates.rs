@@ -328,6 +328,14 @@ fn log_done(dest: &std::path::Path) {
 /// PS-015: only a file that `download_update` produced and verified in THIS
 /// session may be launched — a webview-supplied path to any .exe/.msi on
 /// disk is refused.
+///
+/// v1.8.0 fix: the launcher. `std::process::Command::spawn()` goes through
+/// CreateProcessW, which (a) fails with os error 740 (ERROR_ELEVATION_REQUIRED)
+/// for the perMachine NSIS installer — its manifest requires an elevated
+/// token, and (b) cannot execute .msi packages at all. Both surfaced as
+/// "Could not launch the installer" on the Install button. ShellExecuteW is
+/// the shell's own launcher: it honours the manifest (shows the UAC prompt)
+/// and dispatches .msi to msiexec through the shell association.
 #[tauri::command]
 pub fn install_update(path: String) -> Result<String, String> {
     let p = std::path::PathBuf::from(&path);
@@ -353,9 +361,64 @@ pub fn install_update(path: String) -> Result<String, String> {
     if ext != "exe" && ext != "msi" {
         return Err("That file is not a PS-AMS installer".into());
     }
-    std::process::Command::new(&path)
-        .spawn()
-        .map_err(|e| format!("Could not launch the installer: {e}"))?;
+    launch_installer(&p)?;
     crate::log_line(&format!("update installer launched: {}", p.display()));
     Ok("Installer launched — follow its steps, then start PS-AMS again".into())
+}
+
+/// Shell-launch the verified installer (UAC-aware, .msi-aware).
+#[cfg(target_os = "windows")]
+fn launch_installer(path: &std::path::Path) -> Result<(), String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::UI::Shell::ShellExecuteW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+    // Null-terminated UTF-16 for the wide APIs.
+    let file: Vec<u16> = path
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let verb: Vec<u16> = "open\0".encode_utf16().collect();
+
+    let result = unsafe {
+        ShellExecuteW(
+            std::ptr::null_mut(), // no owner window
+            verb.as_ptr(),
+            file.as_ptr(),
+            std::ptr::null(), // no parameters
+            std::ptr::null(), // working dir = caller's
+            SW_SHOWNORMAL as i32,
+        )
+    };
+    // ShellExecuteW returns a value > 32 on success; ≤ 32 is an SE_ERR_* code.
+    if (result as isize) <= 32 {
+        let detail = match result as isize {
+            2 => "file not found",
+            3 => "path not found",
+            5 => "access denied",
+            8 => "not enough memory",
+            26 => "sharing violation",
+            27 => "association incomplete",
+            28 => "DDE timeout",
+            29 => "DDE failed",
+            31 => "no application association",
+            32 => "not supported",
+            _ => "launch was refused",
+        };
+        return Err(format!(
+            "Windows could not start the installer ({detail}) — run the downloaded file from your Downloads folder as administrator."
+        ));
+    }
+    Ok(())
+}
+
+/// Non-Windows builds keep a plain spawn (the installer flow is Windows-only;
+/// this arm exists so the crate still compiles on other hosts).
+#[cfg(not(target_os = "windows"))]
+fn launch_installer(path: &std::path::Path) -> Result<(), String> {
+    std::process::Command::new(path)
+        .spawn()
+        .map_err(|e| format!("Could not launch the installer: {e}"))?;
+    Ok(())
 }
