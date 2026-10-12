@@ -38,12 +38,6 @@ dirs = "5"
 # against the GitHub release `digest`. Pure Rust — no native build.
 sha2 = "0.10"
 ureq = { version = "2", default-features = false, features = ["tls"] }
-# v1.8.0 — install_update launches the downloaded installer via
-# ShellExecuteW: CreateProcessW failed with os error 740 on the perMachine
-# NSIS installer (elevation required) and cannot start .msi packages.
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
-
 # Native printing (WebView2 print pipeline). These MUST stay version-aligned
 # with the webview2-com / windows-core versions tauri + wry resolve to
 # (tauri 2.12 → wry 0.57 → webview2-com 0.39 / windows-core 0.62) so the
@@ -51,6 +45,10 @@ windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_Shel
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.39"
 windows-core = "0.62"
+# v1.8.0 (PS-054) — install_update launches the downloaded installer via
+# ShellExecuteW: CreateProcessW failed with os error 740 on the perMachine
+# NSIS installer (elevation required) and cannot start .msi packages.
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 [profile.release]
 codegen-units = 1
