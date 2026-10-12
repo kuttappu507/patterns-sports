@@ -50,6 +50,7 @@ async-trait = "0.1"
 # Engine tasks ride tauri::async_runtime (tokio): spawns, Notify, timers.
 tokio = { version = "1", default-features = false, features = ["rt", "sync", "time"] }
 bytes = "1"
+base64 = "0.22"
 log = "0.4"
 chrono = "0.4"
 dirs = "5"
