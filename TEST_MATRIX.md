@@ -2,6 +2,25 @@
 
 Status keys: ✅ **executed** (with result) · 📋 **planned** (Phase 4, after the corresponding fix lands) · 🪟 **requires Windows runtime**. All tests use disposable databases and deterministic synthetic fixtures — never real academy data.
 
+## 0i. v1.9.1 owner-requested UX batch (PS-058…PS-062 — executed 2026-10-13, verify green 232/232 + audit pass)
+
+| ID | Check | Result |
+|---|---|---|
+| T-PS058-1 | Athletic Lab shows a "Record current measurements" card: height, weight, standing/spike/jump reach prefilled from the profile, live age-specific BMI preview + vertical-gain preview | ✅ source + typecheck |
+| T-PS058-2 | Save goes through the SAME partial `updateStudent` path as the full edit dialog (web PUT + desktop SQL) — profile metrics, hero tiles and lab tiles all re-render from the refetch (`dataVersion` bump); the editor dialog is in sync by construction (single source of truth) | ✅ source |
+| T-PS058-3 | Changed height/weight lands in the dated growth & BMI history (backend upserts today's Measurement row — behavior reused, not duplicated); "no change" save is disabled; spike ≥ standing guard; 1–300 range guard | ✅ source |
+| T-PS059-1 | Exit confirmation: custom X button, Alt+F4 and taskbar close all land in the "Exit PS-AMS?" dialogue (onCloseRequested → preventDefault); "Stay in app" keeps the session | ✅ source + client-audit gate |
+| T-PS059-2 | Confirm calls `destroy()` (bypasses the guard), so the Rust exit routine still runs: WhatsApp engine shutdown + automated end-of-session backup | ✅ source (RunEvent::Exit path unchanged) |
+| T-PS059-3 | Failsafe: a hung webview never answers close-requested, so the OS close proceeds — the dialogue cannot brick exiting; `core:window:allow-destroy` capability added | ✅ capability file |
+| T-PS060-1 | Players register, Search & Reports and Receipt History tables are `table-fixed` with proportional colgroups — long school/sport/period strings no longer redistribute other columns; nowrap on numeric/date columns, truncate + title tooltip on long text | ✅ source |
+| T-PS061-1 | Attendance roster renders as a numbered dense list (one player per line, P/A buttons enlarged) instead of the 3-column card grid; quick-find narrows visible rows by name / admission no / mobile with an empty-match empty state | ✅ source |
+| T-PS061-2 | Search only narrows the VIEW: counters and "All present" keep using the full roster — a filter can never cause a partial bulk mark | ✅ source |
+| T-PS061-3 | "Marking sheet PDF" exports the per-day BLANK sheet (Sl/Admission/Name/Category/Batch + empty P/A + signature, 10 mm rows) through the shared exportPDF pipeline (save dialog on desktop, download on web); cancel reported honestly (PS-037 contract) | ✅ source |
+| T-PS062-1 | Dashboard card is "Roster by Age Category" with purpose subtitle + % share; tapping a bracket plants a one-shot `studentsCategoryPreset` and opens Players pre-filtered; preset consumed + cleared at mount | ✅ source |
+
+🪟 Desktop acceptance additions for the next release build: exit dialogue on Alt+F4 AND on the custom X; confirming exits and the boot.log shows the backup routine ran; quick-measurement save reflects in the edit dialog immediately; marking-sheet PDF save dialog on WebView2; category card tap pre-filters the register.
+
+
 ## 0h. v1.9.0 WhatsApp-engine + receipt-ordering battery (executed 2026-10-12 — all green)
 
 New: `tests/receipt-ordering.test.ts` (route-level, disposable DB) wired into `npm run verify` — suite total now **232/232 across 15 files**. New Rust harness `scripts/wa-engine-check` `#[path]`-includes the REAL `src-tauri/src/wa_json_store.rs` + `wa_engine.rs` and runs 4 behavioural tests (`cargo test`; also run by the new `verify.yml` `rust` job on every push, together with a full `cargo check` of src-tauri).
