@@ -29,6 +29,7 @@ import { APP_VERSION } from "@/lib/psams/version"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useRevealMouse } from "@/components/psams/fx"
 import { ThemeToggle } from "@/components/psams/theme"
 
@@ -50,6 +51,47 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // getCurrentWindow() reads Tauri-injected internals and would throw on
   // the web, hence the isTauri() guard before touching it.
   const [win] = useState(() => (isTauri() ? getCurrentWindow() : null))
+
+  // PS-059 — exit confirmation. Every close path (custom X button, Alt+F4,
+  // taskbar) routes through an "Exit PS-AMS?" dialogue instead of killing
+  // the app outright: a mis-tap must never end the session while a receipt
+  // or register entry is mid-edit. The onCloseRequested listener prevents
+  // the close and shows the dialogue; confirming calls destroy(), which
+  // bypasses the listener, closes for real and lets the Rust exit routine
+  // (sidecar kill + automated backup) run. If the webview ever hangs, no
+  // listener answers and the OS close proceeds as the failsafe.
+  const [exitAsk, setExitAsk] = useState(false)
+  const [exiting, setExiting] = useState(false)
+
+  useEffect(() => {
+    if (!win) return
+    let cancelled = false
+    let unlisten: (() => void) | null = null
+    void win.onCloseRequested((e) => {
+      e.preventDefault()
+      setExitAsk(true)
+    }).then((fn) => {
+      // Strict Mode mounts/cleanups twice — drop a late registration too.
+      if (cancelled) fn()
+      else unlisten = fn
+    })
+    return () => {
+      cancelled = true
+      unlisten?.()
+    }
+  }, [win])
+
+  async function confirmExit() {
+    if (exiting) return
+    setExiting(true)
+    try {
+      await win?.destroy()
+    } catch {
+      // destroy denied/failed — return control instead of a dead dialogue
+      setExiting(false)
+      setExitAsk(false)
+    }
+  }
 
   useEffect(() => {
     const tick = () => setClock(new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }))
@@ -276,7 +318,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <button
                     title="Close"
                     aria-label="Close window"
-                    onClick={() => void win.close()}
+                    onClick={() => setExitAsk(true)}
                     className="flex h-9 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500 hover:text-white active:scale-95"
                   >
                     <X className="h-4 w-4" />
@@ -329,6 +371,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="hidden lg:inline">Print: A4 profile · A5 receipt · 80 mm thermal</span>
           </footer>
         </div>
+
+        {/* ---- PS-059 exit confirmation — X button and Alt+F4 both land here ---- */}
+        <AlertDialog open={exitAsk} onOpenChange={(o) => { if (!exiting) setExitAsk(o) }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Exit PS-AMS?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Everything you save is written to the local academy database immediately. When the app closes, an automated end-of-session backup of the database and media runs automatically.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={exiting}>Stay in app</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-rose-500 text-white hover:bg-rose-500/90"
+                disabled={exiting}
+                onClick={(e) => {
+                  e.preventDefault() // keep the dialogue open until destroy() lands
+                  void confirmExit()
+                }}
+              >
+                {exiting ? "Closing…" : "Exit app"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   )
