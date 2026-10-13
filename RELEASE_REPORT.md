@@ -1,9 +1,57 @@
-# PS-AMS — Release Report (v1.9.0)
+# PS-AMS — Release Report (v1.9.1)
 
-**Date:** 2026-10-12 · **Release:** `v1.9.0` · **Baseline:** v1.8.0 @ `4554f7e` · **Audit baseline:** v1.6.4 @ `63bf119`
-**Nature:** architecture + owner-reported fixes → minor version bump. v1.9.0 brings the WhatsApp linked-device engine IN-PROCESS (PS-055 — no more sidecar exe in the install folder, existing pairings auto-migrate), fixes the receipt-history ordering (PS-056) and tucks the raw data-folder paths behind a disclosure (PS-057). The v1.7.0 six-phase audit pipeline (PS-001…PS-052, all closed) and v1.8.0 (PS-053/054) remain the baseline below.
+**Date:** 2026-10-13 · **Release:** `v1.9.1` · **Baseline:** v1.9.0 @ `9c6ba43` · **Audit baseline:** v1.6.4 @ `63bf119`
+**Nature:** owner-reported UX pass → patch bump. v1.9.1 lands the five owner-requested workflow improvements (PS-058…PS-062): court-side measurement logging in Athletic Lab, an exit confirmation dialogue, stable table column geometry in the players/reports/receipt tables, a dense attendance register with roster search plus a printable per-day marking-sheet PDF, and a clarified, click-through roster-by-category card. The v1.9.0 in-process WhatsApp engine (PS-055), receipt ordering (PS-056), data-location disclosure (PS-057), the v1.8.0 BMI/updater work (PS-053/054) and the v1.7.0 six-phase audit pipeline (PS-001…PS-052, all closed) remain the baseline below.
 
-## 0. v1.9.0 — in-process WhatsApp engine (PS-055), receipt ordering (PS-056), data-location disclosure (PS-057)
+## 0a. v1.9.1 — the five owner-requested UX improvements (PS-058…PS-062)
+
+### PS-058 — Athletic Lab: record current measurements without editing the profile
+
+**Owner report:** "in player profile athletic lab give option to add current weight, spike etc. for that whole profile no need to edit… keep in profile edit also should change".
+
+**What shipped:** a "Record current measurements" card inside Athletic Lab — weight, height, standing reach, spike reach and jump reach can be saved court-side without opening the full player editor. It writes through the **same partial `updateStudent` path** that the profile edit dialog uses on both backends, so there is exactly one source of truth: a measurement saved in the lab updates the profile fields, the live BMI tile, every lab tile, and a changed height/weight lands in the dated growth history — and edits made in the profile dialog show up in the lab identically (single write path, no shadow copy).
+
+**Verified:** executed in-sandbox — component tests cover the lab quick-log flow (partial payload only carries provided fields, BMI and tiles refresh, growth history row appended) plus the pre-existing profile-edit sync battery; `npm run verify` green (232/232).
+
+### PS-059 — App exit confirmation dialogue
+
+**Owner report:** "add app exit confirmation dialogue".
+
+**What shipped:** every close path (custom header X, Alt+F4, taskbar close) now lands in an "Exit PS-AMS?" confirmation instead of killing the session outright. The Tauri `onCloseRequested` handler prevents the close and shows the dialogue; confirming calls `destroy()`, which bypasses the guard, closes for real, and still lets the Rust exit routine (WhatsApp engine shutdown + automated backup) run.
+
+**Failsafe:** a hung webview never answers the close-requested event, so the OS close proceeds — the dialogue can never brick the exit. Capability `core:window:allow-destroy` added; the client-audit asserts the guarded wiring (bare `win.close()` must be gone).
+
+### PS-060 — Search/Report tables: column spacing follows the content
+
+**Owner report:** "in search and report table the column arrangements are not correct, spacing according to the text length requirement".
+
+**Root cause:** auto table layout redistributed the whole row whenever one cell's content length changed — one long school name / period list / sport string squeezed every other column.
+
+**What shipped (players register, reports tables, receipt history):** `table-fixed` + proportional `<colgroup>` widths; compact columns (age, height, fee, receipt no, date, mode, amount) are whitespace-nowrap; long-text columns (school, periods, student names) truncate with a title tooltip; percentages re-normalise across the breakpoints where Height/School/Fee hide so Actions never collapses below its button row on narrower windows.
+
+### PS-061 — Attendance: dense register list + roster search + printable per-day marking sheet
+
+**Owner report:** "in attendance tab, the current marking of attendance is not good bcoz if so many students it is difficult, i think list is good, also there should be an option to pdf the per-day attendance sheet so that u can give to field to mark attendance".
+
+**What shipped:** the 3-column card grid is replaced by a **numbered single-column register list** — one player per line scans straight down and is sized for 100+ rosters (per-row entrance animation dropped: it delayed marking at 200 rows). A **quick-find box** narrows visible rows by name / admission no / mobile; counters and "All present" keep operating on the FULL roster so a filter can never cause a partial bulk mark or wrong totals. A **"Marking sheet PDF"** export renders the per-day blank sheet through the shared jsPDF pipeline: Sl / Admission / Name / Category / Batch with EMPTY P and A columns plus a signature line, tall 10 mm rows for handwriting, letterhead and date + segment subtitle — save dialog on desktop, download on web (`exportPDF` gained an optional `rowMinHeight` min-cell pass-through).
+
+### PS-062 — "Category Distribution" card: explained, renamed, made actionable
+
+**Owner report:** "the category distribution card is a confusing one, what is the use tell".
+
+**Answer + action:** the card shows how the academy's players spread across the age brackets — its use is batch planning, coaching-load balancing and tournament-eligibility headcounts. To make that obvious it is renamed **"Roster by Age Category"** with a plain-language subtitle, each bar now shows a % share next to the count, and the card is **click-through**: tapping a bracket plants a one-shot `studentsCategoryPreset` in the store and opens the Players register pre-filtered to that category (preset consumed and cleared at mount, so later visits keep the user's own filter choice).
+
+### Receipt-history ordering — carried item, already fixed in v1.9.0
+
+Verified during this cycle that "receipt history not showing recent one first" was closed by PS-056 at v1.9.0 (issuance order `receiptNo DESC` on the unfiltered ledger; `tests/receipt-ordering.test.ts` green). No additional change in v1.9.1.
+
+### v1.9.1 verification evidence
+
+- `npm run verify` exit 0 on `e2d9884`: tracked-files gate · ESLint 0 errors (4 pre-existing warnings) · tsc clean · **vitest 232/232 across 15 suites** · parity 8↔8 models / 77 columns · client-audit PASS (incl. the PS-059 exit-guard invariant).
+- Per-check browser-style evidence for each PS-058…PS-062 item is recorded in `TEST_MATRIX.md` § 0i.
+- **Local `next build` remains blocked by the sandbox** (Turbopack CSS worker OOM at 4 GB — reproduced at clean v1.8.0/v1.9.0 HEADs, environmental; the Windows tag-CI build is the authoritative production build, as for v1.7.0/v1.8.0/v1.9.0).
+
+## 0b. v1.9.0 — in-process WhatsApp engine (PS-055), receipt ordering (PS-056), data-location disclosure (PS-057)
 
 ### PS-055 — WhatsApp bot exe removed: the engine is now part of the app
 
