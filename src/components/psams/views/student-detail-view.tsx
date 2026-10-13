@@ -1,7 +1,7 @@
 "use client"
 import { SafeImg } from "@/components/psams/safe-img"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   ArrowLeft,
@@ -52,6 +52,7 @@ import {
   NET_HEIGHT_M,
 } from "@/lib/psams/domain"
 import {
+  assessBmi,
   assessCurrentBmi,
   assessStudentBmi,
   presentBmi,
@@ -79,6 +80,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { SELECTION_LEVELS, MEDAL_OPTIONS } from "@/lib/psams/types"
+import { intOnly, decimalOnly } from "@/lib/psams/domain"
 
 export function StudentDetailView({ studentId }: { studentId: string }) {
   const [student, setStudent] = useState<StudentWithRelations | null>(null)
@@ -460,6 +462,8 @@ function AthleticLab({
 
   return (
     <div className="space-y-3">
+      {/* quick measurements — court-side updates without opening the full editor */}
+      <QuickMeasureCard student={s} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <LabTile
           icon={<Dumbbell className="h-3.5 w-3.5" />}
@@ -540,6 +544,161 @@ function AthleticLab({
           These are coaching <b className="text-foreground">estimates computed live from the recorded facts</b> — anthropometry, reach measurements, category and registration date. Net heights follow the standard Kerala youth volley ladder (Mini 2.00 m → Senior 2.43 m). For official athlete profiling, log quarterly jump, sprint and flexibility tests and keep the profile up to date.
         </p>
       </div>
+    </div>
+  )
+}
+
+/* =================== Quick measurements — court-side logging =================== */
+
+interface MeasureForm {
+  heightCm: string
+  weightKg: string
+  standingReachCm: string
+  spikeReachCm: string
+  jumpReachCm: string
+}
+
+function measureFormFrom(s: StudentWithRelations): MeasureForm {
+  return {
+    heightCm: s.heightCm != null ? String(s.heightCm) : "",
+    weightKg: s.weightKg != null ? String(s.weightKg) : "",
+    standingReachCm: s.standingReachCm != null ? String(s.standingReachCm) : "",
+    spikeReachCm: s.spikeReachCm != null ? String(s.spikeReachCm) : "",
+    jumpReachCm: s.jumpReachCm != null ? String(s.jumpReachCm) : "",
+  }
+}
+
+/**
+ * Record today's weight / spike / reach straight from the Athletic Lab —
+ * no need to open the whole player editor. Saves through the SAME partial
+ * update both backends use for the full edit form, so the profile metrics,
+ * live BMI and every Athletic Lab tile stay in sync, and a changed
+ * height/weight lands in the dated growth & BMI history automatically.
+ */
+function QuickMeasureCard({ student: s }: { student: StudentWithRelations }) {
+  const refresh = useAppStore((st) => st.refresh)
+  const { toast } = useToast()
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState<MeasureForm>(() => measureFormFrom(s))
+
+  // The detail view refetches after every save (dataVersion bump) — when a
+  // NEW student object arrives, reset the fields to the freshly saved truth.
+  const [prevStudent, setPrevStudent] = useState(s)
+  if (prevStudent !== s) {
+    setPrevStudent(s)
+    setForm(measureFormFrom(s))
+  }
+
+  const set = (k: keyof MeasureForm, v: string) => setForm((f) => ({ ...f, [k]: v }))
+
+  // Live previews — the SAME authoritative BMI assessment the edit form uses.
+  const bmiView = useMemo(
+    () =>
+      presentBmi(
+        assessBmi({
+          weightKg: Number(form.weightKg) || null,
+          heightCm: Number(form.heightCm) || null,
+          dateOfBirth: s.dateOfBirth,
+          gender: s.gender,
+          measurementDate: new Date(),
+        })
+      ),
+    [form.weightKg, form.heightCm, s.dateOfBirth, s.gender]
+  )
+  const jumpGain = useMemo(() => {
+    const sp = Number(form.spikeReachCm)
+    const st = Number(form.standingReachCm)
+    return sp > 0 && st > 0 ? sp - st : null
+  }, [form.spikeReachCm, form.standingReachCm])
+
+  const num = (v: string) => (v === "" ? null : Number(v))
+  const changed =
+    num(form.heightCm) !== s.heightCm ||
+    num(form.weightKg) !== s.weightKg ||
+    num(form.standingReachCm) !== s.standingReachCm ||
+    num(form.spikeReachCm) !== s.spikeReachCm ||
+    num(form.jumpReachCm) !== s.jumpReachCm
+
+  async function save() {
+    if (saving) return
+    // sanity guards mirroring the server rules (no negative / absurd values)
+    const vals = { heightCm: num(form.heightCm), weightKg: num(form.weightKg), standingReachCm: num(form.standingReachCm), spikeReachCm: num(form.spikeReachCm), jumpReachCm: num(form.jumpReachCm) }
+    for (const [k, v] of Object.entries(vals)) {
+      if (v != null && (!Number.isFinite(v) || v <= 0 || v > 300)) {
+        toast({ title: `Invalid ${k.replace("Cm", " (cm)")}`, description: "Enter a value between 1 and 300.", variant: "destructive" })
+        return
+      }
+    }
+    if (vals.spikeReachCm != null && vals.standingReachCm != null && vals.spikeReachCm < vals.standingReachCm) {
+      toast({ title: "Spike reach is below standing reach", description: "Check the measurements — the spike reach should be at or above the standing reach.", variant: "destructive" })
+      return
+    }
+    setSaving(true)
+    try {
+      await updateStudent(s.id, vals)
+      toast({
+        title: "Measurements saved",
+        description: vals.heightCm !== s.heightCm || vals.weightKg !== s.weightKg
+          ? "Profile metrics updated — today's growth-history entry is recorded."
+          : "Profile metrics updated.",
+      })
+      refresh() // bumps dataVersion — the whole profile (hero, lab, BMI) refetches
+    } catch (e) {
+      toast({ title: "Save failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-primary/25 bg-card/60 backdrop-blur">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5">
+        <div>
+          <div className="flex items-center gap-1.5 text-xs font-semibold">
+            <Dumbbell className="h-3.5 w-3.5 text-primary" /> Record current measurements
+          </div>
+          <div className="text-[15px] text-muted-foreground">
+            Update weight, spike and reach here — the full profile editor stays in sync, no need to open it
+          </div>
+        </div>
+        <Button size="sm" className="h-7 gap-1 text-[15px]" disabled={saving || !changed} onClick={save} title={changed ? "Saves to the profile metrics and today's growth history" : "Nothing changed yet"}>
+          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Save measurements
+        </Button>
+      </div>
+      <div className="grid grid-cols-2 gap-3 px-4 py-3 sm:grid-cols-3 xl:grid-cols-6">
+        <div className="space-y-1">
+          <Label className="text-xs">Height (cm)</Label>
+          <Input className="h-8 text-xs" inputMode="numeric" value={form.heightCm} onChange={(e) => set("heightCm", intOnly(e.target.value, 3))} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Weight (kg)</Label>
+          <Input className="h-8 text-xs" inputMode="decimal" value={form.weightKg} onChange={(e) => set("weightKg", decimalOnly(e.target.value, 3))} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Standing reach (cm)</Label>
+          <Input className="h-8 text-xs" inputMode="numeric" value={form.standingReachCm} onChange={(e) => set("standingReachCm", intOnly(e.target.value, 3))} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Spike reach (cm)</Label>
+          <Input className="h-8 text-xs" inputMode="numeric" value={form.spikeReachCm} onChange={(e) => set("spikeReachCm", intOnly(e.target.value, 3))} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Jump reach (cm)</Label>
+          <Input className="h-8 text-xs" inputMode="numeric" value={form.jumpReachCm} onChange={(e) => set("jumpReachCm", intOnly(e.target.value, 3))} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">BMI — auto (age-specific)</Label>
+          <div className="flex h-8 items-center justify-between rounded-md border bg-muted px-2.5 text-xs" title={bmiView.hint}>
+            <span className={`font-bold tabular-nums ${bmiView.color}`}>{bmiView.value}</span>
+            <span className="text-[15.5px] text-muted-foreground">{bmiView.label}</span>
+          </div>
+        </div>
+      </div>
+      {jumpGain !== null && jumpGain > 0 && (
+        <div className="mx-4 mb-3 rounded-md bg-emerald-500/10 px-3 py-1.5 text-[15px] text-emerald-700 dark:text-emerald-300">
+          Vertical gain (standing → spike): <b>+{jumpGain} cm</b>
+        </div>
+      )}
     </div>
   )
 }

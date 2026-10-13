@@ -87,6 +87,9 @@
         "typescript": "^5",
         "vitest": "^5.0.3",
       },
+      "optionalDependencies": {
+        "@libsql/linux-x64-gnu": "0.5.29",
+      },
     },
   },
   "trustedDependencies": [
