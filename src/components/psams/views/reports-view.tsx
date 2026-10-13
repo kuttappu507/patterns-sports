@@ -227,7 +227,17 @@ export function ReportsView() {
 
       {/* results table */}
       <div className="glass min-h-0 flex-1 overflow-y-auto rounded-2xl">
-        <table className="w-full text-left text-xs">
+        {/* PS-060 — table-fixed + proportional widths keeps the six columns
+            stable whatever the cell content length is. */}
+        <table className="w-full table-fixed text-left text-xs">
+          <colgroup>
+            <col className="w-[27%]" />
+            <col className="w-[13%]" />
+            <col className="w-[18%]" />
+            <col className="w-[13%]" />
+            <col className="hidden w-[18%] lg:table-column" />
+            <col className="w-[11%]" />
+          </colgroup>
           <thead className="sticky top-0 z-10 border-b bg-[#0b0f18]/95 text-[15px] uppercase tracking-wide text-muted-foreground backdrop-blur">
             <tr>
               <th className="px-4 py-2.5 font-medium">Student</th>
@@ -245,9 +255,9 @@ export function ReportsView() {
               const bmiFields = bmiReportFields(s)
               return (
                 <tr key={s.id} className="cursor-pointer border-b border-border/40 hover:bg-accent/40" onClick={() => navigate("student-detail", s.id)}>
-                  <td className="px-4 py-2.5">
+                  <td className="truncate px-4 py-2.5">
                     <div className="flex items-center gap-2.5">
-                      <div className="h-8 w-8 overflow-hidden rounded-full border bg-muted">
+                      <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border bg-muted">
                         {s.photoPath ? (
                            
                           <SafeImg src={mediaUrl(s.photoPath)} alt={s.fullName} className="h-full w-full object-cover" fallback={<div className="flex h-full w-full items-center justify-center text-[15.5px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>} />
@@ -255,25 +265,25 @@ export function ReportsView() {
                           <div className="flex h-full w-full items-center justify-center text-[15.5px] font-semibold text-muted-foreground">{s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
                         )}
                       </div>
-                      <div>
-                        <div className="font-medium">{s.fullName}</div>
-                        <div className="text-[14.5px] text-muted-foreground">{s.admissionNo}</div>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium" title={s.fullName}>{s.fullName}</div>
+                        <div className="tnum truncate text-[14.5px] text-muted-foreground">{s.admissionNo}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-3 py-2.5">
-                    <div className="tabular-nums">{computeAge(s.dateOfBirth)} yrs</div>
-                    <span className={cn("mt-0.5 inline-block rounded-full border px-2 py-0.5 text-[15.5px] font-medium", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
+                    <div className="whitespace-nowrap tabular-nums">{computeAge(s.dateOfBirth)} yrs</div>
+                    <span className={cn("mt-0.5 inline-block max-w-full truncate rounded-full border px-2 py-0.5 text-[15.5px] font-medium", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
                   </td>
-                  <td className="px-3 py-2.5 tabular-nums">
+                  <td className="whitespace-nowrap px-3 py-2.5 tabular-nums" title={bmiFields.combined}>
                     {s.heightCm ?? "—"} cm · {s.weightKg ?? "—"} kg · <span className="font-medium">{bmiFields.combined}</span>
                   </td>
                   <td className="px-3 py-2.5">
-                    <div>{s.primarySport}</div>
-                    <div className="text-[14.5px] text-muted-foreground">{s.playingPosition || "—"}</div>
+                    <div className="truncate" title={s.primarySport}>{s.primarySport}</div>
+                    <div className="truncate text-[14.5px] text-muted-foreground" title={s.playingPosition || ""}>{s.playingPosition || "—"}</div>
                   </td>
-                  <td className="hidden max-w-[180px] truncate px-3 py-2.5 lg:table-cell">{s.schoolName || "—"}</td>
-                  <td className="px-3 py-2.5 text-right font-medium tabular-nums">{formatINR(s.monthlyFee)}</td>
+                  <td className="hidden truncate px-3 py-2.5 lg:table-cell" title={s.schoolName || ""}>{s.schoolName || "—"}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-right font-medium tabular-nums">{formatINR(s.monthlyFee)}</td>
                 </tr>
               )
             })}

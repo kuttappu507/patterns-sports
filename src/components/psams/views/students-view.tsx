@@ -141,7 +141,21 @@ export function StudentsView() {
       <StaggerItem className="min-h-0 flex-1">
         <div className="glass h-full overflow-hidden rounded-2xl">
           <div className="h-full overflow-y-auto">
-            <table className="w-full text-left text-xs">
+            {/* PS-060 — table-fixed + proportional col widths: column sizes no
+                longer swing with cell content (one long school name used to
+                squeeze the whole row). Percentages normalise across the
+                breakpoints where Height/School/Fee hide. */}
+            <table className="w-full table-fixed text-left text-xs">
+              <colgroup>
+                <col className="w-[24%]" />
+                <col className="w-[9%]" />
+                <col className="w-[7%]" />
+                <col className="w-[14%]" />
+                <col className="hidden w-[8%] lg:table-column" />
+                <col className="hidden w-[17%] xl:table-column" />
+                <col className="hidden w-[10%] xl:table-column" />
+                <col className="w-[11%]" />
+              </colgroup>
               <thead className="sticky top-0 z-10 border-b border-border bg-background/95 text-[14.5px] uppercase tracking-[0.14em] text-muted-foreground backdrop-blur">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Student</th>
@@ -150,7 +164,7 @@ export function StudentsView() {
                   <th className="px-3 py-3 font-semibold">Sport / Position</th>
                   <th className="hidden px-3 py-3 font-semibold lg:table-cell">Height</th>
                   <th className="hidden px-3 py-3 font-semibold xl:table-cell">School</th>
-                  <th className="hidden px-3 py-3 font-semibold xl:table-cell">Monthly fee</th>
+                  <th className="hidden px-3 py-3 text-right font-semibold xl:table-cell">Monthly fee</th>
                   <th className="px-3 py-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -186,8 +200,8 @@ export function StudentsView() {
                       title="Double-click to open the player profile"
                       className="group cursor-default border-b border-border/60 transition-colors hover:bg-muted/40"
                     >
-                      <td className="row-hover px-4 py-2.5">
-                        <button className="flex items-center gap-2.5 text-left" onClick={() => navigate("student-detail", s.id)}>
+                      <td className="row-hover truncate px-4 py-2.5">
+                        <button className="flex max-w-full items-center gap-2.5 text-left" onClick={() => navigate("student-detail", s.id)} title={s.fullName}>
                           <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-yellow-400/15 transition-all duration-200 group-hover:border-primary/40 group-hover:shadow-[0_0_12px_-2px_rgba(239, 71, 111,0.45)] dark:group-hover:shadow-[0_0_12px_-2px_rgba(255, 107, 141,0.55)]">
                             <SafeImg
                               src={mediaUrl(s.photoPath)}
@@ -202,25 +216,25 @@ export function StudentsView() {
                           </div>
                           <div className="min-w-0">
                             <div className="truncate font-semibold text-foreground transition-colors group-hover:text-primary">{s.fullName}</div>
-                            <div className="tnum text-[14.5px] text-muted-foreground">{s.admissionNo} · {s.mobile}</div>
+                            <div className="tnum truncate text-[14.5px] text-muted-foreground">{s.admissionNo} · {s.mobile}</div>
                           </div>
                         </button>
                       </td>
                       <td className="px-3 py-2.5">
-                        <span className={`rounded-full border px-2 py-0.5 text-[14.5px] font-semibold ${CATEGORY_COLORS[s.ageCategory] || ""}`}>{s.ageCategory}</span>
+                        <span className={`inline-block max-w-full truncate rounded-full border px-2 py-0.5 text-[14.5px] font-semibold ${CATEGORY_COLORS[s.ageCategory] || ""}`}>{s.ageCategory}</span>
                       </td>
-                      <td className="tnum px-3 py-2.5">{computeAge(s.dateOfBirth)} yrs</td>
+                      <td className="tnum whitespace-nowrap px-3 py-2.5">{computeAge(s.dateOfBirth)} yrs</td>
                       <td className="px-3 py-2.5">
-                        <div className="font-medium">{s.primarySport}</div>
-                        <div className="text-[14.5px] text-muted-foreground">{s.playingPosition || "—"}</div>
+                        <div className="truncate font-medium" title={s.primarySport}>{s.primarySport}</div>
+                        <div className="truncate text-[14.5px] text-muted-foreground" title={s.playingPosition || ""}>{s.playingPosition || "—"}</div>
                       </td>
-                      <td className="tnum hidden px-3 py-2.5 lg:table-cell">{s.heightCm ? `${s.heightCm} cm` : "—"}</td>
-                      <td className="hidden max-w-[160px] truncate px-3 py-2.5 xl:table-cell">
+                      <td className="tnum hidden whitespace-nowrap px-3 py-2.5 lg:table-cell">{s.heightCm ? `${s.heightCm} cm` : "—"}</td>
+                      <td className="hidden truncate px-3 py-2.5 xl:table-cell" title={s.schoolName || ""}>
                         {s.schoolName ? (
-                          <span className="inline-flex items-center gap-1 text-foreground/80"><GraduationCap className="h-3 w-3 text-muted-foreground" />{s.schoolName}</span>
+                          <span className="inline-flex max-w-full items-center gap-1 text-foreground/80"><GraduationCap className="h-3 w-3 shrink-0 text-muted-foreground" /><span className="truncate">{s.schoolName}</span></span>
                         ) : "—"}
                       </td>
-                      <td className="tnum hidden px-3 py-2.5 xl:table-cell">{formatINR(s.monthlyFee)}</td>
+                      <td className="tnum hidden whitespace-nowrap px-3 py-2.5 text-right xl:table-cell">{formatINR(s.monthlyFee)}</td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center justify-end gap-1 opacity-60 transition-opacity duration-200 group-hover:opacity-100">
                           <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-cyan-500/10 hover:text-cyan-700 dark:hover:text-cyan-300" title="Open profile" onClick={() => navigate("student-detail", s.id)}>

@@ -779,7 +779,18 @@ function HistoryTab() {
         </div>
       </div>
       <div className="overflow-hidden glass rounded-2xl">
-        <table className="w-full text-left text-xs">
+        {/* PS-060 — table-fixed + proportional widths; long period lists and
+            student names can no longer shove the numeric columns around. */}
+        <table className="w-full table-fixed text-left text-xs">
+          <colgroup>
+            <col className="w-[11%]" />
+            <col className="w-[10%]" />
+            <col className="w-[22%]" />
+            <col className="w-[21%]" />
+            <col className="w-[7%]" />
+            <col className="w-[10%]" />
+            <col className="w-[19%]" />
+          </colgroup>
           <thead className="border-b border-border bg-muted/30 text-[15px] uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-2 font-medium">Receipt No</th>
@@ -798,12 +809,15 @@ function HistoryTab() {
             )}
             {filtered.map((p) => (
               <tr key={p.id} className="border-b border-border/40 hover:bg-accent/30">
-                <td className="px-4 py-2 font-mono text-[15px]">{p.receiptNo}</td>
-                <td className="px-3 py-2">{formatDate(p.paymentDate)}</td>
-                <td className="px-3 py-2 font-medium">{p.studentName} <span className="text-[15.5px] text-muted-foreground">{p.admissionNo}</span></td>
-                <td className="px-3 py-2">{parsePaidMonths(p.months).map(monthLabel).join(", ")}</td>
-                <td className="px-3 py-2">{p.paymentMode}</td>
-                <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatINR(p.amount)}</td>
+                <td className="whitespace-nowrap px-4 py-2 font-mono text-[15px]">{p.receiptNo}</td>
+                <td className="whitespace-nowrap px-3 py-2">{formatDate(p.paymentDate)}</td>
+                <td className="px-3 py-2 font-medium">
+                  <div className="truncate" title={p.studentName}>{p.studentName}</div>
+                  <div className="tnum truncate text-[15.5px] text-muted-foreground">{p.admissionNo}</div>
+                </td>
+                <td className="truncate px-3 py-2" title={parsePaidMonths(p.months).map(monthLabel).join(", ")}>{parsePaidMonths(p.months).map(monthLabel).join(", ")}</td>
+                <td className="whitespace-nowrap px-3 py-2">{p.paymentMode}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums">{formatINR(p.amount)}</td>
                 <td className="px-3 py-2">
                   <div className="flex justify-end gap-1">
                     <Button size="sm" variant="outline" className="h-6 px-2 text-[14.5px]" title="Straight to the default printer at the receipt preset" onClick={() => reprint(p)}>Receipt</Button>
