@@ -209,6 +209,8 @@ export async function exportPDF(opts: {
   totalsRow?: ExportRow
   orientation?: "p" | "l"
   footnote?: string
+  /** Minimum body-row height in mm — tall rows for hand-written field sheets. */
+  rowMinHeight?: number
 }): Promise<SaveOutcome> {
   const doc = new jsPDF({ orientation: opts.orientation ?? "p", unit: "mm", format: "a4" })
   const pageW = doc.internal.pageSize.getWidth()
@@ -264,7 +266,7 @@ export async function exportPDF(opts: {
     ...(opts.totalsRow
       ? { foot: [opts.columns.map((c, i) => paperCell(opts.totalsRow?.[c.key], i))] }
       : {}),
-    styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
+    styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak", ...(opts.rowMinHeight ? { minCellHeight: opts.rowMinHeight } : {}) },
     headStyles: { fillColor: [31, 111, 178], textColor: 255, fontStyle: "bold" },
     footStyles: { fillColor: [240, 244, 248], textColor: [30, 30, 30], fontStyle: "bold" },
     // the totals row repeated on EVERY page read as a fresh total — show it once

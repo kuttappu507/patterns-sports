@@ -8,18 +8,19 @@ import { SafeImg } from "@/components/psams/safe-img"
 
 import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
-import { Check, X, CheckCheck, Printer, CalendarDays, Users } from "lucide-react"
+import { Check, X, CheckCheck, Printer, CalendarDays, Users, FileDown, Search } from "lucide-react"
 import { fetchStudents, fetchAttendance, markAttendance, fetchSettings, mediaUrl } from "@/lib/psams/api"
-import { computeAge, todayKey, CATEGORY_COLORS } from "@/lib/psams/domain"
+import { computeAge, todayKey, CATEGORY_COLORS, formatDate } from "@/lib/psams/domain"
 import type { Student, AttendanceRecord, AcademySettings } from "@/lib/psams/types"
 import { useAppStore } from "@/lib/psams/store"
 import { useToast } from "@/hooks/use-toast"
+import { exportPDF } from "@/lib/psams/export"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { Shimmer, Stagger, StaggerItem, EmptyState } from "@/components/psams/fx"
+import { Shimmer, StaggerItem, EmptyState } from "@/components/psams/fx"
 
 const AGE_CATEGORIES = ["Mini", "Sub-Junior", "Junior", "Youth", "Senior"]
 
@@ -32,6 +33,9 @@ export function AttendanceView() {
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<AcademySettings | null>(null)
   const [loadError, setLoadError] = useState(false)
+  // PS-061 — find one player instantly in a long session roster
+  const [q, setQ] = useState("")
+  const [pdfBusy, setPdfBusy] = useState(false)
   const { setPrint } = useAppStore()
   const { toast } = useToast()
 
@@ -77,6 +81,20 @@ export function AttendanceView() {
     if (segment === "Morning" || segment === "Evening") return students.filter((s) => s.trainingBatch === segment)
     return students.filter((s) => s.ageCategory === segment)
   }, [students, segment])
+
+  // search view — narrows the visible rows only; counters and bulk actions
+  // keep operating on the FULL session roster so a filter can never cause a
+  // partial "all present" or lie about the marked totals.
+  const visibleRoster = useMemo(() => {
+    const needle = q.trim().toLowerCase()
+    if (!needle) return roster
+    return roster.filter(
+      (s) =>
+        s.fullName.toLowerCase().includes(needle) ||
+        s.admissionNo.toLowerCase().includes(needle) ||
+        s.mobile.includes(needle)
+    )
+  }, [roster, q])
 
   const present = roster.filter((s) => records[s.id] === "Present").length
   const absent = roster.filter((s) => records[s.id] === "Absent").length
@@ -144,6 +162,52 @@ export function AttendanceView() {
     })
   }
 
+  /** PS-061 — blank per-day marking sheet as a PDF file: hand it to the
+   *  field coach, collect it back, then mark the register in the app. */
+  async function downloadMarkingSheet() {
+    if (pdfBusy) return
+    setPdfBusy(true)
+    try {
+      const segmentLabel =
+        segment === "all" ? "Whole academy" : segment === "Morning" || segment === "Evening" ? `${segment} batch` : `${segment} category`
+      const out = await exportPDF({
+        fileName: "PS-AMS-attendance-sheet",
+        title: "Daily Attendance Sheet",
+        subtitle: `${formatDate(date)} · ${segmentLabel} · roster of ${roster.length} — tick Present / Absent in the blank column`,
+        academy: settings ?? undefined,
+        columns: [
+          { header: "Sl", key: "sl", width: 8 },
+          { header: "Admission No", key: "admission", width: 22 },
+          { header: "Student Name", key: "name", width: 52 },
+          { header: "Category", key: "category", width: 24 },
+          { header: "Batch", key: "batch", width: 20 },
+          { header: "P / A", key: "pa", width: 16 },
+          { header: "Signature", key: "sig", width: 30 },
+        ],
+        rows: roster.map((s, i) => ({
+          sl: i + 1,
+          admission: s.admissionNo,
+          name: s.fullName,
+          category: s.ageCategory,
+          batch: s.trainingBatch || "—",
+          pa: "",
+          sig: "",
+        })),
+        rowMinHeight: 10, // tall rows — room to hand-write a tick and sign
+        footnote: "Field attendance sheet — mark, sign and hand back to the academy office",
+      })
+      if (!out.saved) {
+        toast({ title: "Sheet not saved", description: "The save was cancelled — no file was written." })
+      } else {
+        toast({ title: "Attendance sheet downloaded", description: "Blank P/A columns and a signature line — ready for the field." })
+      }
+    } catch (e) {
+      toast({ title: "PDF export failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" })
+    } finally {
+      setPdfBusy(false)
+    }
+  }
+
   return (
     <div className="flex h-full flex-col gap-3 p-5">
       {/* session toolbar */}
@@ -173,9 +237,22 @@ export function AttendanceView() {
             <Badge className="rounded-full border border-rose-500/30 bg-rose-500/10 text-[14.5px] font-semibold text-rose-700 hover:bg-rose-500/15 dark:border-rose-400/25 dark:bg-rose-400/10 dark:text-rose-300">{absent} A</Badge>
             {marked < roster.length && <Badge variant="secondary" className="rounded-full text-[14.5px]">{roster.length - marked} unmarked</Badge>}
           </div>
-          <div className="ml-auto flex gap-2">
+          <div className="ml-auto flex items-center gap-2">
+            {/* PS-061 — quick find inside a long roster */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="h-8 w-[190px] rounded-lg border-border bg-card pl-8 text-xs placeholder:text-muted-foreground focus-visible:border-primary/50"
+                placeholder="Find player in roster…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
             <Button size="sm" variant="outline" disabled={markAllBusy} className="h-8 gap-1.5 rounded-lg border-emerald-500/30 bg-emerald-500/10 text-xs font-medium text-emerald-700 transition-all hover:bg-emerald-500/20 active:scale-[0.97] disabled:opacity-50 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300" onClick={() => markAll("Present")}>
               <CheckCheck className="h-3.5 w-3.5" /> All present
+            </Button>
+            <Button size="sm" variant="outline" disabled={pdfBusy} className="h-8 gap-1.5 rounded-lg border-border bg-card text-xs hover:bg-muted active:scale-[0.97] disabled:opacity-50" onClick={downloadMarkingSheet} title="Save a blank per-day marking sheet as a PDF — hand it to the field coach, then transfer the ticks into the register">
+              <FileDown className="h-3.5 w-3.5" /> {pdfBusy ? "Preparing…" : "Marking sheet PDF"}
             </Button>
             <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-lg border-border bg-card text-xs hover:bg-muted active:scale-[0.97]" onClick={printSheet}>
               <Printer className="h-3.5 w-3.5" /> Print sheet
@@ -205,78 +282,88 @@ export function AttendanceView() {
             hint="Switch the segment filter or register new players to start marking attendance."
           />
         )}
-        {!loading && roster.length > 0 && (
-          <Stagger className="grid grid-cols-1 gap-2.5 p-3 md:grid-cols-2 lg:grid-cols-3">
-            {roster.map((s) => {
+        {!loading && !loadError && roster.length > 0 && visibleRoster.length === 0 && (
+          <EmptyState
+            icon={<Search className="h-6 w-6" />}
+            title={`No roster player matches “${q.trim()}”`}
+            hint="Search matches name, admission number or parent mobile."
+          />
+        )}
+        {!loading && visibleRoster.length > 0 && (
+          /* PS-061 — dense session LIST: one player per line scans straight
+             down the register, sized for 100+ rosters (the old 3-column card
+             grid made long sessions hard to walk). No per-row entrance
+             animation — a 200-row stagger delays the register needlessly. */
+          <div className="divide-y divide-border/60">
+            {visibleRoster.map((s, i) => {
               const status = records[s.id]
               const busy = savingIds.has(s.id)
               return (
-                <StaggerItem key={s.id}>
-                  <motion.div
-                    layout
-                    className={cn(
-                      "row-hover flex items-center gap-3 rounded-xl border border-border bg-card/50 px-3.5 py-2.5",
-                      status === "Present" && "border-emerald-400/25 bg-emerald-400/[0.05]",
-                      status === "Absent" && "border-rose-400/25 bg-rose-400/[0.04]"
-                    )}
-                  >
-                    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-cyan-500/10">
-                      <SafeImg
-                        src={mediaUrl(s.photoPath)}
-                        alt={s.fullName}
-                        className="h-full w-full object-cover"
-                        fallback={
-                          <div className="flex h-full w-full items-center justify-center text-[15.5px] font-bold text-primary/70">
-                            {s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-                          </div>
-                        }
-                      />
+                <div
+                  key={s.id}
+                  className={cn(
+                    "row-hover flex items-center gap-3 px-4 py-1.5",
+                    status === "Present" && "bg-emerald-400/[0.06]",
+                    status === "Absent" && "bg-rose-400/[0.05]"
+                  )}
+                >
+                  <span className="tnum w-6 shrink-0 text-right text-[14.5px] text-muted-foreground">{i + 1}</span>
+                  <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-gradient-to-br from-primary/15 to-cyan-500/10">
+                    <SafeImg
+                      src={mediaUrl(s.photoPath)}
+                      alt={s.fullName}
+                      className="h-full w-full object-cover"
+                      fallback={
+                        <div className="flex h-full w-full items-center justify-center text-[14px] font-bold text-primary/70">
+                          {s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                        </div>
+                      }
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-semibold" title={s.fullName}>{s.fullName}</div>
+                    <div className="tnum flex items-center gap-1.5 truncate text-[14.5px] text-muted-foreground">
+                      {s.admissionNo} · {computeAge(s.dateOfBirth)} yrs
+                      <span className={cn("rounded-full border px-1.5 text-[14.5px] font-semibold", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
+                      {s.trainingBatch && <span className="text-[14.5px]">{s.trainingBatch}</span>}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-semibold">{s.fullName}</div>
-                      <div className="tnum flex items-center gap-1.5 text-[14.5px] text-muted-foreground">
-                        {s.admissionNo} · {computeAge(s.dateOfBirth)} yrs
-                        <span className={cn("rounded-full border px-1.5 text-[14.5px] font-semibold", CATEGORY_COLORS[s.ageCategory] || "")}>{s.ageCategory}</span>
-                        {s.trainingBatch && <span className="text-[14.5px]">{s.trainingBatch}</span>}
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <motion.button
-                        whileTap={{ scale: 0.82 }}
-                        whileHover={{ scale: 1.08 }}
-                        onClick={() => toggle(s, "Present")}
-                        disabled={busy}
-                        className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded-lg border transition-colors",
-                          status === "Present"
-                            ? "border-emerald-400 bg-emerald-500 text-white shadow-[0_0_12px_-2px_rgba(52,211,153,0.7)]"
-                            : "bg-muted text-muted-foreground hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-300"
-                        )}
-                        title="Mark present"
-                      >
-                        <Check className="h-4 w-4" strokeWidth={2.6} />
-                      </motion.button>
-                      <motion.button
-                        whileTap={{ scale: 0.82 }}
-                        whileHover={{ scale: 1.08 }}
-                        onClick={() => toggle(s, "Absent")}
-                        disabled={busy}
-                        className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded-lg border transition-colors",
-                          status === "Absent"
-                            ? "border-rose-400 bg-rose-500 text-white shadow-[0_0_12px_-2px_rgba(251,113,133,0.7)]"
-                            : "bg-muted text-muted-foreground hover:border-rose-500 hover:text-rose-600 dark:hover:text-rose-300"
-                        )}
-                        title="Mark absent"
-                      >
-                        <X className="h-4 w-4" strokeWidth={2.6} />
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                </StaggerItem>
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    <motion.button
+                      whileTap={{ scale: 0.86 }}
+                      onClick={() => toggle(s, "Present")}
+                      disabled={busy}
+                      className={cn(
+                        "flex h-9 w-12 items-center justify-center gap-1 rounded-lg border transition-colors",
+                        status === "Present"
+                          ? "border-emerald-400 bg-emerald-500 text-white shadow-[0_0_12px_-2px_rgba(52,211,153,0.7)]"
+                          : "bg-muted text-muted-foreground hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-300"
+                      )}
+                      title="Mark present"
+                    >
+                      <Check className="h-4 w-4" strokeWidth={2.6} />
+                      <span className="text-[13px] font-semibold">P</span>
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.86 }}
+                      onClick={() => toggle(s, "Absent")}
+                      disabled={busy}
+                      className={cn(
+                        "flex h-9 w-12 items-center justify-center gap-1 rounded-lg border transition-colors",
+                        status === "Absent"
+                          ? "border-rose-400 bg-rose-500 text-white shadow-[0_0_12px_-2px_rgba(251,113,133,0.7)]"
+                          : "bg-muted text-muted-foreground hover:border-rose-500 hover:text-rose-600 dark:hover:text-rose-300"
+                      )}
+                      title="Mark absent"
+                    >
+                      <X className="h-4 w-4" strokeWidth={2.6} />
+                      <span className="text-[13px] font-semibold">A</span>
+                    </motion.button>
+                  </div>
+                </div>
               )
             })}
-          </Stagger>
+          </div>
         )}
       </div>
     </div>
