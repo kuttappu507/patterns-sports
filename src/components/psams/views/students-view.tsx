@@ -25,7 +25,12 @@ export function StudentsView() {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState("")
-  const [category, setCategory] = useState("all")
+  // PS-062 — a category preset planted by the dashboard's roster-by-category
+  // card is consumed ONCE at mount (and cleared, so the next visit starts
+  // from whatever the user last picked). useState initializer — the preset
+  // must be in force before the first debounced load fires.
+  const preset = useAppStore((s) => s.studentsCategoryPreset)
+  const [category, setCategory] = useState(() => preset ?? "all")
   const [status, setStatus] = useState("Active")
   const [batch, setBatch] = useState("all")
   const [gender, setGender] = useState("all")
@@ -34,6 +39,11 @@ export function StudentsView() {
   const { navigate, refresh, dataVersion, openStudentForm } = useAppStore()
   const { toast } = useToast()
   const searchSeq = useRef(0)
+
+  useEffect(() => {
+    if (preset) useAppStore.getState().setStudentsCategoryPreset(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const load = useCallback(async () => {
     // PS-031 — sequence token: a slow OLDER search response must never

@@ -7,7 +7,6 @@ import {
   Users,
   BadgeIndianRupee,
   AlertTriangle,
-  TrendingUp,
   UserPlus,
   Receipt,
   FileSearch,
@@ -32,7 +31,7 @@ const stagger = {
 export function DashboardView() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const { navigate, dataVersion, openStudentForm, openCollectFee } = useAppStore()
+  const { navigate, dataVersion, openStudentForm, openCollectFee, setStudentsCategoryPreset } = useAppStore()
   const onMouseMove = useRevealMouse()
 
   useEffect(() => {
@@ -199,22 +198,37 @@ export function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        {/* -------- Category distribution -------- */}
+        {/* -------- Roster by age category (PS-062: clarified + actionable) -------- */}
         <StaggerItem className="h-full">
           <div onMouseMove={onMouseMove} className="reveal-item hover-lift glass h-full rounded-2xl p-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold">Category Distribution</h3>
-              <TrendingUp className="h-3.5 w-3.5 text-primary/70" />
+              <h3 className="text-sm font-bold">Roster by Age Category</h3>
+              <Users className="h-3.5 w-3.5 text-primary/70" />
             </div>
-            <p className="mt-0.5 text-[15.5px] text-muted-foreground">Active roster across five age brackets</p>
-            <div className="mt-4 space-y-3.5">
+            <p className="mt-0.5 text-[15.5px] text-muted-foreground">
+              Where the active players sit across the five brackets — plan batches, coaching load and tournament entries. Tap a row to open those players.
+            </p>
+            <div className="mt-4 space-y-2">
               {stats.categoryBreakdown.map((c) => (
-                <div key={c.category} className="group">
+                <button
+                  key={c.category}
+                  onClick={() => {
+                    setStudentsCategoryPreset(c.category)
+                    navigate("students")
+                  }}
+                  title={`Open the Players register filtered to ${c.category}`}
+                  className="group block w-full rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-accent/60"
+                >
                   <div className="flex items-center justify-between text-xs">
                     <span className={`rounded-full border px-2 py-0.5 text-[14.5px] font-semibold transition-transform duration-200 group-hover:scale-105 ${CATEGORY_COLORS[c.category]}`}>
                       {c.category}
                     </span>
-                    <span className="tnum text-[14px] font-bold">{c.count}</span>
+                    <span className="tnum text-[14px] font-bold">
+                      {c.count}
+                      <span className="ml-1.5 text-[13px] font-medium text-muted-foreground">
+                        ({stats.totalActive > 0 ? Math.round((c.count / stats.totalActive) * 100) : 0}%)
+                      </span>
+                    </span>
                   </div>
                   <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-foreground/[0.07]">
                     <motion.div
@@ -224,7 +238,7 @@ export function DashboardView() {
                       className={`h-full rounded-full bg-gradient-to-r ${CATEGORY_GRADIENTS[c.category] ?? "from-primary to-yellow-400"} shadow-[0_0_10px_-2px_rgba(239, 71, 111,0.5)] dark:shadow-[0_0_10px_-2px_rgba(255, 107, 141,0.65)]`}
                     />
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>

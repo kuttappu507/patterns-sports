@@ -31,6 +31,10 @@ interface AppState {
   /** collect-fee popup (optionally pre-targeted at one student) */
   collectFeeOpen: boolean
   collectFeeStudentId: string | null
+  /** PS-062 — one-shot category preset: the dashboard's roster-by-category
+   *  card plants it before navigating, the Players register consumes it on
+   *  mount and clears it (so the next visit starts from the user's filter). */
+  studentsCategoryPreset: string | null
 
   navigate: (view: ViewKey, studentId?: string | null) => void
   refresh: () => void
@@ -41,6 +45,7 @@ interface AppState {
   closeStudentForm: () => void
   openCollectFee: (studentId?: string | null) => void
   closeCollectFee: () => void
+  setStudentsCategoryPreset: (category: string | null) => void
 }
 
 /* ------------------------- hash routing ------------------------- */
@@ -118,6 +123,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   studentFormEditing: null,
   collectFeeOpen: false,
   collectFeeStudentId: null,
+  studentsCategoryPreset: null,
 
   navigate: (view, studentId = null) => {
     const target = viewToHash(view, studentId)
@@ -149,4 +155,5 @@ export const useAppStore = create<AppState>((set, get) => ({
   closeStudentForm: () => set({ studentFormOpen: false, studentFormEditing: null }),
   openCollectFee: (studentId = null) => set({ collectFeeOpen: true, collectFeeStudentId: studentId ?? null }),
   closeCollectFee: () => set({ collectFeeOpen: false, collectFeeStudentId: null }),
+  setStudentsCategoryPreset: (studentsCategoryPreset) => set({ studentsCategoryPreset }),
 }))
