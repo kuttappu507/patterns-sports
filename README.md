@@ -173,6 +173,44 @@ Backup folder…). The same screen can run `backup_now` immediately and stage a
 database restore from any `ps-ams-*.db` backup (applied on the next start).
 See [`docs/PORTING_GUIDE.md`](docs/PORTING_GUIDE.md) for the full guide.
 
+## Linux Desktop (Tauri v2 — AppImage / .deb)
+
+Since v1.9.1 the same offline app is packaged for Linux. `.github/workflows/build-linux.yml`
+builds on `ubuntu-22.04` (so the binaries only need glibc ≥ 2.35 on the host)
+on every version tag and attaches two artifacts to the release:
+
+- **`PS-AMS_*_linux_amd64.AppImage`** — portable, no installation: download,
+  `chmod +x PS-AMS_*_linux_amd64.AppImage`, then run it (double-click on most
+  desktops; `./PS-AMS_*.AppImage` in a terminal). On distros without FUSE run
+  it with `--appimage-extract-and-run`.
+- **`PS-AMS_*_linux_amd64.deb`** — install with `sudo apt install ./PS-AMS_*_linux_amd64.deb`
+  (Debian 12+, Ubuntu 22.04+). WebKitGTK 4.1 comes from the bundle; on a bare
+  server headless desktop install `libwebkit2gtk-4.1-0` if the distro does not
+  pull it automatically.
+- **`SHA256SUMS.txt`** — checksums for manual verification (the release API
+  also publishes per-asset digests, which the Windows in-app updater checks).
+
+Data lives in `~/.local/share/in.patternsports.psams/` (database, media and
+automatic exit backups — same layout and schema as every other platform).
+The in-app updater's one-click download+install flow stays Windows-only for
+now: on Linux, Settings → Check for updates still shows the latest version,
+but installing means downloading the new AppImage/deb from the release page
+and replacing the old one.
+
+### Build locally on Linux
+
+Prerequisites: Rust toolchain (`rustup`), Bun or Node, plus the Tauri system
+packages — `libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev
+librsvg2-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev patchelf file`.
+
+```bash
+bun install
+bunx prisma generate
+bun run tauri build --bundles appimage,deb
+```
+
+Artifacts land in `src-tauri/target/release/bundle/{appimage,deb}/`.
+
 ## Security (read this before exposing the web app)
 
 > The web API posture is enforced in app code since the Phase 3B audit pass

@@ -1,0 +1,124 @@
+name: Build Linux App (PS-AMS)
+
+# Builds the Linux desktop edition of the offline app (Tauri v2):
+# a self-contained AppImage (portable — chmod +x, double-click to run)
+# and a .deb package (Debian/Ubuntu install). Runs on ubuntu-22.04 so
+# the produced binaries only require glibc >= 2.35 on the host — the
+# broadest practical compatibility for academy PCs.
+#
+# - Tag push (v*): builds that exact tag and attaches the assets to the
+#   release for that tag (alongside the Windows installers).
+# - workflow_dispatch: optional checkout_ref / release_tag inputs let an
+#   already-published release (e.g. v1.9.1) gain its Linux assets
+#   post-hoc, built from the exact tag, without re-cutting the release.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      checkout_ref:
+        description: "Git ref to build (tag/branch). Defaults to the dispatched ref."
+        required: false
+        default: ""
+      release_tag:
+        description: "Release tag to attach assets to. Defaults to checkout_ref when it is a v* tag."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Tauri build (Linux)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Resolve refs
+        id: refs
+        run: |
+          REF="${{ github.ref_name }}"
+          RELEASE_TAG="${{ github.ref_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            IN_REF="${{ inputs.checkout_ref }}"
+            [ -n "$IN_REF" ] && REF="$IN_REF"
+            IN_TAG="${{ inputs.release_tag }}"
+            if [ -n "$IN_TAG" ]; then
+              RELEASE_TAG="$IN_TAG"
+            elif [[ "$REF" == v* ]]; then
+              RELEASE_TAG="$REF"
+            fi
+          fi
+          echo "checkout_ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "Building ref '$REF' → release '$RELEASE_TAG'"
+
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ steps.refs.outputs.checkout_ref }}
+
+      - name: Install Tauri v2 Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev \
+            libssl-dev patchelf file
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: |
+            src-tauri
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      # Bun skips untrusted lifecycle scripts — same explicit Prisma
+      # generate belt as the Windows pipeline so `next build` passes.
+      - name: Generate Prisma client
+        run: bunx prisma generate
+
+      # `--bundles` overrides the config targets (nsis/msi are
+      # Windows-only formats); the frontend beforeBuildCommand
+      # (npm run build:tauri → static export) is unchanged.
+      - name: Build Tauri app (static export + AppImage/deb)
+        run: bun run tauri build --bundles appimage,deb
+
+      - name: Collect + rename Linux assets
+        run: |
+          TAG="${{ steps.refs.outputs.release_tag }}"
+          VER="${TAG#v}"
+          STAGE=linux-assets
+          mkdir -p "$STAGE"
+          cp src-tauri/target/release/bundle/appimage/*.AppImage \
+             "$STAGE/PS-AMS_${VER}_linux_amd64.AppImage"
+          cp src-tauri/target/release/bundle/deb/*.deb \
+             "$STAGE/PS-AMS_${VER}_linux_amd64.deb"
+          (cd "$STAGE" && sha256sum * > SHA256SUMS.txt)
+          ls -la "$STAGE"
+
+      - name: Upload Linux assets (artifact)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: PS-AMS-linux-packages
+          if-no-files-found: error
+          path: linux-assets/*
+
+      - name: Publish to GitHub Release
+        if: startsWith(steps.refs.outputs.release_tag, 'v')
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ steps.refs.outputs.release_tag }}
+          files: linux-assets/*
+          # The Windows pipeline owns the release body; this job only
+          # attaches assets so an existing release is never rewritten.
+          generate_release_notes: false
+          fail_on_unmatched_files: true
