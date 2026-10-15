@@ -45,6 +45,37 @@
 
 Verified during this cycle that "receipt history not showing recent one first" was closed by PS-056 at v1.9.0 (issuance order `receiptNo DESC` on the unfiltered ledger; `tests/receipt-ordering.test.ts` green). No additional change in v1.9.1.
 
+### Linux edition — first Linux release, same tag (PS-063)
+
+v1.9.1 also became the app's **first Linux release**: `.github/workflows/build-linux.yml`
+(new) builds on ubuntu-22.04 (binaries need only glibc ≥ 2.35) with the same
+bun/prisma frontend pipeline, `tauri build --bundles appimage,deb` overriding
+the Windows-only bundle targets. Dispatched with `checkout_ref: v1.9.1`, so the
+Linux binaries are built from the EXACT released tag — the release carries all
+five platform assets under one version:
+
+| Asset | Size | For |
+|---|---|---|
+| `PS-AMS_1.9.1_x64-setup.exe` | 9.3 MB | Windows install (NSIS) |
+| `PS-AMS_1.9.1_x64_en-US.msi` | 11.6 MB | Windows install (MSI) |
+| `PS-AMS_v1.9.1_portable_x64.zip` | 9.7 MB | Windows portable |
+| `PS-AMS_1.9.1_linux_amd64.AppImage` | 87.0 MB | Linux portable (self-contained, bundles WebKitGTK) |
+| `PS-AMS_1.9.1_linux_amd64.deb` | 9.0 MB | Debian 12+/Ubuntu 22.04+ install |
+| `SHA256SUMS.txt` | — | manual checksum verification |
+
+Verified: CI run [38677171068](https://github.com/kuttappu507/patterns-sports/actions/runs/38677171068)
+SUCCESS; assets attached to the existing release with publish digests; Windows
+assets and the release body untouched (`pick_asset` in the Windows updater
+ignores non-.exe/.msi assets, and `download_update` still refuses them — the
+Windows update chain is byte-for-byte unaffected). Linux data lives in
+`~/.local/share/in.patternsports.psams/`. The one-click in-app updater
+download+install stays Windows-only by design for now (documented in README —
+Linux updates = download the new AppImage/deb from the release page). Honest
+limits: the AppImage/deb were CI-built but NOT launch-tested on a Linux
+desktop in this sandbox (no WebKitGTK/display) — owner smoke-test is
+T-LINUX-7 in `TEST_MATRIX.md` § 0j. All future `v*` tags now build BOTH
+platforms automatically (both workflows trigger on tag push).
+
 ### v1.9.1 verification evidence
 
 - `npm run verify` exit 0 on `e2d9884`: tracked-files gate · ESLint 0 errors (4 pre-existing warnings) · tsc clean · **vitest 232/232 across 15 suites** · parity 8↔8 models / 77 columns · client-audit PASS (incl. the PS-059 exit-guard invariant).

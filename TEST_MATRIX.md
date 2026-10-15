@@ -2,6 +2,35 @@
 
 Status keys: ✅ **executed** (with result) · 📋 **planned** (Phase 4, after the corresponding fix lands) · 🪟 **requires Windows runtime**. All tests use disposable databases and deterministic synthetic fixtures — never real academy data.
 
+## 0j. Linux edition (AppImage + .deb) — first Linux release, attached post-hoc to v1.9.1 (executed 2026-10-13)
+
+Build pipeline: `.github/workflows/build-linux.yml` (new) — ubuntu-22.04 runner
+(glibc ≥ 2.35 host requirement), same bun/prisma frontend steps as the Windows
+job, `tauri build --bundles appimage,deb` overriding the Windows-only nsis/msi
+config targets. Dispatched with `checkout_ref: v1.9.1` so the binaries come
+from the EXACT released tag (no version drift).
+
+| ID | Check | Result |
+|---|---|---|
+| T-LINUX-1 | Workflow YAML valid; triggered via workflow_dispatch; run [38677171068](https://github.com/kuttappu507/patterns-sports/actions/runs/38677171068) job "Tauri build (Linux)" → SUCCESS | ✅ CI executed |
+| T-LINUX-2 | Assets attached to the existing v1.9.1 release: `PS-AMS_1.9.1_linux_amd64.AppImage` (87.0 MB — self-contained, bundles WebKitGTK/GTK libs) + `PS-AMS_1.9.1_linux_amd64.deb` (9.0 MB) + `SHA256SUMS.txt`; GitHub publish digests present (sha256:3415… / sha256:4a1c…); Windows assets and release body untouched (v1.9.0-pattern body intact, 3 Windows assets keep identical sizes/digests) | ✅ CI executed (release API verified) |
+| T-LINUX-3 | Asset naming matches release convention (`PS-AMS_<ver>_linux_amd64.*`), rename from Tauri's bundle output done in CI stage step; SHA256SUMS computed AFTER rename so filenames match final assets | ✅ source + CI |
+| T-LINUX-4 | Windows in-app updater unaffected by Linux assets: `pick_asset` ranks only .exe/.msi (Linux assets rank 0 and are skipped); `download_update` still refuses non-Windows installers (defense unchanged) | ✅ source |
+| T-LINUX-5 | Linux data path: `app_data_dir()` → `~/.local/share/in.patternsports.psams/` with media + backups subdirs (README claim matches `resolve_data_paths` in lib.rs) | ✅ source |
+| T-LINUX-6 | Run/install instructions in README (AppImage chmod+run / FUSE fallback / `apt install ./deb` / data path / updater-remains-Windows-only note) | ✅ source (docs) |
+| T-LINUX-7 | **NOT EXECUTED — owner smoke-test on a Linux desktop**: launch the AppImage (double-click or `--appimage-extract-and-run` on FUSE-less distros), create a student, collect a fee, print a receipt PDF, restart to confirm auto-backup; install the .deb on Ubuntu 22.04/24.04 and repeat | ⚠️ pending owner |
+| T-LINUX-8 | Sandbox note: a local Linux build was NOT attempted — the sandbox `next build` OOM (Turbopack CSS worker, 4 GB) and missing WebKitGTK system stack make it non-authoritative; CI is the authoritative build (same policy as v1.7.0–v1.9.1 Windows) | ⚠️ not run (env) |
+
+Workspace incident during this cycle (PS-016 pattern, recovered): the hosting
+workspace dropped tracked `src/app/api/upload/route.ts`, de-indexed
+`src-tauri/src/wa_file_backend.rs` (plus wa-engine-check sources) and
+resurrected 12 ghost files from old eras (`whatsapp-bot/`, `src-tauri/sidecar/`,
+an ignored `examples/` dir that broke local typecheck via socket.io imports).
+Index re-synced from HEAD, upload route restored, ghosts removed, full verify
+green again (232/232). `.secrets/github-pat.txt` was also wiped by the same
+event and re-saved (mode 600, git-ignored). tsconfig now excludes `examples`
+so ignored debris can never blind local typecheck again.
+
 ## 0i. v1.9.1 owner-requested UX batch (PS-058…PS-062 — executed 2026-10-13, verify green 232/232 + audit pass)
 
 | ID | Check | Result |
