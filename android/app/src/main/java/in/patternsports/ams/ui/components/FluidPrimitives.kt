@@ -819,7 +819,6 @@ fun FluidDangerButton(
                 icon = icon,
                 tint = Color.White,
                 size = 15.dp,
-                strokeWidth = 2.2f,
             )
             Spacer(modifier = Modifier.width(6.dp))
         }
