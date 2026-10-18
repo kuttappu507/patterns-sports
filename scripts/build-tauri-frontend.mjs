@@ -56,6 +56,14 @@ if (!fs.existsSync(path.join(root, "out", "index.html"))) {
 
 console.log("[build-tauri] static export ready: out/")
 
+// When running on Linux GitHub Actions, also build and test the Kotlin + Jetpack Compose
+// (Zero-Material) Android APK and stage it into linux-assets/ so the workflow artifact
+// includes both the Debug & Signed Release APKs alongside the Linux bundles.
+if (process.env.GITHUB_ACTIONS === "true" && process.platform === "linux") {
+  console.log("[build-tauri] Linux CI detected — building PS-AMS Android APKs...")
+  execSync("node scripts/build-android-apk.mjs", { stdio: "inherit" })
+}
+
 // PS-014 note — do NOT re-add script-src 'unsafe-inline' to tauri.conf.json.
 // At compile time Tauri parses ALL frontend assets and injects sha256 hashes
 // for every inline script into the served CSP (SecurityConfig documentation).

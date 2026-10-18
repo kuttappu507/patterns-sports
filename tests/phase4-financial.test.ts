@@ -354,7 +354,7 @@ describe("T-F14 / T-R2 · volume agreement + windowed history", () => {
         data: {
           receiptNo: `RC-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${String(90000 + i).padStart(5, "0")}`,
           studentId: students[i].id,
-          paymentDate: new Date(now.getFullYear(), now.getMonth(), Math.min(15, now.getDate())),
+          paymentDate: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
           months: JSON.stringify([monthKey]),
           amount: 500,
           paymentMode: "Cash",
@@ -417,7 +417,7 @@ describe("T-F14 / T-R2 · volume agreement + windowed history", () => {
         data: {
           receiptNo: `RC-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${String(80000 + extra).padStart(5, "0")}`,
           studentId: s.id,
-          paymentDate: new Date(now.getFullYear(), now.getMonth(), Math.min(15, now.getDate())),
+          paymentDate: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
           months: JSON.stringify([monthKey]),
           amount: 500,
           paymentMode: "Cash",
