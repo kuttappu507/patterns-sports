@@ -49,6 +49,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import `in`.patternsports.ams.ui.motion.fluidPressable
@@ -616,52 +618,219 @@ fun FluidModalSheet(
     val typo = SorbetTheme.typography
     val scroll = rememberScrollState()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF020817).copy(alpha = 0.72f))
-            .padding(horizontal = 12.dp, vertical = 20.dp),
-        contentAlignment = Alignment.Center,
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+        ),
     ) {
-        FluidGlassCard(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 740.dp),
-            cornerRadius = 18.dp,
-            accentStripeColor = colors.primaryRose,
-            contentPadding = 16.dp,
+                .fillMaxSize()
+                .background(Color(0xFF020817).copy(alpha = 0.76f))
+                .padding(horizontal = 12.dp, vertical = 20.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            FluidGlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 740.dp),
+                cornerRadius = 18.dp,
+                accentStripeColor = colors.primaryRose,
+                contentPadding = 16.dp,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    BasicText(
-                        text = title,
-                        style = typo.h2.copy(color = colors.inkPrimary),
-                    )
-                    if (!subtitle.isNullOrBlank()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         BasicText(
-                            text = subtitle,
-                            style = typo.caption.copy(color = colors.inkSecondary),
+                            text = title,
+                            style = typo.h2.copy(color = colors.inkPrimary),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (!subtitle.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            BasicText(
+                                text = subtitle,
+                                style = typo.caption.copy(color = colors.inkSecondary),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FluidIconOrbButton(
+                        icon = CourtIcon.CLOSE,
+                        onClick = onDismiss,
+                        size = 32.dp,
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(scroll),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    content = content,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FluidConfirmDialog(
+    title: String,
+    message: String,
+    confirmText: String = "Delete Permanently",
+    cancelText: String = "Cancel",
+    icon: CourtIcon = CourtIcon.TRASH,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = SorbetTheme.colors
+    val typo = SorbetTheme.typography
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+        ),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF020817).copy(alpha = 0.78f))
+                .padding(horizontal = 18.dp, vertical = 24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            FluidGlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 420.dp),
+                cornerRadius = 18.dp,
+                accentStripeColor = colors.dangerRose,
+                contentPadding = 18.dp,
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(colors.dangerRose.copy(alpha = 0.14f), RoundedCornerShape(11.dp))
+                            .border(1.dp, colors.dangerRose.copy(alpha = 0.35f), RoundedCornerShape(11.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CourtVectorIcon(
+                            icon = icon,
+                            tint = colors.dangerRose,
+                            size = 18.dp,
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        BasicText(
+                            text = title,
+                            style = typo.h2.copy(
+                                color = colors.inkPrimary,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        BasicText(
+                            text = "Confirmation required",
+                            style = typo.caption.copy(
+                                color = colors.dangerRose,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                            maxLines = 1,
                         )
                     }
                 }
-                FluidIconOrbButton(
-                    icon = CourtIcon.CLOSE,
-                    onClick = onDismiss,
-                    size = 32.dp,
+
+                Spacer(modifier = Modifier.height(12.dp))
+                BasicText(
+                    text = message,
+                    style = typo.body.copy(color = colors.inkSecondary),
                 )
+
+                Spacer(modifier = Modifier.height(18.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    FluidGhostButton(
+                        text = cancelText,
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                    )
+                    FluidDangerButton(
+                        text = confirmText,
+                        icon = icon,
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(scroll),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                content = content,
-            )
         }
+    }
+}
+
+@Composable
+fun FluidDangerButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: CourtIcon? = null,
+) {
+    val colors = SorbetTheme.colors
+    val typo = SorbetTheme.typography
+    val shape = RoundedCornerShape(10.dp)
+
+    Row(
+        modifier = modifier
+            .fluidPressable(onClick = onClick)
+            .shadow(
+                elevation = 5.dp,
+                shape = shape,
+                ambientColor = colors.dangerRose.copy(alpha = 0.35f),
+                spotColor = colors.dangerRose.copy(alpha = 0.45f),
+            )
+            .clip(shape)
+            .background(colors.dangerRose, shape)
+            .border(1.dp, Color.White.copy(alpha = 0.22f), shape)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) {
+            CourtVectorIcon(
+                icon = icon,
+                tint = Color.White,
+                size = 15.dp,
+                strokeWidth = 2.2f,
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+        }
+        BasicText(
+            text = text,
+            style = typo.bodyStrong.copy(
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

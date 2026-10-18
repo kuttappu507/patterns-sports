@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -30,7 +31,7 @@ import androidx.compose.ui.unit.dp
 import `in`.patternsports.ams.domain.DomainEngine
 import `in`.patternsports.ams.domain.PAYMENT_MODES
 import `in`.patternsports.ams.domain.StudentFeeStatus
-import `in`.patternsports.ams.ui.components.FluidChipRow
+import `in`.patternsports.ams.ui.components.FluidDropdownSelect
 import `in`.patternsports.ams.ui.components.FluidModalSheet
 import `in`.patternsports.ams.ui.components.FluidPrimaryButton
 import `in`.patternsports.ams.ui.components.FluidSearchBar
@@ -108,13 +109,19 @@ fun CollectFeeModal(
                 val q = studentQuery.trim().lowercase(Locale.ROOT)
                 statuses.filter {
                     q.isEmpty() || "${it.student.fullName} ${it.student.admissionNo}".lowercase(Locale.ROOT).contains(q)
-                }.take(8)
+                }
             }
-            FluidChipRow(
-                options = candidates.map { it.student.id to "${it.student.fullName} (${it.pendingMonths.size}m due)" },
-                selectedKey = selectedStudentId,
-                onSelect = { selectedStudentId = it },
-            )
+            if (candidates.isNotEmpty()) {
+                FluidDropdownSelect(
+                    label = "SELECT ATHLETE (${candidates.size} MATCHING)",
+                    options = candidates.map {
+                        it.student.id to "${it.student.fullName} · ${it.student.admissionNo} (${it.pendingMonths.size}m due)"
+                    },
+                    selectedKey = selectedStudentId,
+                    onSelect = { selectedStudentId = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         if (selectedStatus != null) {
@@ -131,13 +138,14 @@ fun CollectFeeModal(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             BasicText(s.fullName, style = typo.h3.copy(color = colors.inkPrimary))
                             BasicText(
                                 "${s.admissionNo} • ${s.ageCategory} • Joined ${DomainEngine.formatDate(s.registrationDate)} (joining month complimentary)",
                                 style = typo.caption.copy(color = colors.inkSecondary),
                             )
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
                         FluidToneBadge(
                             text = "${DomainEngine.formatINR(s.monthlyFee)}/mo",
                             tone = "rose",
@@ -218,11 +226,12 @@ fun CollectFeeModal(
                 }
             }
 
-            BasicText("PAYMENT MODE", style = typo.microCaps.copy(color = colors.inkSecondary))
-            FluidChipRow(
+            FluidDropdownSelect(
+                label = "PAYMENT MODE",
                 options = PAYMENT_MODES.map { it to it },
                 selectedKey = paymentMode,
                 onSelect = { paymentMode = it },
+                modifier = Modifier.fillMaxWidth(),
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

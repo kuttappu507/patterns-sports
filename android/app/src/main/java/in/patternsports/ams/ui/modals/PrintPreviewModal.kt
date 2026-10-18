@@ -37,7 +37,7 @@ import `in`.patternsports.ams.domain.AcademySettings
 import `in`.patternsports.ams.domain.BmiEngine
 import `in`.patternsports.ams.domain.DomainEngine
 import `in`.patternsports.ams.domain.PrintPayload
-import `in`.patternsports.ams.ui.components.FluidChipRow
+import `in`.patternsports.ams.ui.components.FluidDropdownSelect
 import `in`.patternsports.ams.ui.components.FluidModalSheet
 import `in`.patternsports.ams.ui.components.FluidPrimaryButton
 import `in`.patternsports.ams.ui.components.FluidSecondaryButton
@@ -109,14 +109,16 @@ fun PrintPreviewModal(
         onDismiss = onDismiss,
     ) {
         if (payload is PrintPayload.FormalReceipt || payload is PrintPayload.PosReceipt) {
-            FluidChipRow(
+            FluidDropdownSelect(
+                label = "RECEIPT PAPER FORMAT",
                 options = listOf(
-                    "a5" to "A5 Receipt (148×210)",
-                    "a6" to "A6 Receipt (105×148)",
-                    "pos" to "80mm Thermal POS",
+                    "a5" to "A5 Formal Receipt (148 × 210 mm)",
+                    "a6" to "A6 Compact Receipt (105 × 148 mm)",
+                    "pos" to "80mm Thermal POS Slip",
                 ),
                 selectedKey = receiptFormat,
                 onSelect = { receiptFormat = it },
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 

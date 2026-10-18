@@ -32,7 +32,8 @@ import `in`.patternsports.ams.domain.COMMITTEE_ROLES
 import `in`.patternsports.ams.domain.CommitteeMember
 import `in`.patternsports.ams.domain.CommitteeMemberInput
 import `in`.patternsports.ams.domain.DomainEngine
-import `in`.patternsports.ams.ui.components.FluidChipRow
+import `in`.patternsports.ams.ui.components.FluidConfirmDialog
+import `in`.patternsports.ams.ui.components.FluidDropdownSelect
 import `in`.patternsports.ams.ui.components.FluidGlassCard
 import `in`.patternsports.ams.ui.components.FluidIconOrbButton
 import `in`.patternsports.ams.ui.components.FluidModalSheet
@@ -78,10 +79,14 @@ fun SettingsScreen(
 
     var editingMember by remember { mutableStateOf<CommitteeMember?>(null) }
     var showCommitteeModal by remember { mutableStateOf(false) }
+    var pendingDeleteCommittee by remember { mutableStateOf<CommitteeMember?>(null) }
+    var confirmClearDemo by remember { mutableStateOf(false) }
+    var confirmWipeAll by remember { mutableStateOf(false) }
+    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
 
     val restorePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
-            onRestoreDatabase(uri)
+            pendingRestoreUri = uri
         }
     }
 
@@ -166,10 +171,11 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         BasicText("Executive Committee (${committee.size})", style = typo.h2.copy(color = colors.inkPrimary))
                         BasicText("Office-bearers & governing responsibilities", style = typo.caption.copy(color = colors.inkSecondary))
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     FluidSecondaryButton(
                         text = "Add Member",
                         icon = CourtIcon.PLUS,
@@ -207,6 +213,7 @@ fun SettingsScreen(
                                     style = typo.caption.copy(color = colors.inkSecondary),
                                 )
                             }
+                            Spacer(modifier = Modifier.width(8.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 FluidIconOrbButton(
                                     icon = CourtIcon.EDIT,
@@ -220,7 +227,7 @@ fun SettingsScreen(
                                     icon = CourtIcon.TRASH,
                                     tint = colors.dangerRed,
                                     size = 30.dp,
-                                    onClick = { onDeleteCommittee(m.id) },
+                                    onClick = { pendingDeleteCommittee = m },
                                 )
                             }
                         }
@@ -294,17 +301,18 @@ fun SettingsScreen(
                             icon = CourtIcon.TRASH,
                             tintColor = colors.accentAmber,
                             modifier = Modifier.weight(1f),
-                            onClick = { onClearDemoData("demo") },
+                            onClick = { confirmClearDemo = true },
                         )
                     }
-                    FluidSecondaryButton(
-                        text = "Wipe All Records",
-                        icon = CourtIcon.TRASH,
-                        tintColor = colors.dangerRed,
-                        modifier = Modifier.weight(1f),
-                        onClick = { onClearDemoData("all") },
-                    )
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                FluidSecondaryButton(
+                    text = "Wipe All Academy Records",
+                    icon = CourtIcon.TRASH,
+                    tintColor = colors.dangerRed,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { confirmWipeAll = true },
+                )
             }
         }
 
@@ -324,11 +332,12 @@ fun SettingsScreen(
             onDismiss = { showCommitteeModal = false },
         ) {
             FluidTextField(value = name, onValueChange = { name = it }, label = "Full Name *")
-            BasicText("OFFICE ROLE", style = typo.microCaps.copy(color = colors.inkSecondary))
-            FluidChipRow(
+            FluidDropdownSelect(
+                label = "OFFICE ROLE",
                 options = COMMITTEE_ROLES.map { it to it },
                 selectedKey = role,
                 onSelect = { role = it },
+                modifier = Modifier.fillMaxWidth(),
             )
             FluidTextField(
                 value = phoneStr,
@@ -368,5 +377,64 @@ fun SettingsScreen(
                 },
             )
         }
+    }
+
+    // Confirmation Dialog 1: Remove Executive Committee Member
+    val targetCommittee = pendingDeleteCommittee
+    if (targetCommittee != null) {
+        FluidConfirmDialog(
+            title = "Remove Committee Member?",
+            message = "Remove ${targetCommittee.fullName} (${targetCommittee.role}) from the Executive Committee roster?",
+            confirmText = "Remove Member",
+            onConfirm = {
+                pendingDeleteCommittee = null
+                onDeleteCommittee(targetCommittee.id)
+            },
+            onDismiss = { pendingDeleteCommittee = null },
+        )
+    }
+
+    // Confirmation Dialog 2: Clear Demo Squad Only
+    if (confirmClearDemo) {
+        FluidConfirmDialog(
+            title = "Clear Demo Squad?",
+            message = "This will surgically remove all tagged sample demo athletes, demo fee receipts, and demo committee members while preserving your real academy records.",
+            confirmText = "Clear Demo Only",
+            onConfirm = {
+                confirmClearDemo = false
+                onClearDemoData("demo")
+            },
+            onDismiss = { confirmClearDemo = false },
+        )
+    }
+
+    // Confirmation Dialog 3: Wipe All Academy Records
+    if (confirmWipeAll) {
+        FluidConfirmDialog(
+            title = "Wipe All Academy Records?",
+            message = "WARNING: This permanently deletes ALL athletes, fee receipts, attendance logs, biometric entries, and committee members from this device. This action cannot be undone.",
+            confirmText = "Wipe All Records",
+            onConfirm = {
+                confirmWipeAll = false
+                onClearDemoData("all")
+            },
+            onDismiss = { confirmWipeAll = false },
+        )
+    }
+
+    // Confirmation Dialog 4: Restore SQLite Database Backup
+    val targetRestoreUri = pendingRestoreUri
+    if (targetRestoreUri != null) {
+        FluidConfirmDialog(
+            title = "Restore Database Backup?",
+            message = "Restoring this SQLite backup will replace the active academy database on this device (an automatic pre-restore safety snapshot will be saved first). Continue?",
+            confirmText = "Restore Database",
+            icon = CourtIcon.UPLOAD,
+            onConfirm = {
+                pendingRestoreUri = null
+                onRestoreDatabase(targetRestoreUri)
+            },
+            onDismiss = { pendingRestoreUri = null },
+        )
     }
 }

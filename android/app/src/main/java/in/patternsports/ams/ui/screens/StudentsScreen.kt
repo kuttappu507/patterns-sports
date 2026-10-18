@@ -36,6 +36,7 @@ import `in`.patternsports.ams.domain.DomainEngine
 import `in`.patternsports.ams.domain.Student
 import `in`.patternsports.ams.domain.StudentFeeStatus
 import `in`.patternsports.ams.domain.TRAINING_BATCHES
+import `in`.patternsports.ams.ui.components.FluidConfirmDialog
 import `in`.patternsports.ams.ui.components.FluidDropdownSelect
 import `in`.patternsports.ams.ui.components.FluidGlassCard
 import `in`.patternsports.ams.ui.components.FluidIconOrbButton
@@ -63,6 +64,7 @@ fun StudentsScreen(
     onAddStudent: () -> Unit,
     onEditStudent: (Student) -> Unit,
     onCollectFee: (String) -> Unit,
+    onDeleteStudent: (Student) -> Unit = {},
 ) {
     val colors = SorbetTheme.colors
     val typo = SorbetTheme.typography
@@ -70,6 +72,7 @@ fun StudentsScreen(
     var searchQuery by remember { mutableStateOf("") }
     var statusFilter by remember { mutableStateOf("Active") }
     var batchFilter by remember { mutableStateOf("ALL") }
+    var pendingDeleteStudent by remember { mutableStateOf<Student?>(null) }
 
     val filtered = remember(students, searchQuery, initialCategoryFilter, statusFilter, batchFilter) {
         val q = searchQuery.trim().lowercase(Locale.ROOT)
@@ -197,11 +200,26 @@ fun StudentsScreen(
                             onSelect = { onSelectStudent(student.id) },
                             onEdit = { onEditStudent(student) },
                             onCollectFee = { onCollectFee(student.id) },
+                            onDelete = { pendingDeleteStudent = student },
                         )
                     }
                 }
             }
         }
+    }
+
+    val targetDeleteStudent = pendingDeleteStudent
+    if (targetDeleteStudent != null) {
+        FluidConfirmDialog(
+            title = "Remove ${targetDeleteStudent.fullName}?",
+            message = "This permanently deletes ${targetDeleteStudent.fullName} (${targetDeleteStudent.admissionNo}) along with achievements, biometric growth logs, and attendance records. This action cannot be undone.",
+            confirmText = "Delete Athlete",
+            onConfirm = {
+                pendingDeleteStudent = null
+                onDeleteStudent(targetDeleteStudent)
+            },
+            onDismiss = { pendingDeleteStudent = null },
+        )
     }
 }
 
@@ -212,6 +230,7 @@ private fun AthleteRosterCard(
     onSelect: () -> Unit,
     onEdit: () -> Unit,
     onCollectFee: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val colors = SorbetTheme.colors
     val typo = SorbetTheme.typography
@@ -343,6 +362,12 @@ private fun AthleteRosterCard(
                     tint = colors.inkSecondary,
                     size = 30.dp,
                     onClick = onEdit,
+                )
+                FluidIconOrbButton(
+                    icon = CourtIcon.TRASH,
+                    tint = colors.dangerRed,
+                    size = 30.dp,
+                    onClick = onDelete,
                 )
             }
         }

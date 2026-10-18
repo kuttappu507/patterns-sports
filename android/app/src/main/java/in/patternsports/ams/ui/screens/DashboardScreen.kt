@@ -21,6 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +39,7 @@ import `in`.patternsports.ams.domain.DashboardData
 import `in`.patternsports.ams.domain.DomainEngine
 import `in`.patternsports.ams.domain.FeePayment
 import `in`.patternsports.ams.domain.NavView
+import `in`.patternsports.ams.ui.components.FluidConfirmDialog
 import `in`.patternsports.ams.ui.components.FluidGlassCard
 import `in`.patternsports.ams.ui.components.FluidPrimaryButton
 import `in`.patternsports.ams.ui.components.FluidProgressBar
@@ -80,6 +85,7 @@ fun DashboardScreen(
     }
 
     val totals = data.totals
+    var confirmClearDemo by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -199,7 +205,7 @@ fun DashboardScreen(
                                 text = "Clear Demo",
                                 icon = CourtIcon.TRASH,
                                 tintColor = colors.dangerRed,
-                                onClick = onClearDemoData,
+                                onClick = { confirmClearDemo = true },
                             )
                         }
                     }
@@ -349,7 +355,7 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         BasicText(
                             text = "Squad Age-Category Distribution",
                             style = typo.h2.copy(color = colors.inkPrimary),
@@ -359,6 +365,7 @@ fun DashboardScreen(
                             style = typo.caption.copy(color = colors.inkSecondary),
                         )
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     FluidToneBadge(text = "5 Brackets", tone = "rose")
                 }
 
@@ -417,10 +424,11 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         BasicText("Recent Fee Receipts", style = typo.h2.copy(color = colors.inkPrimary))
                         BasicText("Tap any receipt to preview / print / WhatsApp", style = typo.caption.copy(color = colors.inkSecondary))
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     FluidSecondaryButton(
                         text = "Collect",
                         icon = CourtIcon.PLUS,
@@ -486,10 +494,11 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         BasicText("Tournament Honours & Podiums", style = typo.h2.copy(color = colors.inkPrimary))
                         BasicText("Recent district, state & national medals", style = typo.caption.copy(color = colors.inkSecondary))
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     CourtVectorIcon(icon = CourtIcon.TROPHY, tint = colors.accentAmber, size = 22.dp)
                 }
 
@@ -529,6 +538,7 @@ fun DashboardScreen(
                                         style = typo.caption.copy(color = colors.inkSecondary),
                                     )
                                 }
+                                Spacer(modifier = Modifier.width(8.dp))
                                 FluidToneBadge(
                                     text = "${ach.medal} Medal",
                                     tone = medalTone,
@@ -559,13 +569,14 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     BasicText(b.fullName, style = typo.bodyBold.copy(color = colors.inkPrimary))
                                     BasicText(
                                         "${b.ageCategory} • Turning ${b.turningAge} on ${DomainEngine.formatDate(b.dateOfBirth)}",
                                         style = typo.caption.copy(color = colors.inkSecondary),
                                     )
                                 }
+                                Spacer(modifier = Modifier.width(8.dp))
                                 FluidToneBadge(
                                     text = if (b.inDays == 0) "TODAY!" else "In ${b.inDays}d",
                                     tone = if (b.inDays == 0) "rose" else "cyan",
@@ -585,10 +596,11 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         BasicText("Academy Office-Bearers & Committee", style = typo.h2.copy(color = colors.inkPrimary))
                         BasicText("${data.committee.size} governing members", style = typo.caption.copy(color = colors.inkSecondary))
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     FluidSecondaryButton(
                         text = "Manage",
                         icon = CourtIcon.SETTINGS,
@@ -625,5 +637,18 @@ fun DashboardScreen(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+    }
+
+    if (confirmClearDemo) {
+        FluidConfirmDialog(
+            title = "Clear Demo Squad?",
+            message = "Remove all tagged sample demo athletes, demo fee receipts, and demo achievements from the academy database while keeping your real records intact?",
+            confirmText = "Clear Demo Squad",
+            onConfirm = {
+                confirmClearDemo = false
+                onClearDemoData()
+            },
+            onDismiss = { confirmClearDemo = false },
+        )
     }
 }

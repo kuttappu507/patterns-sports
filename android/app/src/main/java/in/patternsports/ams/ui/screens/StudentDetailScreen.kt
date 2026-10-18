@@ -34,21 +34,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import `in`.patternsports.ams.data.WhatsAppDispatcher
 import `in`.patternsports.ams.domain.ACHIEVEMENT_LEVELS
 import `in`.patternsports.ams.domain.AcademySettings
+import `in`.patternsports.ams.domain.Achievement
 import `in`.patternsports.ams.domain.AchievementInput
 import `in`.patternsports.ams.domain.BmiAssessment
 import `in`.patternsports.ams.domain.BmiEngine
 import `in`.patternsports.ams.domain.DomainEngine
 import `in`.patternsports.ams.domain.FeePayment
 import `in`.patternsports.ams.domain.MEDAL_TYPES
+import `in`.patternsports.ams.domain.Measurement
 import `in`.patternsports.ams.domain.MeasurementInput
 import `in`.patternsports.ams.domain.NET_HEIGHT_M
 import `in`.patternsports.ams.domain.PrintPayload
 import `in`.patternsports.ams.domain.StudentDetail
-import `in`.patternsports.ams.ui.components.FluidChipRow
+import `in`.patternsports.ams.ui.components.FluidConfirmDialog
+import `in`.patternsports.ams.ui.components.FluidDropdownSelect
 import `in`.patternsports.ams.ui.components.FluidGlassCard
 import `in`.patternsports.ams.ui.components.FluidIconOrbButton
 import `in`.patternsports.ams.ui.components.FluidModalSheet
@@ -103,6 +108,9 @@ fun StudentDetailScreen(
 
     var showMeasurementModal by remember { mutableStateOf(false) }
     var showAchievementModal by remember { mutableStateOf(false) }
+    var confirmDeleteProfile by remember { mutableStateOf(false) }
+    var pendingDeleteMeasurement by remember { mutableStateOf<Measurement?>(null) }
+    var pendingDeleteAchievement by remember { mutableStateOf<Achievement?>(null) }
     var pendingDocTarget by remember { mutableStateOf("photo") }
 
     val docPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -129,7 +137,10 @@ fun StudentDetailScreen(
                 icon = CourtIcon.CHEVRON_LEFT,
                 onClick = onBack,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 FluidSecondaryButton(
                     text = "Profile PDF",
                     icon = CourtIcon.PRINTER,
@@ -143,7 +154,7 @@ fun StudentDetailScreen(
                 FluidIconOrbButton(
                     icon = CourtIcon.TRASH,
                     tint = colors.dangerRed,
-                    onClick = onDelete,
+                    onClick = { confirmDeleteProfile = true },
                 )
             }
         }
@@ -318,10 +329,11 @@ fun StudentDetailScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         BasicText("Biometric Growth Log (${detail.measurements.size})", style = typo.h2.copy(color = colors.inkPrimary))
                         BasicText("Date-stamped height, weight & reach progression", style = typo.caption.copy(color = colors.inkSecondary))
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     FluidSecondaryButton(
                         text = "Log Check",
                         icon = CourtIcon.PLUS,
@@ -359,11 +371,12 @@ fun StudentDetailScreen(
                                         style = typo.caption.copy(color = colors.inkSecondary),
                                     )
                                 }
+                                Spacer(modifier = Modifier.width(8.dp))
                                 FluidIconOrbButton(
                                     icon = CourtIcon.TRASH,
                                     tint = colors.dangerRed,
                                     size = 28.dp,
-                                    onClick = { onDeleteMeasurement(m.id) },
+                                    onClick = { pendingDeleteMeasurement = m },
                                 )
                             }
                         }
@@ -385,14 +398,29 @@ fun StudentDetailScreen(
                     "Residential Address" to s.address,
                     "Registration Date" to "${DomainEngine.formatDate(s.registrationDate)} • Fee: ${DomainEngine.formatINR(s.monthlyFee)}/mo",
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     for ((k, v) in bioPairs) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top,
                         ) {
-                            BasicText(k, style = typo.caption.copy(color = colors.inkMuted))
-                            BasicText(v, style = typo.bodyBold.copy(color = colors.inkPrimary))
+                            BasicText(
+                                text = k,
+                                style = typo.caption.copy(color = colors.inkMuted),
+                                modifier = Modifier.weight(0.38f),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            BasicText(
+                                text = v.ifBlank { "—" },
+                                style = typo.bodyBold.copy(
+                                    color = colors.inkPrimary,
+                                    textAlign = TextAlign.End,
+                                ),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(0.62f),
+                            )
                         }
                     }
                 }
@@ -441,10 +469,11 @@ fun StudentDetailScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         BasicText("Tournament Achievements (${detail.achievements.size})", style = typo.h2.copy(color = colors.inkPrimary))
                         BasicText("Championship participations & podium medals", style = typo.caption.copy(color = colors.inkSecondary))
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     FluidSecondaryButton(
                         text = "Add Medal",
                         icon = CourtIcon.TROPHY,
@@ -476,6 +505,7 @@ fun StudentDetailScreen(
                                         style = typo.caption.copy(color = colors.inkSecondary),
                                     )
                                 }
+                                Spacer(modifier = Modifier.width(8.dp))
                                 FluidToneBadge(
                                     text = ach.medal,
                                     tone = if (ach.medal == "Gold") "amber" else "emerald",
@@ -486,7 +516,7 @@ fun StudentDetailScreen(
                                     icon = CourtIcon.TRASH,
                                     tint = colors.dangerRed,
                                     size = 28.dp,
-                                    onClick = { onDeleteAchievement(ach.id) },
+                                    onClick = { pendingDeleteAchievement = ach },
                                 )
                             }
                         }
@@ -657,18 +687,25 @@ fun StudentDetailScreen(
                 onValueChange = { eventDate = it },
                 label = "Event Date (YYYY-MM-DD)",
             )
-            BasicText("COMPETITION LEVEL", style = typo.microCaps.copy(color = colors.inkSecondary))
-            FluidChipRow(
-                options = ACHIEVEMENT_LEVELS.map { it to it },
-                selectedKey = level,
-                onSelect = { level = it },
-            )
-            BasicText("MEDAL / HONOUR", style = typo.microCaps.copy(color = colors.inkSecondary))
-            FluidChipRow(
-                options = MEDAL_TYPES.map { it to it },
-                selectedKey = medal,
-                onSelect = { medal = it },
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                FluidDropdownSelect(
+                    label = "COMPETITION LEVEL",
+                    options = ACHIEVEMENT_LEVELS.map { it to it },
+                    selectedKey = level,
+                    onSelect = { level = it },
+                    modifier = Modifier.weight(1f),
+                )
+                FluidDropdownSelect(
+                    label = "MEDAL / HONOUR",
+                    options = MEDAL_TYPES.map { it to it },
+                    selectedKey = medal,
+                    onSelect = { medal = it },
+                    modifier = Modifier.weight(1f),
+                )
+            }
             FluidTextField(value = notes, onValueChange = { notes = it }, label = "Notes / Distinction")
             FluidPrimaryButton(
                 text = "Save Achievement",
@@ -688,5 +725,49 @@ fun StudentDetailScreen(
                 },
             )
         }
+    }
+
+    // Confirmation Dialog 1: Delete Athlete Profile
+    if (confirmDeleteProfile) {
+        FluidConfirmDialog(
+            title = "Remove ${s.fullName}?",
+            message = "This permanently deletes ${s.fullName} (${s.admissionNo}) along with achievements, biometric growth logs, and attendance records. This action cannot be undone.",
+            confirmText = "Delete Athlete",
+            onConfirm = {
+                confirmDeleteProfile = false
+                onDelete()
+            },
+            onDismiss = { confirmDeleteProfile = false },
+        )
+    }
+
+    // Confirmation Dialog 2: Delete Biometric Measurement Entry
+    val targetMeasurement = pendingDeleteMeasurement
+    if (targetMeasurement != null) {
+        FluidConfirmDialog(
+            title = "Delete Biometric Entry?",
+            message = "Remove the biometric check recorded on ${DomainEngine.formatDate(targetMeasurement.date)} (${targetMeasurement.heightCm ?: "—"} cm / ${targetMeasurement.weightKg ?: "—"} kg) from ${s.fullName}'s growth log?",
+            confirmText = "Delete Entry",
+            onConfirm = {
+                pendingDeleteMeasurement = null
+                onDeleteMeasurement(targetMeasurement.id)
+            },
+            onDismiss = { pendingDeleteMeasurement = null },
+        )
+    }
+
+    // Confirmation Dialog 3: Delete Tournament Achievement
+    val targetAchievement = pendingDeleteAchievement
+    if (targetAchievement != null) {
+        FluidConfirmDialog(
+            title = "Delete Achievement?",
+            message = "Remove '${targetAchievement.tournamentName}' (${targetAchievement.medal} · ${targetAchievement.level}) from ${s.fullName}'s honours log?",
+            confirmText = "Delete Honour",
+            onConfirm = {
+                pendingDeleteAchievement = null
+                onDeleteAchievement(targetAchievement.id)
+            },
+            onDismiss = { pendingDeleteAchievement = null },
+        )
     }
 }

@@ -106,6 +106,38 @@ for (const req of requiredAndroidFiles) {
   readText(req);
 }
 
+// 5. Explicit Poppins Font Bundle & Confirmation Dialog Audit
+const requiredFontFiles = [
+  "android/app/src/main/res/font/poppins_regular.ttf",
+  "android/app/src/main/res/font/poppins_italic.ttf",
+  "android/app/src/main/res/font/poppins_medium.ttf",
+  "android/app/src/main/res/font/poppins_semibold.ttf",
+  "android/app/src/main/res/font/poppins_bold.ttf",
+  "android/app/src/main/res/font/poppins_bold_italic.ttf",
+];
+for (const fontFile of requiredFontFiles) {
+  const full = path.join(root, fontFile);
+  if (!fs.existsSync(full) || fs.statSync(full).size < 50_000) {
+    throw new Error(`Missing or invalid Poppins font file: ${fontFile}`);
+  }
+}
+
+const confirmChecks = [
+  { file: "android/app/src/main/java/in/patternsports/ams/ui/components/FluidPrimitives.kt", minCount: 1 },
+  { file: "android/app/src/main/java/in/patternsports/ams/ui/screens/StudentsScreen.kt", minCount: 1 },
+  { file: "android/app/src/main/java/in/patternsports/ams/ui/screens/StudentDetailScreen.kt", minCount: 3 },
+  { file: "android/app/src/main/java/in/patternsports/ams/ui/screens/SettingsScreen.kt", minCount: 4 },
+  { file: "android/app/src/main/java/in/patternsports/ams/ui/screens/DashboardScreen.kt", minCount: 1 },
+];
+
+for (const chk of confirmChecks) {
+  const txt = readText(chk.file);
+  const count = (txt.match(/FluidConfirmDialog\s*\(/g) || []).length;
+  if (count < chk.minCount) {
+    throw new Error(`Expected at least ${chk.minCount} FluidConfirmDialog usages in ${chk.file}, found ${count}`);
+  }
+}
+
 console.log(
-  `android-parity ok — 8 SQLite tables identical, 340 WHO 2007 LMS rows verified, 0 Material Design dependencies across ${androidFiles.length} Android files, all 7 screens & 3 modals present`
+  `android-parity ok — 8 SQLite tables identical, 340 WHO 2007 LMS rows verified, 6 Poppins fonts bundled, 9 deletion confirmation dialogs verified, 0 Material Design dependencies across ${androidFiles.length} Android files`
 );

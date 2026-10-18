@@ -286,6 +286,16 @@ fun PsamsRootApp(
                                 collectFeeStudentId = sid
                                 showCollectFeeModal = true
                             },
+                            onDeleteStudent = { st ->
+                                scope.launch {
+                                    try {
+                                        repository.deleteStudent(st.id)
+                                        showToast("Removed ${st.fullName}.")
+                                    } catch (e: Exception) {
+                                        showToast(e.message ?: "Cannot delete athlete")
+                                    }
+                                }
+                            },
                         )
 
                         NavView.STUDENT_DETAIL -> {
