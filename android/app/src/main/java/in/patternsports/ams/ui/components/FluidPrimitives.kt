@@ -716,7 +716,7 @@ fun FluidConfirmDialog(
                     .fillMaxWidth()
                     .widthIn(max = 420.dp),
                 cornerRadius = 18.dp,
-                accentStripeColor = colors.dangerRose,
+                accentStripeColor = colors.dangerRed,
                 contentPadding = 18.dp,
             ) {
                 Row(
@@ -728,13 +728,13 @@ fun FluidConfirmDialog(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(RoundedCornerShape(11.dp))
-                            .background(colors.dangerRose.copy(alpha = 0.14f), RoundedCornerShape(11.dp))
-                            .border(1.dp, colors.dangerRose.copy(alpha = 0.35f), RoundedCornerShape(11.dp)),
+                            .background(colors.dangerRed.copy(alpha = 0.14f), RoundedCornerShape(11.dp))
+                            .border(1.dp, colors.dangerRed.copy(alpha = 0.35f), RoundedCornerShape(11.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
                         CourtVectorIcon(
                             icon = icon,
-                            tint = colors.dangerRose,
+                            tint = colors.dangerRed,
                             size = 18.dp,
                         )
                     }
@@ -751,7 +751,7 @@ fun FluidConfirmDialog(
                         BasicText(
                             text = "Confirmation required",
                             style = typo.caption.copy(
-                                color = colors.dangerRose,
+                                color = colors.dangerRed,
                                 fontWeight = FontWeight.SemiBold,
                             ),
                             maxLines = 1,
@@ -770,7 +770,7 @@ fun FluidConfirmDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    FluidGhostButton(
+                    FluidSecondaryButton(
                         text = cancelText,
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f),
@@ -804,11 +804,11 @@ fun FluidDangerButton(
             .shadow(
                 elevation = 5.dp,
                 shape = shape,
-                ambientColor = colors.dangerRose.copy(alpha = 0.35f),
-                spotColor = colors.dangerRose.copy(alpha = 0.45f),
+                ambientColor = colors.dangerRed.copy(alpha = 0.35f),
+                spotColor = colors.dangerRed.copy(alpha = 0.45f),
             )
             .clip(shape)
-            .background(colors.dangerRose, shape)
+            .background(colors.dangerRed, shape)
             .border(1.dp, Color.White.copy(alpha = 0.22f), shape)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.Center,
@@ -825,7 +825,7 @@ fun FluidDangerButton(
         }
         BasicText(
             text = text,
-            style = typo.bodyStrong.copy(
+            style = typo.bodyBold.copy(
                 color = Color.White,
                 fontWeight = FontWeight.SemiBold,
             ),
