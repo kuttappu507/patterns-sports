@@ -25,7 +25,13 @@ if (!fs.existsSync(androidSrc)) {
 
 fs.rmSync(targetDir, { recursive: true, force: true });
 fs.mkdirSync(targetDir, { recursive: true });
-fs.cpSync(androidSrc, targetDir, { recursive: true });
+fs.cpSync(androidSrc, targetDir, {
+  recursive: true,
+  filter: (src) => {
+    const rel = path.relative(androidSrc, src).split(path.sep);
+    return !rel.includes(".gradle") && !rel.includes("build") && !rel.includes(".idea");
+  },
+});
 
 // Write standalone .gitignore
 fs.writeFileSync(
