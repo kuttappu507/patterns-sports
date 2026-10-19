@@ -53,19 +53,32 @@ try {
   gradleBin = "/tmp/gradle-dist/gradle-8.9/bin/gradle";
 }
 
-console.log("[build-android] Running JUnit Domain & WHO 2007 BMI Parity Tests...");
-execSync(`${gradleBin} testDebugUnitTest --stacktrace --no-daemon`, {
-  cwd: androidDir,
-  stdio: "inherit",
-  env,
-});
+function runGradle(cmd, label) {
+  console.log(`[build-android] ${label}...`);
+  try {
+    execSync(cmd, {
+      cwd: androidDir,
+      stdio: ["ignore", "pipe", "pipe"],
+      env,
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  } catch (err) {
+    const out = `${err.stdout ? err.stdout.toString() : ""}\n${err.stderr ? err.stderr.toString() : ""}`;
+    console.error(out);
+    const errLines = out
+      .split("\n")
+      .filter((l) => /^e:\s|FAILURE:|What went wrong:|>\s|Exception/i.test(l.trim()))
+      .slice(0, 20)
+      .join(" | ");
+    if (errLines) {
+      console.log(`::error title=${label}::${errLines}`);
+    }
+    throw err;
+  }
+}
 
-console.log("[build-android] Assembling Signed Debug & Release APKs...");
-execSync(`${gradleBin} assembleDebug assembleRelease --stacktrace --no-daemon`, {
-  cwd: androidDir,
-  stdio: "inherit",
-  env,
-});
+runGradle(`${gradleBin} testDebugUnitTest --stacktrace --no-daemon`, "Running JUnit Domain & WHO 2007 BMI Parity Tests");
+runGradle(`${gradleBin} assembleDebug assembleRelease --stacktrace --no-daemon`, "Assembling Signed Debug & Release APKs");
 
 fs.mkdirSync(stageDir, { recursive: true });
 
