@@ -50,7 +50,6 @@ enum class CourtIcon {
     CLOSE,
     FILTER,
     PHONE,
-    MAP_PIN,
     SHIELD,
     SPARKLES,
     CAMERA,
@@ -484,20 +483,6 @@ fun CourtVectorIcon(
                     cubicTo(x(15.2f), y(14.5f), x(16.0f), y(14.15f), x(16.8f), y(14.3f))
                     lineTo(x(20.4f), y(15.0f))
                     cubicTo(x(21.3f), y(15.2f), x(22f), y(16.0f), x(22f), y(16.92f))
-                }
-                drawPath(p, tint, style = stroke)
-            }
-
-            // Lucide `MapPin`
-            CourtIcon.MAP_PIN -> {
-                drawCircle(tint, radius = x(3f), center = pt(12f, 10f), style = stroke)
-                val p = Path().apply {
-                    moveTo(x(12f), y(21.7f))
-                    cubicTo(x(17.3f), y(17f), x(20f), y(13f), x(20f), y(10f))
-                    cubicTo(x(20f), y(5.6f), x(16.4f), y(2f), x(12f), y(2f))
-                    cubicTo(x(7.6f), y(2f), x(4f), y(5.6f), x(4f), y(10f))
-                    cubicTo(x(4f), y(13f), x(6.7f), y(17f), x(12f), y(21.7f))
-                    close()
                 }
                 drawPath(p, tint, style = stroke)
             }

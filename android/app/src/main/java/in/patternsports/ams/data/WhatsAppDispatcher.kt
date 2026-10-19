@@ -67,8 +67,10 @@ object WhatsAppDispatcher {
             listOf(
                 "─────────────────────",
                 "Thank you for your timely support!",
-                "— ${settings.receiptSignatory}, ${settings.academyName}",
+                "Sd/-",
+                "${settings.receiptSignatory.ifBlank { "General Secretary" }}, ${settings.academyName}",
                 settings.phone,
+                "_Note: This is a digitally generated receipt. No signature is required._",
             )
         )
         return lines.joinToString("\n")

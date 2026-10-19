@@ -80,7 +80,10 @@ for (const [, src] of all) {
   }
 }
 const domain = readFileSync("src/lib/psams/domain.ts", "utf8")
-ok(domain.includes("maps.app.goo.gl/yUGoSNRdvcN4qKdu6"), "academy Google Maps link registered")
+ok(!domain.includes("ACADEMY_MAPS_URL"), "map components removed from domain")
+ok(printRoot.includes("Sd/-") && printRoot.includes("Note: This is a digitally generated receipt. No signature is required."), "receipts render Sd/- above Secretary and digital no-signature note")
+const exportTs = readFileSync("src/lib/psams/export.ts", "utf8")
+ok(exportTs.includes("Sd/-") && exportTs.includes("Note: This is a digitally generated receipt. No signature is required."), "PDF receipt exports render Sd/- and digital no-signature note")
 
 console.log("— frameless window —")
 const conf = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8"))

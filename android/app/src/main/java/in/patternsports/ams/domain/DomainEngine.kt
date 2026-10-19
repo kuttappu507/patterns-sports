@@ -22,9 +22,6 @@ class ValidationError(message: String) : IllegalArgumentException(message)
 
 const val APP_VERSION = "1.9.1"
 
-/** Official Google Maps location of the academy. */
-const val ACADEMY_MAPS_URL = "https://maps.app.goo.gl/yUGoSNRdvcN4qKdu6"
-
 /** The academy's real address — single shared letterhead default. */
 const val ACADEMY_ADDRESS = "Markaz Colony, Karanthur, Kunnamangalam, Kozhikode, Kerala 673571"
 

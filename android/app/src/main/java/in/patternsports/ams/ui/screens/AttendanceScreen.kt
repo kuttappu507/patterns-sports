@@ -225,12 +225,22 @@ fun AttendanceScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            itemsIndexed(rows, key = { _, r -> r.student.id }) { idx, row ->
+        if (rows.isEmpty()) {
+            FluidGlassCard(accentStripeColor = colors.accentCyan) {
+                BasicText("No active athletes in this batch", style = typo.h2.copy(color = colors.inkPrimary))
+                Spacer(modifier = Modifier.height(4.dp))
+                BasicText(
+                    "Switch the training batch or age category dropdown above, or register athletes to mark daily roll call.",
+                    style = typo.body.copy(color = colors.inkSecondary),
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                itemsIndexed(rows, key = { _, r -> r.student.id }) { idx, row ->
                 val currentStatus = draftStatuses[row.student.id] ?: "Unmarked"
                 StaggeredFluidEntrance(index = idx) {
                     FluidGlassCard(contentPadding = 12.dp) {

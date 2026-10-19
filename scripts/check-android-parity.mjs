@@ -138,6 +138,24 @@ for (const chk of confirmChecks) {
   }
 }
 
+// 6. No Map Components & Digital Receipt (Sd/- + No Signature Required) Audit
+for (const file of androidFiles) {
+  const content = fs.readFileSync(file, "utf8");
+  if (/ACADEMY_MAPS_URL|MAP_PIN|Google Maps/i.test(content)) {
+    throw new Error(`Forbidden Map component/reference found in ${path.relative(root, file)}`);
+  }
+}
+
+for (const receiptFile of [
+  "android/app/src/main/java/in/patternsports/ams/data/DocumentExporter.kt",
+  "android/app/src/main/java/in/patternsports/ams/ui/modals/PrintPreviewModal.kt",
+]) {
+  const txt = readText(receiptFile);
+  if (!txt.includes("Sd/-") || !txt.includes("Note: This is a digitally generated receipt. No signature is required.")) {
+    throw new Error(`Missing Sd/- or digital receipt disclaimer in ${receiptFile}`);
+  }
+}
+
 console.log(
-  `android-parity ok — 8 SQLite tables identical, 340 WHO 2007 LMS rows verified, 6 Poppins fonts bundled, 9 deletion confirmation dialogs verified, 0 Material Design dependencies across ${androidFiles.length} Android files`
+  `android-parity ok — 8 SQLite tables identical, 340 WHO 2007 LMS rows verified, 6 Poppins fonts bundled, 9 deletion confirmation dialogs verified, Sd/- digital receipts verified, 0 map components, 0 Material Design dependencies across ${androidFiles.length} Android files`
 );

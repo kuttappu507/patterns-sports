@@ -18,13 +18,11 @@ import {
   Square,
   X,
   TriangleAlert,
-  MapPin,
 } from "lucide-react"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { useAppStore, type ViewKey } from "@/lib/psams/store"
 import { isTauri } from "@/lib/psams/api"
-import { openExternal, initWaBridge } from "@/lib/psams/whatsapp"
-import { ACADEMY_MAPS_URL } from "@/lib/psams/domain"
+import { initWaBridge } from "@/lib/psams/whatsapp"
 import { APP_VERSION } from "@/lib/psams/version"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -354,16 +352,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="font-semibold text-muted-foreground">Pattern Sports Volleyball Academy</span>
             <span className="text-border">·</span>
             <span className="tnum">PS-AMS v{APP_VERSION}</span>
-            <button
-              type="button"
-              className="hidden items-center gap-1 rounded-full border border-border bg-card/60 px-2.5 py-0.5 text-[11.5px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground md:inline-flex"
-              title="Open the academy location in Google Maps"
-              onClick={() => {
-                void openExternal(ACADEMY_MAPS_URL).catch(() => window.open(ACADEMY_MAPS_URL, "_blank", "noopener,noreferrer"))
-              }}
-            >
-              <MapPin className="h-3 w-3 text-primary/80" /> Karanthur, Kozhikode · Map
-            </button>
             <span className="ml-auto hidden items-center gap-1.5 sm:inline-flex">
               <kbd className="rounded border border-border bg-muted px-1.5 py-px font-sans text-[10px] text-muted-foreground">Alt</kbd>
               <span>+ 1-6 to switch modules</span>

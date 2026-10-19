@@ -1,7 +1,5 @@
 package `in`.patternsports.ams.ui.screens
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -30,11 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import `in`.patternsports.ams.domain.ACADEMY_MAPS_URL
 import `in`.patternsports.ams.domain.DashboardData
 import `in`.patternsports.ams.domain.DomainEngine
 import `in`.patternsports.ams.domain.FeePayment
@@ -74,7 +70,6 @@ fun DashboardScreen(
 ) {
     val colors = SorbetTheme.colors
     val typo = SorbetTheme.typography
-    val context = LocalContext.current
     val scroll = rememberScrollState()
 
     if (data == null) {
@@ -140,31 +135,17 @@ fun DashboardScreen(
                             text = data.settings.tagline,
                             style = typo.caption.copy(color = Color(0xFFB4CED9)),
                         )
+                        if (data.settings.address.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            BasicText(
+                                text = data.settings.address,
+                                style = typo.caption.copy(color = Color.White.copy(alpha = 0.78f)),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                     StopMotionVolleyballOrb(size = 46.dp)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Location & Maps Pill
-                Row(
-                    modifier = Modifier
-                        .fluidPressable(onClick = {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ACADEMY_MAPS_URL)))
-                        })
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black.copy(alpha = 0.18f))
-                        .padding(horizontal = 10.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CourtVectorIcon(icon = CourtIcon.MAP_PIN, tint = Color.White, size = 14.dp)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    BasicText(
-                        text = data.settings.address,
-                        style = typo.caption.copy(color = Color.White),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
                 }
 
                 // Demo Data Banner if database is empty or has tagged demo data

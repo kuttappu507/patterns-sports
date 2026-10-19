@@ -243,36 +243,75 @@ fun FeesScreen(
         ) {
             when (activeTab) {
                 "defaulters" -> {
-                    itemsIndexed(defaultersAndDue, key = { _, s -> s.student.id }) { idx, status ->
-                        StaggeredFluidEntrance(index = idx) {
-                            FeeStatusCard(
-                                status = status,
-                                settings = settings,
-                                onCollect = { onCollectFee(status.student.id) },
-                                onOpenProfile = { onSelectStudent(status.student.id) },
-                            )
+                    if (defaultersAndDue.isEmpty()) {
+                        item {
+                            FluidGlassCard(accentStripeColor = colors.accentTeal) {
+                                BasicText("All fee accounts are settled!", style = typo.h2.copy(color = colors.inkPrimary))
+                                Spacer(modifier = Modifier.height(4.dp))
+                                BasicText(
+                                    "No pending or overdue accounts match the current search and category filter.",
+                                    style = typo.body.copy(color = colors.inkSecondary),
+                                )
+                            }
+                        }
+                    } else {
+                        itemsIndexed(defaultersAndDue, key = { _, s -> s.student.id }) { idx, status ->
+                            StaggeredFluidEntrance(index = idx) {
+                                FeeStatusCard(
+                                    status = status,
+                                    settings = settings,
+                                    onCollect = { onCollectFee(status.student.id) },
+                                    onOpenProfile = { onSelectStudent(status.student.id) },
+                                )
+                            }
                         }
                     }
                 }
                 "ledger" -> {
-                    itemsIndexed(filteredStatuses, key = { _, s -> s.student.id }) { idx, status ->
-                        StaggeredFluidEntrance(index = idx) {
-                            FeeStatusCard(
-                                status = status,
-                                settings = settings,
-                                onCollect = { onCollectFee(status.student.id) },
-                                onOpenProfile = { onSelectStudent(status.student.id) },
-                            )
+                    if (filteredStatuses.isEmpty()) {
+                        item {
+                            FluidGlassCard(accentStripeColor = colors.primaryRose) {
+                                BasicText("No athlete accounts found", style = typo.h2.copy(color = colors.inkPrimary))
+                                Spacer(modifier = Modifier.height(4.dp))
+                                BasicText(
+                                    "Try clearing the search query or switching the category filter.",
+                                    style = typo.body.copy(color = colors.inkSecondary),
+                                )
+                            }
+                        }
+                    } else {
+                        itemsIndexed(filteredStatuses, key = { _, s -> s.student.id }) { idx, status ->
+                            StaggeredFluidEntrance(index = idx) {
+                                FeeStatusCard(
+                                    status = status,
+                                    settings = settings,
+                                    onCollect = { onCollectFee(status.student.id) },
+                                    onOpenProfile = { onSelectStudent(status.student.id) },
+                                )
+                            }
                         }
                     }
                 }
                 "receipts" -> {
-                    itemsIndexed(filteredReceipts, key = { _, p -> p.id }) { idx, payment ->
-                        StaggeredFluidEntrance(index = idx) {
-                            ReceiptTicketCard(
-                                payment = payment,
-                                onPrint = { onPrintReceipt(payment) },
-                            )
+                    if (filteredReceipts.isEmpty()) {
+                        item {
+                            FluidGlassCard(accentStripeColor = colors.accentCyan) {
+                                BasicText("No fee receipts found", style = typo.h2.copy(color = colors.inkPrimary))
+                                Spacer(modifier = Modifier.height(4.dp))
+                                BasicText(
+                                    "Collect a training fee or clear your search filter to view digital receipts.",
+                                    style = typo.body.copy(color = colors.inkSecondary),
+                                )
+                            }
+                        }
+                    } else {
+                        itemsIndexed(filteredReceipts, key = { _, p -> p.id }) { idx, payment ->
+                            StaggeredFluidEntrance(index = idx) {
+                                ReceiptTicketCard(
+                                    payment = payment,
+                                    onPrint = { onPrintReceipt(payment) },
+                                )
+                            }
                         }
                     }
                 }

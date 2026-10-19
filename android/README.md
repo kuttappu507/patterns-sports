@@ -28,9 +28,9 @@ All PDF exports and on-screen print previews match the PC app's `export.ts` and 
    - Monospace `Receipt No` (left) and formatted `Date` (right).
    - Full-grid bordered table (`#CBD5E1` borders, `#F8FAFC` label cells) for `RECEIVED FROM`, `TOWARDS`, `PAYMENT MODE`, and optional `REMARKS`.
    - Highlighted **`TOTAL AMOUNT PAID`** banner (`#F5F7FA` fill, `#1E293B` border) displaying `DomainEngine.inWords(payment.amount)` on the left and bold `Rs. X,XXX` (`#073B4C`) on the right.
-   - Non-refundable fee disclaimer, right-aligned **Authorized Signatory** rule block, and centered Google Maps footer.
+   - Non-refundable fee disclaimer, right-aligned **`Sd/-`** + **General Secretary** block, and digitally generated receipt disclaimer (*"Note: This is a digitally generated receipt. No signature is required."*).
 2. **80mm Thermal POS Slip (`226 pt` roll width)**:
-   - Monospace thermal formatting with dashed `--------------------------------` dividers, `PERIODS PAID:` bullet list, `TOTAL`, `inWords(amount)`, signatory, and `Powered by PS-AMS` footer.
+   - Monospace thermal formatting with dashed `--------------------------------` dividers, `PERIODS PAID:` bullet list, `TOTAL`, `inWords(amount)`, `Sd/-`, Secretary signatory, digital receipt disclaimer, and `Powered by PS-AMS` footer.
 3. **A4 Player Profile Card (`595 × 842 pt`)**:
    - Centered Academy Letterhead + `PLAYER PROFILE CARD` badge.
    - Left `88 × 106 pt` photo frame (renders student photo bitmap or monogram + status pill + admission number badge) alongside a 9-row bordered identity table.
