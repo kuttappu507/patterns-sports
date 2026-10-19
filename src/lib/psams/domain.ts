@@ -121,9 +121,6 @@ export function jumpDelta(spikeReach?: number | null, standingReach?: number | n
 
 // ---------- Academy identity ----------
 
-/** Official Google Maps location of the academy (shared across footer, settings & prints). */
-export const ACADEMY_MAPS_URL = "https://maps.app.goo.gl/yUGoSNRdvcN4qKdu6"
-
 /**
  * The academy's real address — the ONE shared letterhead default.
  * Used by the web settings API, the desktop settings backend and the demo

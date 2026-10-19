@@ -1,0 +1,3 @@
+-keep class in.patternsports.ams.domain.** { *; }
+-keepattributes *Annotation*,InnerClasses,Signature
+-dontwarn sun.misc.Unsafe

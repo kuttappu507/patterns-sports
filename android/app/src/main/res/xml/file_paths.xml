@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <files-path name="media" path="media/" />
+    <files-path name="exports" path="exports/" />
+    <files-path name="backups" path="backups/" />
+    <files-path name="files_root" path="." />
+    <cache-path name="cache_exports" path="exports/" />
+    <cache-path name="shared_docs" path="shared_docs/" />
+    <cache-path name="cache_root" path="." />
+</paths>

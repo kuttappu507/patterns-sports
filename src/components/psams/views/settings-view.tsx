@@ -22,7 +22,6 @@ import {
   Building2,
   Phone,
   Mail,
-  MapPin,
   Volleyball,
   MessageCircle,
   QrCode,
@@ -54,9 +53,9 @@ import {
 } from "@/lib/psams/api"
 import { COMMITTEE_ROLES, type CommitteeMember, type AcademySettings } from "@/lib/psams/types"
 import { exportPDF, exportExcel } from "@/lib/psams/export"
-import { ACADEMY_MAPS_URL, phoneDigits, intOnly } from "@/lib/psams/domain"
+import { phoneDigits, intOnly } from "@/lib/psams/domain"
 import { APP_VERSION } from "@/lib/psams/version"
-import { openExternal, useWaStore, renderQrDataUrl, type WaStatus } from "@/lib/psams/whatsapp"
+import { useWaStore, renderQrDataUrl, type WaStatus } from "@/lib/psams/whatsapp"
 import { useAppStore } from "@/lib/psams/store"
 import { MediaUpload } from "@/components/psams/media-upload"
 import { Button } from "@/components/ui/button"
@@ -660,19 +659,7 @@ function AcademyProfile() {
           <Input className="h-8 text-xs" value={settings.tagline} onChange={(e) => upd("tagline", e.target.value)} />
         </div>
         <div className="col-span-2 space-y-1">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs"><MapPin className="mr-1 inline h-3 w-3" />Address</Label>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-card/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              title="Open the academy location in Google Maps"
-              onClick={() => {
-                void openExternal(ACADEMY_MAPS_URL).catch(() => window.open(ACADEMY_MAPS_URL, "_blank", "noopener,noreferrer"))
-              }}
-            >
-              <MapPin className="h-3 w-3 text-primary/80" /> Open in Google Maps
-            </button>
-          </div>
+          <Label className="text-xs">Address</Label>
           <Textarea className="min-h-[44px] text-xs" value={settings.address} onChange={(e) => upd("address", e.target.value)} />
         </div>
         <div className="space-y-1">

@@ -80,7 +80,7 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-undef": "error",
   },
 }, {
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "src-tauri/**", "scripts/wa-engine-check/**", "scripts/browser-smoke-*.js"]
+  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "src-tauri/**", "android/**", "scripts/wa-engine-check/**", "scripts/browser-smoke-*.js"]
 }];
 
 export default eslintConfig;
